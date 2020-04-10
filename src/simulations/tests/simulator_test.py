@@ -1,0 +1,184 @@
+# Copyright 2020 The Private Cardinality Estimation Framework Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Tests for wfa_cardinality_estimation_evaluation_framework.simulations.simulator."""
+
+import io
+
+from absl.testing import absltest
+import numpy as np
+import pandas as pd
+
+from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimatorBase
+from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchBase
+from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import AddRandomElementsNoiser
+from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactSet
+from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
+from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
+from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import EstimatorConfig
+from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
+
+
+def get_simple_simulator(estimator_config=None):
+  if not estimator_config:
+    estimator_config = EstimatorConfig(
+        sketch_factory=ExactSet, estimator=LosslessEstimator(), noiser=None)
+  set_generator_factory = (
+      set_generator.IndependentSetGenerator.get_generator_factory(
+          universe_size=1, num_sets=1, set_size=1))
+
+  return Simulator(
+      num_runs=1,
+      set_generator_factory=set_generator_factory,
+      estimator_config=estimator_config,
+      sketch_random_state=np.random.RandomState(1),
+      set_random_state=np.random.RandomState(2))
+
+
+class RandomSketchForTestRandomSeed(SketchBase):
+
+  @classmethod
+  def get_sketch_factory(cls):
+
+    def f(random_seed):
+      return cls(random_seed=random_seed)
+
+    return f
+
+  def __init__(self, random_seed):
+    self.cardinality = random_seed
+
+  def add_ids(self, ids):
+    _ = ids
+
+
+class EstimatorForTestRandomSeed(EstimatorBase):
+
+  def __call__(self, sketch_list):
+    return sketch_list[-1].cardinality
+
+
+class SimulatorTest(absltest.TestCase):
+
+  def test_simulator_run_one(self):
+    sim = get_simple_simulator()
+    data_frame = sim.run_one()
+    self.assertLen(data_frame, 1)
+    for pub in data_frame['num_sets']:
+      self.assertEqual(pub, 1)
+
+  def test_simulator_run_all_and_aggregate(self):
+    sim = get_simple_simulator()
+    data_frames = sim.run_all_and_aggregate()
+    self.assertLen(data_frames, 2)
+    for pub in data_frames[0]['num_sets']:
+      self.assertEqual(pub, 1)
+
+  def test_simulator_run_all_and_aggregate_with_noise(self):
+    rs = np.random.RandomState(3)
+    estimator_config = EstimatorConfig(
+        sketch_factory=ExactSet,
+        estimator=LosslessEstimator(),
+        noiser=AddRandomElementsNoiser(num_random_elements=3, random_state=rs))
+    sim = get_simple_simulator(estimator_config)
+
+    data_frames = sim.run_all_and_aggregate()
+    self.assertLen(data_frames, 2)
+    for pub in data_frames[0]['num_sets']:
+      self.assertEqual(pub, 1)
+    self.assertEqual(data_frames[0]['estimated_cardinality'][0], 4)
+    self.assertEqual(data_frames[0]['true_cardinality'][0], 1)
+    self.assertEqual(data_frames[0]['relative_error'][0], 3)
+
+  def test_simulator_run_all_and_aggregate_multiple_runs(self):
+    estimator_config = EstimatorConfig(
+        sketch_factory=ExactSet, estimator=LosslessEstimator(), noiser=None)
+    set_generator_factory = (
+        set_generator.IndependentSetGenerator.get_generator_factory(
+            universe_size=1, num_sets=1, set_size=1))
+
+    sim = Simulator(
+        num_runs=5,
+        set_generator_factory=set_generator_factory,
+        estimator_config=estimator_config)
+
+    data_frames = sim.run_all_and_aggregate()
+    self.assertLen(data_frames, 2)
+    self.assertLen(data_frames[0], 5)
+    for pub in data_frames[0]['num_sets']:
+      self.assertEqual(pub, 1)
+
+  def test_simulator_run_all_and_aggregate_write_file(self):
+    estimator_config = EstimatorConfig(
+        sketch_factory=ExactSet, estimator=LosslessEstimator(), noiser=None)
+    set_generator_factory = (
+        set_generator.IndependentSetGenerator.get_generator_factory(
+            universe_size=1, num_sets=1, set_size=1))
+
+    file_df = io.StringIO()
+    file_df_agg = io.StringIO()
+    sim = Simulator(
+        num_runs=5,
+        set_generator_factory=set_generator_factory,
+        estimator_config=estimator_config,
+        file_handle_raw=file_df,
+        file_handle_agg=file_df_agg)
+    df, df_agg = sim()
+
+    # Test if the saved data frame is the same as the one returned from the
+    # simulator.
+    file_df.seek(0)
+    df_from_csv = pd.read_csv(file_df)
+    pd.testing.assert_frame_equal(df, df_from_csv)
+
+    file_df_agg.seek(0)
+    df_agg_from_csv = pd.read_csv(file_df_agg,
+                                  header=[0, 1], index_col=0)
+    pd.testing.assert_frame_equal(df_agg, df_agg_from_csv)
+
+  def test_get_sketch_same_run_same_random_state(self):
+    estimator_config = EstimatorConfig(
+        sketch_factory=RandomSketchForTestRandomSeed,
+        estimator=EstimatorForTestRandomSeed(),
+        noiser=None)
+    set_generator_factory = (
+        set_generator.IndependentSetGenerator.get_generator_factory(
+            universe_size=1, num_sets=2, set_size=1))
+    sim = Simulator(
+        num_runs=1,
+        set_generator_factory=set_generator_factory,
+        estimator_config=estimator_config)
+    df, _ = sim()
+    self.assertEqual(
+        df.loc[df['num_sets'] == 1, 'estimated_cardinality'].values,
+        df.loc[df['num_sets'] == 2, 'estimated_cardinality'].values)
+
+  def test_get_sketch_different_runs_different_random_state(self):
+    estimator_config = EstimatorConfig(
+        sketch_factory=RandomSketchForTestRandomSeed,
+        estimator=EstimatorForTestRandomSeed(),
+        noiser=None)
+    set_generator_factory = (
+        set_generator.IndependentSetGenerator.get_generator_factory(
+            universe_size=1, num_sets=1, set_size=1))
+    sim = Simulator(
+        num_runs=2,
+        set_generator_factory=set_generator_factory,
+        estimator_config=estimator_config)
+    df, _ = sim()
+    self.assertNotEqual(
+        df.loc[df['run_index'] == 0, 'estimated_cardinality'].values,
+        df.loc[df['run_index'] == 1, 'estimated_cardinality'].values)
+
+if __name__ == '__main__':
+  absltest.main()
