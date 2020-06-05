@@ -42,7 +42,8 @@ def relative_error(estimated, truth):
 
 
 _EstimatorConfig = collections.namedtuple(
-    'EstimatorConfig', ['sketch_factory', 'estimator', 'noiser'])
+    'EstimatorConfig', ['sketch_factory', 'estimator', 'sketch_noiser',
+                        'estimate_noiser'])
 
 
 # This class exists as a placeholder for a docstring.
@@ -54,7 +55,10 @@ class EstimatorConfig(_EstimatorConfig):
       numpy.random.RandomState and returns a class that conforms to
       cardinality_estimator_base.Sketch.
     estimator: A class that conforms to cardinality_estimator_base.Estimator.
-    noiser: A class that conforms to cardinality_estimator_base.Noiser.
+    sketch_noiser: A class that conforms to
+      cardinality_estimator_base.SketchNoiser.
+    estimate_noiser: A class that conforms to
+      cardinality_estimator_base.EstimateNoiser.
   """
   pass
 
@@ -159,9 +163,9 @@ class Simulator(object):
       sketches.append(sketch)
 
     # Optionally noise the sketches.
-    noiser = self.estimator_config.noiser
-    if noiser:
-      sketches = [noiser(s) for s in sketches]
+    sketch_noiser = self.estimator_config.sketch_noiser
+    if sketch_noiser:
+      sketches = [sketch_noiser(s) for s in sketches]
 
     # Estimate cardinality for 1, 2, ..., n pubs.
     estimator = self.estimator_config.estimator
@@ -170,6 +174,9 @@ class Simulator(object):
     metrics = []
     for i in range(len(sketches)):
       estimated_cardinality = estimator(sketches[:i + 1])
+      if self.estimator_config.estimate_noiser:
+        estimated_cardinality = self.estimator_config.estimate_noiser(
+            estimated_cardinality)
       true_union.update(actual_ids[i])
       metrics.append((i + 1, estimated_cardinality, len(true_union)))
 

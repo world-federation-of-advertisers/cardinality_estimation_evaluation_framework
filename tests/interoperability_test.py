@@ -22,6 +22,7 @@ import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BlipNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BloomFilter
+from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import ExponentialBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import LogarithmicBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import SurrealDenoiser
@@ -49,12 +50,18 @@ class InteroperabilityTest(absltest.TestCase):
     self.number_of_trials = 2
     self.universe_size = 2000
     self.set_size = 5
+    self.large_set_size = 6
+    self.small_set_size = 3
     self.sketch_size = 64
     self.number_of_sets = 2
+    self.num_large_sets = 1
+    self.num_small_sets = 3
     self.order = set_generator.ORDER_RANDOM
+    self.user_activity_association = (
+        set_generator.USER_ACTIVITY_ASSOCIATION_INDEPENDENT)
     self.shared_prop = 0.2
     self.num_bloom_filter_hashes = 2
-    self.bloom_filter_method = 'log'
+    self.exponential_bloom_filter_decay_rate = 10
     self.noiser_epsilon = np.log(3)
     self.noiser_flip_probability = .25
 
@@ -67,40 +74,54 @@ class InteroperabilityTest(absltest.TestCase):
         sketch_factory=CascadingLegions.get_sketch_factory(
             self.sketch_size, self.sketch_size),
         estimator=Estimator(),
-        noiser=None)
+        sketch_noiser=None,
+        estimate_noiser=None)
 
     estimator_config_bloom_filter = EstimatorConfig(
         sketch_factory=BloomFilter.get_sketch_factory(
             self.sketch_size, self.num_bloom_filter_hashes),
         estimator=UnionEstimator(),
-        noiser=None)
+        sketch_noiser=None,
+        estimate_noiser=None)
 
     estimator_config_logarithmic_bloom_filter = EstimatorConfig(
         sketch_factory=LogarithmicBloomFilter.get_sketch_factory(
             self.sketch_size),
-        estimator=FirstMomentEstimator(method=self.bloom_filter_method),
-        noiser=None)
+        estimator=FirstMomentEstimator(method='log'),
+        sketch_noiser=None,
+        estimate_noiser=None)
+
+    estimator_config_exponential_bloom_filter = EstimatorConfig(
+        sketch_factory=ExponentialBloomFilter.get_sketch_factory(
+            self.sketch_size, self.exponential_bloom_filter_decay_rate),
+        estimator=FirstMomentEstimator(method='exp'),
+        sketch_noiser=None,
+        estimate_noiser=None)
 
     estimator_config_voc = EstimatorConfig(
         sketch_factory=VectorOfCounts.get_sketch_factory(self.sketch_size),
         estimator=SequentialEstimator(),
-        noiser=None)
+        sketch_noiser=None,
+        estimate_noiser=None)
 
     estimator_config_exact = EstimatorConfig(
         sketch_factory=ExactSet.get_sketch_factory(),
         estimator=LosslessEstimator(),
-        noiser=None)
+        sketch_noiser=None,
+        estimate_noiser=None)
 
     estimator_config_hll = EstimatorConfig(
         sketch_factory=HyperLogLogPlusPlus.get_sketch_factory(self.sketch_size),
         estimator=HllCardinality(),
-        noiser=None)
+        sketch_noiser=None,
+        estimate_noiser=None)
 
     self.name_to_non_noised_estimator_config = {
         'exact_set': estimator_config_exact,
         'cascading_legions': estimator_config_cascading_legions,
         'bloom_filter': estimator_config_bloom_filter,
         'logarithmic_bloom_filter': estimator_config_logarithmic_bloom_filter,
+        'exponential_bloom_filter': estimator_config_exponential_bloom_filter,
         'vector_of_counts': estimator_config_voc,
         'hll': estimator_config_hll,
     }
@@ -111,32 +132,47 @@ class InteroperabilityTest(absltest.TestCase):
         sketch_factory=CascadingLegions.get_sketch_factory(
             self.sketch_size, self.sketch_size),
         estimator=Estimator(),
-        noiser=Noiser(self.noiser_flip_probability))
+        sketch_noiser=Noiser(self.noiser_flip_probability),
+        estimate_noiser=None)
 
     noised_estimator_config_bloom_filter = EstimatorConfig(
         sketch_factory=BloomFilter.get_sketch_factory(
             self.sketch_size, self.num_bloom_filter_hashes),
         estimator=UnionEstimator(),
-        noiser=BlipNoiser(self.noiser_epsilon, self.noise_random_state))
+        sketch_noiser=BlipNoiser(self.noiser_epsilon, self.noise_random_state),
+        estimate_noiser=None)
 
     noised_estimator_config_logarithmic_bloom_filter = EstimatorConfig(
         sketch_factory=LogarithmicBloomFilter.get_sketch_factory(
             self.sketch_size),
         estimator=FirstMomentEstimator(
-            method=self.bloom_filter_method,
+            method='log',
             denoiser=SurrealDenoiser(
                 probability=self.noiser_flip_probability)),
-        noiser=None)
+        sketch_noiser=None,
+        estimate_noiser=None)
+
+    noised_estimator_config_exponential_bloom_filter = EstimatorConfig(
+        sketch_factory=ExponentialBloomFilter.get_sketch_factory(
+            self.sketch_size, self.exponential_bloom_filter_decay_rate),
+        estimator=FirstMomentEstimator(
+            method='exp',
+            denoiser=SurrealDenoiser(
+                probability=self.noiser_flip_probability)),
+        sketch_noiser=None,
+        estimate_noiser=None)
 
     noised_estimator_config_voc = EstimatorConfig(
         sketch_factory=VectorOfCounts.get_sketch_factory(self.sketch_size),
         estimator=SequentialEstimator(),
-        noiser=LaplaceNoiser())
+        sketch_noiser=LaplaceNoiser(),
+        estimate_noiser=None)
 
     noised_estimator_config_exact = EstimatorConfig(
         sketch_factory=ExactSet.get_sketch_factory(),
         estimator=LosslessEstimator(),
-        noiser=AddRandomElementsNoiser(1, self.noise_random_state))
+        sketch_noiser=AddRandomElementsNoiser(1, self.noise_random_state),
+        estimate_noiser=None)
 
     self.name_to_noised_estimator_config = {
         'exact_set': noised_estimator_config_exact,
@@ -144,6 +180,8 @@ class InteroperabilityTest(absltest.TestCase):
         'bloom_filter': noised_estimator_config_bloom_filter,
         'logarithmic_bloom_filter':
             noised_estimator_config_logarithmic_bloom_filter,
+        'exponential_bloom_filter':
+            noised_estimator_config_exponential_bloom_filter,
         'vector_of_counts': noised_estimator_config_voc,
     }
 
@@ -177,6 +215,24 @@ class InteroperabilityTest(absltest.TestCase):
     self.simulate_with_set_generator(set_generator_factory,
                                      self.name_to_noised_estimator_config)
 
+  def test_with_exponential_bow_set_generator_non_noised(self):
+    # Choose special sizes here because Exponential Bow requires minimum size
+    # See set_generator.ExponentialBowSetGenerator for details
+    set_generator_factory = (
+        set_generator.ExponentialBowSetGenerator.get_generator_factory(
+            user_activity_association=self.user_activity_association,
+            universe_size=200, num_sets=2, set_size=50))
+    self.simulate_with_set_generator(set_generator_factory,
+                                     self.name_to_non_noised_estimator_config)
+
+  def test_with_exponential_bow_set_generator_noised(self):
+    set_generator_factory = (
+        set_generator.ExponentialBowSetGenerator.get_generator_factory(
+            user_activity_association=self.user_activity_association,
+            universe_size=200, num_sets=2, set_size=50))
+    self.simulate_with_set_generator(set_generator_factory,
+                                     self.name_to_noised_estimator_config)
+
   def test_with_fully_overlap_set_generator_non_noised(self):
     set_generator_factory = (
         set_generator.FullyOverlapSetGenerator.get_generator_factory(
@@ -192,6 +248,30 @@ class InteroperabilityTest(absltest.TestCase):
             universe_size=self.universe_size,
             num_sets=self.number_of_sets,
             set_size=self.set_size))
+    self.simulate_with_set_generator(set_generator_factory,
+                                     self.name_to_noised_estimator_config)
+
+  def test_with_sub_set_generator_non_noised(self):
+    set_generator_factory = (
+        set_generator.SubSetGenerator.get_generator_factory(
+            order=self.order,
+            universe_size=self.universe_size,
+            num_large_sets=self.num_large_sets,
+            num_small_sets=self.num_small_sets,
+            large_set_size=self.large_set_size,
+            small_set_size=self.small_set_size))
+    self.simulate_with_set_generator(set_generator_factory,
+                                     self.name_to_non_noised_estimator_config)
+
+  def test_with_sub_set_generator_noised(self):
+    set_generator_factory = (
+        set_generator.SubSetGenerator.get_generator_factory(
+            order=self.order,
+            universe_size=self.universe_size,
+            num_large_sets=self.num_large_sets,
+            num_small_sets=self.num_small_sets,
+            large_set_size=self.large_set_size,
+            small_set_size=self.small_set_size))
     self.simulate_with_set_generator(set_generator_factory,
                                      self.name_to_noised_estimator_config)
 

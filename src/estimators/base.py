@@ -62,8 +62,8 @@ class EstimatorBase(object):
     raise NotImplementedError()
 
 
-class NoiserBase(object):
-  """An estimator takes a sketch, copies it, and returns a noisy sketch.
+class SketchNoiserBase(object):
+  """A sketch noiser takes a sketch, copies it, and returns a noisy sketch.
 
   Similar to Estimators, Noisers exist apart from sketches because there
   are multiple ways to apply noise to a sketch.
@@ -84,15 +84,29 @@ class NoiserBase(object):
     raise NotImplementedError()
 
 
-class DenoiserBase(object):
-  """An estimator takes a noisy sketch and returns a copy of denoised one.
+class EstimateNoiserBase(object):
+  """An estimate noiser adds noise to a cardinality estimate.
 
-  This class should be used before the sketches are sent to the cardinality
-  estimator. For example, we calculate the expected register values of an
-  AnyDistributionBloomFilter sketch given the observed noisy sketch, which we
-  name as a "denoiser".
+  Note that while many Noisers may take in Differential Privacy parameters such
+  as epsilon or delta, that we are making no guarantees that they are truly
+  differentially private and suitable for protecting real user data.  The noise
+  being added is for statistical accuracy purposes only, and does not include
+  protections against certain attacks such as the 'Least Significant Digits'
+  problem: https://crysp.uwaterloo.ca/courses/pet/F18/cache/Mironov.pdf
+
+  A subclass of this class may chose to implement full protection, but it must
+  explicitly specify that in its documentation.
   """
 
-  def __call__(self, sketch):
-    """Return a denoised copy of the incoming sketch."""
+  def __call__(self, cardinality_estimate):
+    """Return a cardinality estimate with noise.
+
+    Args:
+      cardinality_estimate: A float, list or numpy vector of values to be
+      noised.
+    Returns:
+      A noised float, list or numpy vector of the same type and dimenions as
+      cardinality_estimate.
+    """
     raise NotImplementedError()
+

@@ -142,7 +142,7 @@ class CascadingLegions(base.SketchBase):
     return result
 
 
-class Noiser(base.NoiserBase):
+class Noiser(base.SketchNoiserBase):
   """Noiser of CascadingLegions."""
 
   def __init__(self, flip_probability):

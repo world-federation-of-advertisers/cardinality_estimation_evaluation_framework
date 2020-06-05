@@ -91,21 +91,64 @@ class PairwiseEstimatorTest(absltest.TestCase):
     with self.assertRaises(AssertionError):
       estimator.assert_compatible(sketch1, sketch2)
 
-  def test_merge(self):
+  def test_has_zero_intersection(self):
+    pairwise_estimator = PairwiseEstimator()
+    this = VectorOfCounts(num_buckets=64, random_seed=2)
+    this.add_ids(range(100))
+    # Clip relies on hypothesis testing and hence requires a minimum size
+    that = VectorOfCounts(num_buckets=64, random_seed=2)
+    that.add_ids(range(100, 200))
+    intersection_cardinality = pairwise_estimator._intersection(this, that)
+    self.assertTrue(
+        pairwise_estimator.has_zero_intersection(
+            intersection_cardinality, this, that))
+
+  def test_has_full_intersection(self):
+    pairwise_estimator = PairwiseEstimator()
+    this = VectorOfCounts(num_buckets=64, random_seed=2)
+    this.add_ids(range(100))
+    that = VectorOfCounts(num_buckets=64, random_seed=2)
+    that.add_ids(range(100))
+    intersection_cardinality = pairwise_estimator._intersection(this, that)
+    self.assertTrue(
+        pairwise_estimator.has_full_intersection(
+            intersection_cardinality, this, that))
+
+  def test_merge_no_clip(self):
     sketch_list = []
     for _ in range(2):
       sketch = VectorOfCounts(num_buckets=2, random_seed=2)
       sketch.add_ids([1])
       sketch_list.append(sketch)
-    merged = PairwiseEstimator.merge(sketch_list[0], sketch_list[1])
+    pairwise_estimator = PairwiseEstimator()
+    merged = pairwise_estimator.merge(sketch_list[0], sketch_list[1])
     np.testing.assert_array_equal(
         np.sort(merged.stats),
         np.array([0, 1.5]))
 
+  def test_merge_with_clip(self):
+    this_sketch = VectorOfCounts(num_buckets=64, random_seed=2)
+    this_sketch.add_ids(range(100))
+    # First test no intersection
+    that_sketch = VectorOfCounts(num_buckets=64, random_seed=2)
+    that_sketch.add_ids(range(100, 200))
+    pairwise_estimator = PairwiseEstimator(clip=True)
+    merged = pairwise_estimator.merge(this_sketch, that_sketch)
+    np.testing.assert_array_equal(
+        x=merged.stats, y=this_sketch.stats + that_sketch.stats,
+        err_msg='Fail to detect the no-intersection case.')
+    # Then test full intersection
+    that_sketch = VectorOfCounts(num_buckets=64, random_seed=2)
+    that_sketch.add_ids(range(100))
+    merged = pairwise_estimator.merge(this_sketch, that_sketch)
+    np.testing.assert_array_equal(
+        x=merged.stats, y=this_sketch.stats,
+        err_msg='Fail to detect the full-intersection case.')
+
 
 class SequentialEstimatorTest(absltest.TestCase):
 
-  def test_estimate_cardinality(self):
+  def test_estimate_cardinality_no_clip(self):
     sketch_list = []
     for _ in range(3):
       sketch = VectorOfCounts(num_buckets=2, random_seed=3)
@@ -115,6 +158,23 @@ class SequentialEstimatorTest(absltest.TestCase):
     result = estimator(sketch_list)
     actual = 1.75
     self.assertEqual(result, actual)
+
+  def test_estimate_cardinality_with_clip(self):
+    base_sketch = VectorOfCounts(num_buckets=64, random_seed=3)
+    base_sketch.add_ids(range(100))
+    sketch_list_a = [base_sketch]
+    sketch_list_b = [base_sketch]
+    for _ in range(3):
+      empty_sketch = VectorOfCounts(num_buckets=64, random_seed=3)
+      sketch_list_a.append(empty_sketch)  # add empty sketch
+      sketch_list_b.append(base_sketch)  # add same sketch
+    estimator = SequentialEstimator(clip=True)
+    result_a = estimator(sketch_list_a)
+    result_b = estimator(sketch_list_b)
+    self.assertEqual(result_a, base_sketch.cardinality(),
+                     msg='Fail to detect the no-intersection case.')
+    self.assertEqual(result_b, base_sketch.cardinality(),
+                     msg='Fail to detect the full-intersection case.')
 
 
 if __name__ == '__main__':

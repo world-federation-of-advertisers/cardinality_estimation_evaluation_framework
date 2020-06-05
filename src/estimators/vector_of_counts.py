@@ -30,11 +30,11 @@ import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.common.hash_function import HashFunction
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimatorBase
-from wfa_cardinality_estimation_evaluation_framework.estimators.base import NoiserBase
+from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchNoiserBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchBase
 
 
-class IdentityNoiser(NoiserBase):
+class IdentityNoiser(SketchNoiserBase):
   """Does not add noise to a VectorOfCounts."""
 
   def __call__(self, sketch):
@@ -42,7 +42,7 @@ class IdentityNoiser(NoiserBase):
     return copy.deepcopy(sketch)
 
 
-class LaplaceNoiser(NoiserBase):
+class LaplaceNoiser(SketchNoiserBase):
   """This class adds noise to a VectorOfCounts."""
 
   def __init__(self, epsilon=np.log(3), random_state=np.random.RandomState()):
@@ -135,8 +135,19 @@ class VectorOfCounts(SketchBase):
 class PairwiseEstimator(EstimatorBase):
   """A cardinality estimator for two VectorOfCounts."""
 
-  def __init__(self):
+  def __init__(self, clip=False, epsilon=np.log(3), clip_threshold=3):
+    """Initializes the instance.
+
+    Args:
+      clip: Whether to clip the intersection when merging two VectorOfCounts.
+      epsilon: Value of epsilon in differential privacy.
+      clip_threshold: Threshold of z-score in clipping. The larger threshold,
+        the more chance of clipping.
+    """
     EstimatorBase.__init__(self)
+    self.clip = clip
+    self.epsilon = epsilon
+    self.clip_threshold = clip_threshold
 
   @classmethod
   def assert_compatible(cls, this, that):
@@ -191,8 +202,46 @@ class PairwiseEstimator(EstimatorBase):
         this, that, this_cardinality, that_cardinality)
     return this_cardinality + that_cardinality - intersection_cardinality
 
-  @classmethod
-  def merge(cls, this, that):
+  def _get_std_of_intersection(self, intersection_cardinality, this, that):
+    variance = (this.cardinality() * that.cardinality() +
+                np.square(intersection_cardinality)) / this.num_buckets
+    variance += this.num_buckets * 4 / self.epsilon ** 4
+    variance += (
+        this.cardinality() + that.cardinality()) * 2 / self.epsilon ** 2
+    return np.sqrt(variance)
+
+  def evaluate_closeness_to_a_value(
+      self, intersection_cardinality, value_to_compare_with, this, that):
+    """Evaluate if the intersection is close to a value via hypothesis test.
+
+    Args:
+      intersection_cardinality: An estimate of intersection.
+      value_to_compare_with: We test the hypothesis H0:
+        intersection_cardinality = value_to_compare.
+      this: one of the two VectorOfCounts for dedupe.
+      that: the other VectorOfCounts for dedupe.
+
+    Returns:
+      A Z-score describing how close the intersection estimate is close to
+        the value.
+    """
+    return (
+        intersection_cardinality - value_to_compare_with
+    ) / self._get_std_of_intersection(value_to_compare_with, this, that)
+
+  def has_zero_intersection(self, intersection_cardinality, this, that):
+    value_to_compare_with = 0
+    z_score = self.evaluate_closeness_to_a_value(
+        intersection_cardinality, value_to_compare_with, this, that)
+    return z_score < self.clip_threshold
+
+  def has_full_intersection(self, intersection_cardinality, this, that):
+    value_to_compare_with = min(this.cardinality(), that.cardinality())
+    z_score = self.evaluate_closeness_to_a_value(
+        intersection_cardinality, value_to_compare_with, this, that)
+    return z_score > - self.clip_threshold
+
+  def merge(self, this, that):
     """Merge two VectorOfCounts.
 
     Args:
@@ -207,15 +256,43 @@ class PairwiseEstimator(EstimatorBase):
     that_cardinality = that.cardinality()
     intersection_cardinality = PairwiseEstimator._intersection(
         this, that, this_cardinality, that_cardinality)
+    merged = copy.deepcopy(this)
+    if self.clip:
+      if self.has_zero_intersection(intersection_cardinality, this, that):
+        merged.stats = this.stats + that.stats
+        return merged
+      if self.has_full_intersection(intersection_cardinality, this, that):
+        return merged
     share = intersection_cardinality * (this.stats + that.stats) / (
         this_cardinality + that_cardinality)
-    merged = copy.deepcopy(this)
     merged.stats = this.stats + that.stats - share
     return merged
+
+  def clip_empty_vector_of_count(self, sketch):
+    assert isinstance(sketch, VectorOfCounts), 'Not a VectorOfCounts.'
+    z_score = np.sum(sketch.stats) / np.sqrt(sketch.num_buckets * 2) / (
+        self.epsilon)
+    if z_score < self.clip_threshold:
+      sketch.stats = np.zeros(sketch.num_buckets)
+    return sketch
 
 
 class SequentialEstimator(EstimatorBase):
   """An estimator by merging VectorOfCounts by the given order."""
+
+  def __init__(self, clip=False, epsilon=np.log(3), clip_threshold=3):
+    """Initializes the instance.
+
+    Args:
+      clip: Whether to clip the intersection when merging two VectorOfCounts.
+      epsilon: Value of epsilon in differential privacy.
+      clip_threshold: Threshold of z-score in clipping. The larger threshold,
+        the more chance of clipping.
+    """
+    EstimatorBase.__init__(self)
+    self.clip = clip
+    self.epsilon = epsilon
+    self.clip_threshold = clip_threshold
 
   def __call__(self, sketch_list):
     """Estimates the cardinality of the union of a list of VectorOfCounts."""
@@ -230,7 +307,14 @@ class SequentialEstimator(EstimatorBase):
     Returns:
       The estimated cardinality of the merged sketches.
     """
+    pairwise_estimator = PairwiseEstimator(
+        clip=self.clip, epsilon=self.epsilon,
+        clip_threshold=self.clip_threshold)
+    if self.clip:
+      sketch_list = [pairwise_estimator.clip_empty_vector_of_count(sketch)
+                     for sketch in sketch_list]
+
     current = sketch_list[0]
     for sketch in sketch_list[1:]:
-      current = PairwiseEstimator.merge(current, sketch)
+      current = pairwise_estimator.merge(current, sketch)
     return current.cardinality()

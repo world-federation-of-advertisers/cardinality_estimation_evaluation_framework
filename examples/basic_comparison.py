@@ -17,6 +17,7 @@ from absl import flags
 import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BloomFilter
+from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import ExponentialBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import LogarithmicBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import UnionEstimator
@@ -43,6 +44,8 @@ flags.DEFINE_integer('number_of_trials', 10,
                      'The number of times to run the experiment')
 flags.DEFINE_integer('set_size', 1000, 'The size of all generated sets')
 flags.DEFINE_integer('sketch_size', 8192, 'The size of sketches')
+flags.DEFINE_integer('exponential_bloom_filter_decay_rate', 10,
+                     'The decay rate in exponential bloom filter')
 flags.DEFINE_integer('num_bloom_filter_hashes', 3,
                      'The number of hashes for the bloom filter to use')
 
@@ -55,38 +58,52 @@ def main(argv):
       sketch_factory=CascadingLegions.get_sketch_factory(
           FLAGS.sketch_size, FLAGS.sketch_size),
       estimator=Estimator(),
-      noiser=None)
+      sketch_noiser=None,
+      estimate_noiser=None)
 
   estimator_config_bloom_filter = EstimatorConfig(
       sketch_factory=BloomFilter.get_sketch_factory(
           FLAGS.sketch_size, FLAGS.num_bloom_filter_hashes),
       estimator=UnionEstimator(),
-      noiser=None)
+      sketch_noiser=None,
+      estimate_noiser=None)
 
   estimator_config_logarithmic_bloom_filter = EstimatorConfig(
       sketch_factory=LogarithmicBloomFilter.get_sketch_factory(
           FLAGS.sketch_size),
       estimator=FirstMomentEstimator(method='log'),
-      noiser=None)
+      sketch_noiser=None,
+      estimate_noiser=None)
+
+  estimator_config_exponential_bloom_filter = EstimatorConfig(
+      sketch_factory=ExponentialBloomFilter.get_sketch_factory(
+          FLAGS.sketch_size, FLAGS.exponential_bloom_filter_decay_rate),
+      estimator=FirstMomentEstimator(method='exp'),
+      sketch_noiser=None,
+      estimate_noiser=None)
 
   estimator_config_voc = EstimatorConfig(
       sketch_factory=VectorOfCounts.get_sketch_factory(FLAGS.sketch_size),
       estimator=SequentialEstimator(),
-      noiser=None)
+      sketch_noiser=None,
+      estimate_noiser=None)
 
   estimator_config_hll = EstimatorConfig(
       sketch_factory=HyperLogLogPlusPlus.get_sketch_factory(FLAGS.sketch_size),
       estimator=HllCardinality(),
-      noiser=None)
+      sketch_noiser=None,
+      estimate_noiser=None)
 
   estimator_config_exact = EstimatorConfig(
       sketch_factory=ExactSet.get_sketch_factory(),
       estimator=LosslessEstimator(),
-      noiser=None)
+      sketch_noiser=None,
+      estimate_noiser=None)
 
   name_to_estimator_config = {
       'bloom_filter': estimator_config_bloom_filter,
       'logarithmic_bloom_filter': estimator_config_logarithmic_bloom_filter,
+      'exponential_bloom_filter': estimator_config_exponential_bloom_filter,
       'cascading_legions': estimator_config_cascading_legions,
       'exact_set': estimator_config_exact,
       'hll++': estimator_config_hll,

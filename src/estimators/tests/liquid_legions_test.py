@@ -350,7 +350,7 @@ class LiquidTest(absltest.TestCase):
       logging.info('Step %d, cardinality %.3f, true cardinality: %d',
                    i, s.get_cardinality(), len(true_set))
     self.assertAlmostEqual(len(true_set), s.get_cardinality(),
-                           delta=len(true_set) * 0.2)
+                           delta=len(true_set) * 0.5)
 
   def test_manual_sequential_merge_large_overlap(self):
     noiser = liquid_legions.Noiser(0.05)  # Small noise!

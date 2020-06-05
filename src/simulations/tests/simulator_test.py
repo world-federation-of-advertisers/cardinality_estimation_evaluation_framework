@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimatorBase
+from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimateNoiserBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import AddRandomElementsNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactSet
@@ -32,7 +33,8 @@ from wfa_cardinality_estimation_evaluation_framework.simulations.simulator impor
 def get_simple_simulator(estimator_config=None):
   if not estimator_config:
     estimator_config = EstimatorConfig(
-        sketch_factory=ExactSet, estimator=LosslessEstimator(), noiser=None)
+        sketch_factory=ExactSet, estimator=LosslessEstimator(),
+        sketch_noiser=None, estimate_noiser=None)
   set_generator_factory = (
       set_generator.IndependentSetGenerator.get_generator_factory(
           universe_size=1, num_sets=1, set_size=1))
@@ -68,6 +70,15 @@ class EstimatorForTestRandomSeed(EstimatorBase):
     return sketch_list[-1].cardinality
 
 
+class FakeEstimateNoiser(EstimateNoiserBase):
+  def __init__(self):
+    self._calls = 0
+
+  def __call__(self, cardinality_estimate):
+    self._calls += 1
+    return 10
+
+
 class SimulatorTest(absltest.TestCase):
 
   def test_simulator_run_one(self):
@@ -76,6 +87,17 @@ class SimulatorTest(absltest.TestCase):
     self.assertLen(data_frame, 1)
     for pub in data_frame['num_sets']:
       self.assertEqual(pub, 1)
+
+  def test_simulator_run_one_with_estimate_noiser(self):
+    fake_estimate_noiser = FakeEstimateNoiser()
+    estimator_config = EstimatorConfig(
+        sketch_factory=ExactSet, estimator=LosslessEstimator(),
+        sketch_noiser=None, estimate_noiser=fake_estimate_noiser)
+    sim = get_simple_simulator(estimator_config)
+    data_frame = sim.run_one()
+    self.assertLen(data_frame, 1)
+    self.assertEqual(data_frame['estimated_cardinality'].iloc[0], 10)
+    self.assertEqual(fake_estimate_noiser._calls, 1)
 
   def test_simulator_run_all_and_aggregate(self):
     sim = get_simple_simulator()
@@ -89,7 +111,9 @@ class SimulatorTest(absltest.TestCase):
     estimator_config = EstimatorConfig(
         sketch_factory=ExactSet,
         estimator=LosslessEstimator(),
-        noiser=AddRandomElementsNoiser(num_random_elements=3, random_state=rs))
+        sketch_noiser=AddRandomElementsNoiser(num_random_elements=3,
+                                             random_state=rs),
+        estimate_noiser=None)
     sim = get_simple_simulator(estimator_config)
 
     data_frames = sim.run_all_and_aggregate()
@@ -102,7 +126,8 @@ class SimulatorTest(absltest.TestCase):
 
   def test_simulator_run_all_and_aggregate_multiple_runs(self):
     estimator_config = EstimatorConfig(
-        sketch_factory=ExactSet, estimator=LosslessEstimator(), noiser=None)
+        sketch_factory=ExactSet, estimator=LosslessEstimator(),
+        sketch_noiser=None, estimate_noiser=None)
     set_generator_factory = (
         set_generator.IndependentSetGenerator.get_generator_factory(
             universe_size=1, num_sets=1, set_size=1))
@@ -120,7 +145,8 @@ class SimulatorTest(absltest.TestCase):
 
   def test_simulator_run_all_and_aggregate_write_file(self):
     estimator_config = EstimatorConfig(
-        sketch_factory=ExactSet, estimator=LosslessEstimator(), noiser=None)
+        sketch_factory=ExactSet, estimator=LosslessEstimator(),
+        sketch_noiser=None, estimate_noiser=None)
     set_generator_factory = (
         set_generator.IndependentSetGenerator.get_generator_factory(
             universe_size=1, num_sets=1, set_size=1))
@@ -150,7 +176,7 @@ class SimulatorTest(absltest.TestCase):
     estimator_config = EstimatorConfig(
         sketch_factory=RandomSketchForTestRandomSeed,
         estimator=EstimatorForTestRandomSeed(),
-        noiser=None)
+        sketch_noiser=None, estimate_noiser=None)
     set_generator_factory = (
         set_generator.IndependentSetGenerator.get_generator_factory(
             universe_size=1, num_sets=2, set_size=1))
@@ -167,7 +193,7 @@ class SimulatorTest(absltest.TestCase):
     estimator_config = EstimatorConfig(
         sketch_factory=RandomSketchForTestRandomSeed,
         estimator=EstimatorForTestRandomSeed(),
-        noiser=None)
+        sketch_noiser=None, estimate_noiser=None)
     set_generator_factory = (
         set_generator.IndependentSetGenerator.get_generator_factory(
             universe_size=1, num_sets=1, set_size=1))
