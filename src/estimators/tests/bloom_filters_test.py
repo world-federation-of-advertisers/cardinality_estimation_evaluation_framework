@@ -23,6 +23,7 @@ import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BlipNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BloomFilter
+from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import ExponentialBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FixedProbabilityBitFlipNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import invert_monotonic
@@ -77,21 +78,23 @@ class BloomFilterTest(absltest.TestCase):
 class AnyDistributionBloomFilterTest(parameterized.TestCase):
 
   @parameterized.parameters(
-      (UniformBloomFilter,),
-      (LogarithmicBloomFilter,),
+      (UniformBloomFilter, {}),
+      (LogarithmicBloomFilter, {}),
+      (ExponentialBloomFilter, {'decay_rate': 1}),
   )
-  def test_insert(self, bloom_filter_class):
-    adbf = bloom_filter_class(length=2, random_seed=1)
+  def test_insert(self, bloom_filter_class, kwargs):
+    adbf = bloom_filter_class(length=2, random_seed=1, **kwargs)
     self.assertEqual(np.sum(adbf.sketch), 0)
     adbf.add([1, 1])
     self.assertEqual(np.sum(adbf.sketch), 1)
 
   @parameterized.parameters(
-      (UniformBloomFilter,),
-      (LogarithmicBloomFilter,),
+      (UniformBloomFilter, {}),
+      (LogarithmicBloomFilter, {}),
+      (ExponentialBloomFilter, {'decay_rate': 1}),
   )
-  def test_factory(self, bloom_filter_class):
-    factory = bloom_filter_class.get_sketch_factory(length=4)
+  def test_factory(self, bloom_filter_class, kwargs):
+    factory = bloom_filter_class.get_sketch_factory(length=4, **kwargs)
     adbf = factory(2)
     self.assertEqual(np.sum(adbf.sketch), 0)
     adbf.add([1, 1])
@@ -159,7 +162,7 @@ class FirstMomentEstimatorTest(parameterized.TestCase):
                  for _ in range(2)]
     adbf_list[0].sketch = np.array([0.1, 0.9, 0.1, 0.9])
     adbf_list[1].sketch = np.array([0.1, 0.1, 0.9, 0.9])
-    estimator = FirstMomentEstimator(denoiser=None, method='any')
+    estimator = FirstMomentEstimator(method='any')
     union = estimator.union_sketches(adbf_list)
     expected = np.array([0.19, 0.91, 0.91, 0.99])
     np.testing.assert_allclose(union.sketch, expected, atol=0.01)
@@ -172,16 +175,17 @@ class FirstMomentEstimatorTest(parameterized.TestCase):
       FirstMomentEstimator._check_compatibility(adbf_list)
 
   @parameterized.parameters(
-      ('uniform', 1.151),
-      ('log', 1.333),
-      ('any', 1)
+      (UniformBloomFilter, {}, 'uniform', 1.151),
+      (LogarithmicBloomFilter, {}, 'log', 1.333),
+      (ExponentialBloomFilter, {'decay_rate': 1}, 'exp', 1.1645),
+      (UniformBloomFilter, {}, 'any', 1)
   )
-  def test_estimate_cardinality_uniform(self, method, truth):
-    adbf = UniformBloomFilter(length=4, random_seed=0)
+  def test_estimate_cardinality(self, bf, bf_kwargs, method, truth):
+    adbf = bf(length=4, random_seed=0, **bf_kwargs)
     adbf.add_ids([1])
     estimator = FirstMomentEstimator(method=method)
     estimate = estimator([adbf])
-    self.assertAlmostEqual(estimate, truth, 3)
+    self.assertAlmostEqual(estimate, truth, 3, msg=method)
 
   def test_denoise_and_union(self):
     noiser = FixedProbabilityBitFlipNoiser(
@@ -273,7 +277,7 @@ class SurrealDenoiserTest(absltest.TestCase):
     noised_adbf = UniformBloomFilter(4, random_seed=1)
     noised_adbf.sketch[0] = 1
     denoiser = SurrealDenoiser(probability=0.25)
-    denoised_adbf = denoiser(noised_adbf)
+    denoised_adbf = denoiser([noised_adbf])[0]
     expected = np.array([1.5, -0.5, -0.5, -0.5])
     np.testing.assert_allclose(
         denoised_adbf.sketch, expected, atol=0.01,

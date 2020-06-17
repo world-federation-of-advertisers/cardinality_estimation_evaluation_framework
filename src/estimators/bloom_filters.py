@@ -19,15 +19,11 @@ import copy
 import math
 
 import numpy as np
+from scipy import special
 
 from wfa_cardinality_estimation_evaluation_framework.estimators import any_sketch
-from wfa_cardinality_estimation_evaluation_framework.estimators.base import DenoiserBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimatorBase
-from wfa_cardinality_estimation_evaluation_framework.estimators.base import NoiserBase
-
-_UNIFORM = "uniform"
-_LOG = "log"
-_ANY = "any"
+from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchNoiserBase
 
 
 def invert_monotonic(f, lower=0, epsilon=0.001):
@@ -176,6 +172,36 @@ class LogarithmicBloomFilter(AnyDistributionBloomFilter):
         random_seed)
 
 
+class ExponentialBloomFilter(AnyDistributionBloomFilter):
+  """Implement an Exponential Bloom Filter."""
+
+  @classmethod
+  def get_sketch_factory(cls, length, decay_rate):
+
+    def f(random_seed):
+      return cls(length, decay_rate, random_seed)
+
+    return f
+
+  def __init__(self, length, decay_rate, random_seed=None):
+    """Creates an ExponentialBloomFilter.
+
+    Args:
+       length: The length of bit vector for the bloom filter.
+       decay_rate: The decay rate of Exponential distribution.
+       random_seed: An optional integer specifying the random seed for
+         generating the random seeds for hash functions.
+    """
+    AnyDistributionBloomFilter.__init__(
+        self,
+        any_sketch.SketchConfig([
+            any_sketch.IndexSpecification(
+                any_sketch.ExponentialDistribution(length, decay_rate), "exp")
+        ], num_hashes=1, value_functions=[any_sketch.BitwiseOrFunction()]),
+        random_seed)
+    self.decay_rate = decay_rate
+
+
 class UnionEstimator(EstimatorBase):
   """A class that unions BloomFilters and estimates the combined cardinality."""
 
@@ -218,6 +244,12 @@ class UnionEstimator(EstimatorBase):
 class FirstMomentEstimator(EstimatorBase):
   """First moment cardinality estimator for AnyDistributionBloomFilter."""
 
+  METHOD_UNIFORM = "uniform"
+  METHOD_LOG = "log"
+  METHOD_EXP = "exp"
+  METHOD_ANY = "any"
+
+
   def __init__(self, method, denoiser=None, weights=None):
     EstimatorBase.__init__(self)
     if denoiser is None:
@@ -225,8 +257,11 @@ class FirstMomentEstimator(EstimatorBase):
     else:
       self._denoiser = denoiser
     self._weights = weights
-    assert method in (_UNIFORM, _LOG, _ANY), (
-        f"method={method} not supported")
+    assert method in (
+        FirstMomentEstimator.METHOD_UNIFORM,
+        FirstMomentEstimator.METHOD_LOG,
+        FirstMomentEstimator.METHOD_EXP,
+        FirstMomentEstimator.METHOD_ANY), f"method={method} not supported."
     self._method = method
 
   @classmethod
@@ -239,9 +274,9 @@ class FirstMomentEstimator(EstimatorBase):
   def union_sketches(self, sketch_list):
     """Exposed for testing."""
     FirstMomentEstimator._check_compatibility(sketch_list)
-    union = self._denoiser(sketch_list[0])
+    sketch_list = self._denoiser(sketch_list)
+    union = sketch_list[0]
     for cur_sketch in sketch_list[1:]:
-      cur_sketch = self._denoiser(cur_sketch)
       union.sketch = 1 - (1 - union.sketch) * (1 - cur_sketch.sketch)
     return union
 
@@ -258,6 +293,34 @@ class FirstMomentEstimator(EstimatorBase):
     x = sum(sketch.sketch)
     m = len(sketch.sketch)
     return x / (1 - x / m)
+
+  @classmethod
+  def _estimate_cardinality_exp(cls, sketch):
+    """Estimate cardinality of an Exp Bloom Filter a.k.a. Liquid Legions.
+
+    Args:
+      sketch: An ExponentialBloomFilter. It should be unnoised or obtained
+        after denoising.
+    Returns:
+      The estimated cardinality of the ADBF.
+    """
+    a = sketch.decay_rate
+    def _expected_num_bits(reach):
+      """Expected number of bits activated for cardinality."""
+      if reach <= 0:
+        return 0
+      return 1 - (- special.expi(- a * reach / (np.exp(a) - 1)) +
+                  special.expi(- a * np.exp(a) * reach / (np.exp(a) - 1))) / a
+
+    def _clip(x, lower_bound, upper_bound):
+      return max(min(x, upper_bound), lower_bound)
+
+    x = sum(sketch.sketch)
+    m = len(sketch.sketch)
+    p = _clip(x / m, 0, 1)
+    result = invert_monotonic(_expected_num_bits, epsilon=1e-7)(p) * m
+    assert result >= 0, "Negative estimate should never happen."
+    return result
 
   @classmethod
   def _estimate_cardinality_any(cls, sketch, weights):
@@ -287,15 +350,17 @@ class FirstMomentEstimator(EstimatorBase):
     assert isinstance(sketch_list[0], AnyDistributionBloomFilter), (
         "Expected an AnyDistributionBloomFilter.")
     union = self.union_sketches(sketch_list)
-    if self._method == _LOG:
+    if self._method == FirstMomentEstimator.METHOD_LOG:
       return FirstMomentEstimator._estimate_cardinality_log(union)
-    if self._method == _UNIFORM:
+    if self._method == FirstMomentEstimator.METHOD_EXP:
+      return FirstMomentEstimator._estimate_cardinality_exp(union)
+    if self._method == FirstMomentEstimator.METHOD_UNIFORM:
       return FirstMomentEstimator._estimate_cardinality_uniform(union)
     return FirstMomentEstimator._estimate_cardinality_any(
         union, self._weights)
 
 
-class FixedProbabilityBitFlipNoiser(NoiserBase):
+class FixedProbabilityBitFlipNoiser(SketchNoiserBase):
   """This class flips the bit of a bloom filter with a fixed probability."""
 
   def __init__(self, random_state, probability=None,
@@ -311,7 +376,7 @@ class FixedProbabilityBitFlipNoiser(NoiserBase):
       flip_zero_probability: the probability that a zero bit will be flipped. It
         will be ignored if probability is given.
     """
-    NoiserBase.__init__(self)
+    SketchNoiserBase.__init__(self)
     if probability is not None:
       self._probability = (probability, probability)
     elif flip_one_probability is not None and flip_zero_probability is not None:
@@ -333,7 +398,7 @@ class FixedProbabilityBitFlipNoiser(NoiserBase):
     return new_filter
 
 
-class BlipNoiser(NoiserBase):
+class BlipNoiser(SketchNoiserBase):
   """This class applies "Blip" noise to a BloomFilter.
 
   This is a common algorithm for making Bloom filters differentially private.
@@ -341,14 +406,14 @@ class BlipNoiser(NoiserBase):
      Similarity Computation on Bloom filters
   """
 
-  def __init__(self, epsilon, random_state):
+  def __init__(self, epsilon, random_state=np.random.RandomState()):
     """Creates a Blip Perturbator.
 
     Args:
        epsilon: the privacy parameter
        random_state: a numpy.random.RandomState used to draw random numbers
     """
-    NoiserBase.__init__(self)
+    SketchNoiserBase.__init__(self)
     self._epsilon = epsilon
     self.random_state = random_state
 
@@ -370,8 +435,22 @@ class BlipNoiser(NoiserBase):
     return fixed_noiser(bloom_filter)
 
 
+class DenoiserBase(object):
+  """An estimator takes a list of noisy sketches and returns a denoised copy.
+
+  This class should be used before the sketches are sent to the cardinality
+  estimator. For example, we calculate the expected register values of an
+  AnyDistributionBloomFilter sketch given the observed noisy sketch, which we
+  name as a "denoiser".
+  """
+
+  def __call__(self, sketch_list):
+    """Return a denoised copy of the incoming sketch list."""
+    raise NotImplementedError()
+
+
 class SurrealDenoiser(DenoiserBase):
-  """A closed form denoiser for a noisy Any Distribution Bloom Filter."""
+  """A closed form denoiser for a list of Any Distribution Bloom Filter."""
 
   def __init__(self, probability=None, flip_one_probability=None,
                flip_zero_probability=None):
@@ -383,10 +462,16 @@ class SurrealDenoiser(DenoiserBase):
       raise ValueError("Should provide probability or both "
                        "flip_one_probability and flip_zero_probability.")
 
-  def  __call__(self, sketch):
-    return self._denoise(sketch)
+  def  __call__(self, sketch_list):
+    return self._denoise(sketch_list)
 
-  def _denoise(self, sketch):
+  def _denoise(self, sketch_list):
+    denoised_sketch_list = []
+    for sketch in sketch_list:
+      denoised_sketch_list.append(self._denoise_one(sketch))
+    return denoised_sketch_list
+
+  def _denoise_one(self, sketch):
     """Denoise a Bloom Filter.
 
     Args:

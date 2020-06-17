@@ -60,8 +60,6 @@ class LiquidLegions(base.SketchBase):
     self.unique = {}
     self.sketch = {}
     self.added_noise = 0
-    self.get_relative_cardinality = bloom_filters.invert_monotonic(
-        self.legions_expectation, epsilon=0.0000001)
 
   def sampler(self, u):
     """A function mapping uniform distribution to truncated exponential."""
@@ -129,6 +127,11 @@ class LiquidLegions(base.SketchBase):
   def legionaries_count(self):
     """Count of legionaries in the sketch."""
     return len(self.sketch)
+
+  def get_relative_cardinality(self, p):
+    """Estimate the relative cardinality for a given count of legionaries."""
+    return bloom_filters.invert_monotonic(
+        self.legions_expectation, epsilon=0.0000001)(p)
 
   def get_cardinality_for_legionaries_count(self, count):
     """Estimates cardinality for a given count of legionaries."""
@@ -588,4 +591,3 @@ class SequentialEstimator(base.EstimatorBase):
       return 0  # That was easy!
 
     return self.sequential_merge(sketch_list).get_cardinality()
-

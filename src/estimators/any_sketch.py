@@ -91,18 +91,18 @@ class UniformDistribution(Distribution):
 
 
 class LogBucketDistribution(Distribution):
-  """Distributes indexes according to Exponential-Poisson model."""
+  """Distributes indexes according to Logarithmic probability per bucket."""
 
   def __init__(self, num_values):
     """Create the distribution.
 
     Args:
-      num_values: The number of bits.
+      num_values: The number of registers.
     """
-    self.num_values = num_values
-    self._register_probs = LogBucketDistribution.get_register_probs(
+    self._register_probs = LogBucketDistribution._compute_register_probs(
         num_values)
-    self.register_bounds = LogBucketDistribution.get_register_bounds(
+    self.num_values = num_values
+    self.register_bounds = LogBucketDistribution._compute_register_bounds(
         self._register_probs)
 
   def __len__(self):
@@ -117,13 +117,13 @@ class LogBucketDistribution(Distribution):
     return self._register_probs
 
   @classmethod
-  def get_register_probs(cls, num_values):
+  def _compute_register_probs(cls, num_values):
     """Compute per register probability."""
     probs = -np.log((np.arange(num_values) + 1) / (num_values + 1))
     return probs / sum(probs)
 
   @classmethod
-  def get_register_bounds(cls, register_probs):
+  def _compute_register_bounds(cls, register_probs):
     """Compute the right bound of the registers."""
     return np.cumsum(register_probs)
 
@@ -131,6 +131,50 @@ class LogBucketDistribution(Distribution):
     index = np.searchsorted(self.register_bounds, hash_value / max_hash_value)
     return index
 
+
+class ExponentialDistribution(Distribution):
+  """Distributes indexes according to Exponential probability per bucket."""
+
+  def __init__(self, num_values, decay_rate):
+    """Create the distribution.
+
+    Args:
+      num_values: The number of registers.
+      decay_rate: The decay rate of Exponential distribution.
+    """
+    self.num_values = num_values
+    self.decay_rate = decay_rate
+    self._register_probs = ExponentialDistribution._compute_register_probs(
+        num_values, decay_rate)
+    self.register_bounds = ExponentialDistribution._compute_register_bounds(
+        self._register_probs)
+
+  def __len__(self):
+    return self.num_values
+
+  def __eq__(self, other):
+    return (isinstance(other, ExponentialDistribution) and
+            self.num_values == other.num_values)
+
+  @property
+  def register_probs(self):
+    return self._register_probs
+
+  @classmethod
+  def _compute_register_probs(cls, num_values, decay_rate):
+    """Compute per register probability."""
+    probs = np.exp(- decay_rate * (np.arange(num_values) + 1) /
+                   (num_values + 1))
+    return probs / sum(probs)
+
+  @classmethod
+  def _compute_register_bounds(cls, register_probs):
+    """Compute the right bound of the registers."""
+    return np.cumsum(register_probs)
+
+  def get_index(self, hash_value, max_hash_value=MAX_HASH_VALUE):
+    index = np.searchsorted(self.register_bounds, hash_value / max_hash_value)
+    return index
 
 # distribution is one of the Distributions above.
 # name is an arbitrary string that is used for debug output.

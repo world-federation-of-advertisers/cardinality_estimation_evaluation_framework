@@ -17,7 +17,7 @@
 import copy
 import sys
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimatorBase
-from wfa_cardinality_estimation_evaluation_framework.estimators.base import NoiserBase
+from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchNoiserBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchBase
 
 
@@ -86,11 +86,11 @@ class LessOneEstimator(EstimatorBase):
     return e(sketch_list) - 1
 
 
-class AddRandomElementsNoiser(NoiserBase):
+class AddRandomElementsNoiser(SketchNoiserBase):
   """An example Noiser."""
 
   def __init__(self, num_random_elements, random_state):
-    NoiserBase.__init__(self)
+    SketchNoiserBase.__init__(self)
     self.num_random_elements = num_random_elements
     self.random_state = random_state
 

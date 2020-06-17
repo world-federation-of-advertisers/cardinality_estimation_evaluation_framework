@@ -25,8 +25,24 @@ class SetGeneratorTest(parameterized.TestCase):
   @parameterized.parameters(
       (set_generator.IndependentSetGenerator,
        {'universe_size': 10, 'num_sets': 10, 'set_size': 5}),
+      # Exponential (Dirac) Bow does not support too small set size
+      (set_generator.ExponentialBowSetGenerator,
+       {'user_activity_association': 'independent', 'universe_size': 200,
+        'num_sets': 5, 'set_size': 100}),
+      (set_generator.ExponentialBowSetGenerator,
+       {'user_activity_association': 'identical', 'universe_size': 200,
+        'num_sets': 5, 'set_size': 100}),
       (set_generator.FullyOverlapSetGenerator,
        {'universe_size': 10, 'num_sets': 10, 'set_size': 5}),
+      (set_generator.SubSetGenerator,
+       {'order': 'original', 'universe_size': 10, 'num_large_sets': 2,
+        'num_small_sets': 3, 'large_set_size': 5, 'small_set_size': 2}),
+      (set_generator.SubSetGenerator,
+       {'order': 'reversed', 'universe_size': 10, 'num_large_sets': 2,
+        'num_small_sets': 3, 'large_set_size': 5, 'small_set_size': 2}),
+      (set_generator.SubSetGenerator,
+       {'order': 'random', 'universe_size': 10, 'num_large_sets': 2,
+        'num_small_sets': 3, 'large_set_size': 5, 'small_set_size': 2}),
       (set_generator.SequentiallyCorrelatedSetGenerator,
        {'order': 'original', 'correlated_sets': 'all', 'universe_size': 30,
         'num_sets': 3, 'set_size': 5, 'shared_prop': 0.2}),
@@ -75,6 +91,32 @@ class SetGeneratorTest(parameterized.TestCase):
       self.assertLen(campaign_id, 1)
       self.assertEqual(campaign_id[0], 0)
 
+  def test_exponential_bow_generator_constructor(self):
+    rs = np.random.RandomState(1)
+    # Low reach case, actual set size should be close to input set size
+    eb_gen = set_generator.ExponentialBowSetGenerator(
+        user_activity_association='independent',
+        universe_size=10000, num_sets=5, set_size=1000, random_state=rs)
+    for set_ids in eb_gen:
+      relative_error = (len(set_ids) - 1000) / 1000
+      self.assertLess(abs(relative_error), 0.01,
+                      msg='relative error > 0.01 in the low reach case')
+    # High reach case, allow actual size to be more different from input size
+    eb_gen = set_generator.ExponentialBowSetGenerator(
+        user_activity_association='independent',
+        universe_size=10000, num_sets=5, set_size=5000, random_state=rs)
+    for set_ids in eb_gen:
+      relative_error = (len(set_ids) - 5000) / 5000
+      self.assertLess(abs(relative_error), 0.2,
+                      msg='relative error > 0.2 in the high reach case')
+
+  def test_exponential_bow_generator_raise_error(self):
+    rs = np.random.RandomState(1)
+    with self.assertRaises(ValueError):
+      _ = set_generator.ExponentialBowSetGenerator(
+          user_activity_association=0.5,
+          universe_size=10000, num_sets=5, set_size=1000, random_state=rs)
+
   def test_fully_overlap_generator_constructor(self):
     rs = np.random.RandomState(1)
     fo_gen = set_generator.FullyOverlapSetGenerator(
@@ -100,6 +142,89 @@ class SetGeneratorTest(parameterized.TestCase):
     for set_ids in set_ids_list[1:]:
       self.assertSameElements(set_ids_list[0], set_ids)
       self.assertLen(set_ids, 5)
+
+  def test_subset_generator_constructor_original_order(self):
+    rs = np.random.RandomState(1)
+    ss_gen = set_generator.SubSetGenerator(
+        order='original', universe_size=10000, num_large_sets=2,
+        num_small_sets=8, large_set_size=100, small_set_size=50,
+        random_state=rs)
+    set_ids_list = []
+    for set_ids in ss_gen:
+      set_ids_list.append(set_ids)
+    for set_ids in set_ids_list[:2]:
+      self.assertLen(set_ids, 100)
+    for set_ids in set_ids_list[2:]:
+      self.assertLen(set_ids, 50)
+
+  def test_subset_generator_constructor_reversed_order(self):
+    rs = np.random.RandomState(1)
+    ss_gen = set_generator.SubSetGenerator(
+        order='reversed', universe_size=10000, num_large_sets=2,
+        num_small_sets=8, large_set_size=100, small_set_size=50,
+        random_state=rs)
+    set_ids_list = []
+    for set_ids in ss_gen:
+      set_ids_list.append(set_ids)
+    for set_ids in set_ids_list[:8]:
+      self.assertLen(set_ids, 50)
+    for set_ids in set_ids_list[8:]:
+      self.assertLen(set_ids, 100)
+
+  def test_subset_generator_constructor_random_order(self):
+    rs = np.random.RandomState(1)
+    ss_gen = set_generator.SubSetGenerator(
+        order='random', universe_size=10000, num_large_sets=2,
+        num_small_sets=8, large_set_size=100, small_set_size=50,
+        random_state=rs)
+    set_ids_list = []
+    for set_ids in ss_gen:
+      set_ids_list.append(set_ids)
+    actual_num_large_sets = 0
+    actual_num_small_sets = 0
+    for set_ids in set_ids_list:
+      if len(set_ids) == 100:
+        actual_num_large_sets += 1
+      if len(set_ids) == 50:
+        actual_num_small_sets += 1
+    self.assertEqual(actual_num_large_sets, 2,
+                     msg='Number of large sets is not correct.')
+    self.assertEqual(actual_num_small_sets, 8,
+                     msg='Number of small sets is not correct.')
+
+  def test_subset_generator_single_universe(self):
+    rs = np.random.RandomState(1)
+    ss_gen = set_generator.SubSetGenerator(
+        order='original', universe_size=1, num_large_sets=1,
+        num_small_sets=1, large_set_size=1, small_set_size=1,
+        random_state=rs)
+    for set_ids in ss_gen:
+      self.assertLen(set_ids, 1)
+      self.assertEqual(set_ids[0], 0)
+
+  def test_subset_generator_same_ids(self):
+    rs = np.random.RandomState(1)
+    ss_gen = set_generator.SubSetGenerator(
+        order='original', universe_size=10, num_large_sets=3,
+        num_small_sets=7, large_set_size=5, small_set_size=3,
+        random_state=rs)
+    set_ids_list = []
+    for set_ids in ss_gen:
+      set_ids_list.append(set_ids)
+    for set_ids in set_ids_list[1:3]:
+      self.assertSameElements(set_ids_list[0], set_ids)
+      self.assertLen(set_ids, 5)
+    for set_ids in set_ids_list[4:]:
+      self.assertSameElements(set_ids_list[3], set_ids)
+      self.assertLen(set_ids, 3)
+
+  def test_subset_generator_generator_raise_error(self):
+    rs = np.random.RandomState(1)
+    with self.assertRaises(ValueError):
+      _ = set_generator.SubSetGenerator(
+          order='not_implemented', universe_size=10, num_large_sets=3,
+          num_small_sets=7, large_set_size=5, small_set_size=3,
+          random_state=rs)
 
   def test_sequentially_correlated_all_previous_generator_original(self):
     rs = np.random.RandomState(1)
@@ -155,11 +280,11 @@ class SetGeneratorTest(parameterized.TestCase):
 
   def test_sequentially_correlated_all_previous_generator_raise_error(self):
     rs = np.random.RandomState(1)
-    with self.assertRaises(NotImplementedError):
+    with self.assertRaises(ValueError):
       _ = set_generator.SequentiallyCorrelatedSetGenerator(
           order='not_implemented', correlated_sets='all', universe_size=30,
           num_sets=3, set_size=10, shared_prop=0.2, random_state=rs)
-    with self.assertRaises(NotImplementedError):
+    with self.assertRaises(ValueError):
       _ = set_generator.SequentiallyCorrelatedSetGenerator(
           order='random', correlated_sets='not_implemented', universe_size=30,
           num_sets=3, set_size=10, shared_prop=0.2, random_state=rs)
