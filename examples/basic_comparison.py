@@ -19,6 +19,7 @@ import numpy as np
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import ExponentialBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentEstimator
+from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import GeometricBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import LogarithmicBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import UnionEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legions import CascadingLegions
@@ -68,6 +69,13 @@ def main(argv):
       sketch_noiser=None,
       estimate_noiser=None)
 
+  estimator_config_geometric_bloom_filter = EstimatorConfig(
+      sketch_factory=GeometricBloomFilter.get_sketch_factory(
+          FLAGS.sketch_size),
+      estimator=FirstMomentEstimator(method='geo'),
+      sketch_noiser=None,
+      estimate_noiser=None)
+
   estimator_config_logarithmic_bloom_filter = EstimatorConfig(
       sketch_factory=LogarithmicBloomFilter.get_sketch_factory(
           FLAGS.sketch_size),
@@ -102,6 +110,7 @@ def main(argv):
 
   name_to_estimator_config = {
       'bloom_filter': estimator_config_bloom_filter,
+      'geometric_bloom_filter': estimator_config_geometric_bloom_filter,
       'logarithmic_bloom_filter': estimator_config_logarithmic_bloom_filter,
       'exponential_bloom_filter': estimator_config_exponential_bloom_filter,
       'cascading_legions': estimator_config_cascading_legions,

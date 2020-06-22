@@ -24,6 +24,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters im
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import ExponentialBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentEstimator
+from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import GeometricBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import LogarithmicBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import SurrealDenoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import UnionEstimator
@@ -84,6 +85,13 @@ class InteroperabilityTest(absltest.TestCase):
         sketch_noiser=None,
         estimate_noiser=None)
 
+    estimator_config_geometric_bloom_filter = EstimatorConfig(
+        sketch_factory=GeometricBloomFilter.get_sketch_factory(
+            self.sketch_size),
+        estimator=FirstMomentEstimator(method='geo'),
+        sketch_noiser=None,
+        estimate_noiser=None)
+
     estimator_config_logarithmic_bloom_filter = EstimatorConfig(
         sketch_factory=LogarithmicBloomFilter.get_sketch_factory(
             self.sketch_size),
@@ -120,6 +128,7 @@ class InteroperabilityTest(absltest.TestCase):
         'exact_set': estimator_config_exact,
         'cascading_legions': estimator_config_cascading_legions,
         'bloom_filter': estimator_config_bloom_filter,
+        'geometric_bloom_filter': estimator_config_geometric_bloom_filter,
         'logarithmic_bloom_filter': estimator_config_logarithmic_bloom_filter,
         'exponential_bloom_filter': estimator_config_exponential_bloom_filter,
         'vector_of_counts': estimator_config_voc,
