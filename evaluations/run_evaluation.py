@@ -28,7 +28,7 @@ from absl import logging
 
 from wfa_cardinality_estimation_evaluation_framework.evaluations import analyzer
 from wfa_cardinality_estimation_evaluation_framework.evaluations import evaluator
-from wfa_cardinality_estimation_evaluation_framework.evaluations.data import evaluation_configs
+from data import evaluation_configs
 
 
 FLAGS = flags.FLAGS
