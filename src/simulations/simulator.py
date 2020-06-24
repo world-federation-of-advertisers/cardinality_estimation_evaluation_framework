@@ -162,9 +162,9 @@ class Simulator(object):
       sketch.add_ids(campaign_ids)
       sketches.append(sketch)
 
-    # Optionally noise the sketches.
-    sketch_noiser = self.estimator_config.sketch_noiser
-    if sketch_noiser:
+    # Optionally noise the sketches if it exists in the estimator_config.
+    if hasattr(self.estimator_config, 'sketch_noiser'):
+      sketch_noiser = self.estimator_config.sketch_noiser
       sketches = [sketch_noiser(s) for s in sketches]
 
     # Estimate cardinality for 1, 2, ..., n pubs.
@@ -174,7 +174,7 @@ class Simulator(object):
     metrics = []
     for i in range(len(sketches)):
       estimated_cardinality = estimator(sketches[:i + 1])
-      if self.estimator_config.estimate_noiser:
+      if hasattr(self.estimator_config, 'estimate_noiser'):
         estimated_cardinality = self.estimator_config.estimate_noiser(
             estimated_cardinality)
       true_union.update(actual_ids[i])

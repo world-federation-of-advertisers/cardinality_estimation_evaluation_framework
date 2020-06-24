@@ -97,12 +97,12 @@ class AnalyzerTest(absltest.TestCase):
 
   def test_read_evaluation_results_works(self):
     # Run evaluation.
-    evaluation_out_dir = self.create_tempdir('evaluation')
+    evaluation_out_dir = self.create_tempdir('evaluation').full_path
     e = self.get_test_evaluator(out_dir=evaluation_out_dir)
     e()
     # Get results.
     a = self.get_test_analyzer(
-        out_dir=self.create_tempdir('analysis'),
+        out_dir=self.create_tempdir('analysis').full_path,
         evaluation_dir=evaluation_out_dir)
     raw_results = a.raw_df
 
@@ -116,12 +116,12 @@ class AnalyzerTest(absltest.TestCase):
           'The result is not a DataFrame.')
 
   def test_get_num_estimable_sets_df_results_correct(self):
-    evaluation_out_dir = self.create_tempdir('evaluation')
+    evaluation_out_dir = self.create_tempdir('evaluation').full_path
     # Run evaluation.
     e = self.get_test_evaluator(evaluation_out_dir)
     e()
     # Get analyzer.
-    analysis_out_dir = self.create_tempdir('analysis')
+    analysis_out_dir = self.create_tempdir('analysis').full_path
     a = self.get_test_analyzer(
         out_dir=analysis_out_dir,
         evaluation_dir=evaluation_out_dir)
@@ -139,13 +139,13 @@ class AnalyzerTest(absltest.TestCase):
       self.fail('The number of estimable sets is not correct.')
 
   def test_save_plot_num_sets_vs_relative_error(self):
-    evaluation_out_dir = self.create_tempdir('evaluation')
+    evaluation_out_dir = self.create_tempdir('evaluation').full_path
     # Run evaluation.
     e = self.get_test_evaluator(evaluation_out_dir)
     e()
     # Get analyzer.
     a = self.get_test_analyzer(
-        out_dir=self.create_tempdir('analysis'),
+        out_dir=self.create_tempdir('analysis').full_path,
         evaluation_dir=evaluation_out_dir)
     a.save_plot_num_sets_vs_relative_error()
     print(a.analysis_file_dirs[evaluator.KEY_ESTIMATOR_DIRS])
