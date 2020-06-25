@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Searches for and runs all tests in this repository."""
-# Testing
+from absl import logging
 from absl.testing import absltest
 
-# Logging
-from absl import logging
-
-# We use these to import all tests
 import glob
 import subprocess
 import os
