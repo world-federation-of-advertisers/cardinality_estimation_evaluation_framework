@@ -18,7 +18,6 @@ from absl import logging
 from absl.testing import absltest
 
 import glob
-import subprocess
 import os
 import inspect
 from importlib import import_module
@@ -56,9 +55,17 @@ def find_modules(folders):
 
     # Turn file names into module names ready for import
     # (For example: ./tests/test.py --> tests.test)
-    test_modules = map(
-        lambda x: '.'.join(os.path.normpath(x[:-3]).split(os.path.sep)),
-        test_files)
+    def file_name_to_module_name(filename):
+        # Remove .py extension
+        rem_py = filename[:-3]
+        # Normalize filepath (./tests\\test//smth --> ./tests/test/smth)
+        normed = os.path.normpath(rem_py)
+        # Split on normalized path separator
+        split = normed.split(os.path.sep)
+        # Add periods to create module name
+        return '.'.join(split)
+
+    test_modules = map(file_name_to_module_name, test_files)
 
     modules = []
     # Import modules and filter out ones that cannot be imported.
