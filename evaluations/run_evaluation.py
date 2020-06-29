@@ -19,7 +19,8 @@ python run_evaluation.py \
 --analysis_out_dir="analysis_output" \
 --evaluation_config="smoke_test" \
 --sketch_estimator_configs="vector_of_counts-4096-ln3-sequential" \
---evaluation_run_name="simple_run"
+--evaluation_run_name="simple_run" \
+--num_runs=1
 """
 
 from absl import app
@@ -30,6 +31,11 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations import analyzer
 from wfa_cardinality_estimation_evaluation_framework.evaluations import evaluator
 from data import evaluation_configs
 
+# Define flags that must be set to a value
+required_flags = (
+    'evaluation_out_dir', 'analysis_out_dir',
+    'evaluation_config', 'sketch_estimator_configs', 'evaluation_run_name',
+    'num_runs')
 
 FLAGS = flags.FLAGS
 
@@ -78,13 +84,6 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  required_flags = (
-      'evaluation_out_dir', 'analysis_out_dir',
-      'evaluation_config', 'sketch_estimator_configs', 'evaluation_run_name',
-      'num_runs')
-  for f in required_flags:
-    flags.mark_flag_as_required(f)
-
   logging.set_verbosity(logging.INFO)
   logging.info('====Running %s using evaluation %s for:\n%s',
                FLAGS.evaluation_config,
@@ -123,4 +122,7 @@ def main(argv):
   logging.info('====Evaluation and analysis done!')
 
 if __name__ == '__main__':
+  for f in required_flags:
+    flags.mark_flag_as_required(f)
+
   app.run(main)
