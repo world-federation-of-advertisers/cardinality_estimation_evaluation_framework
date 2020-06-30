@@ -24,6 +24,7 @@ We have implemented the following simulation data:
 
 from absl import logging
 import numpy as np
+from wfa_cardinality_estimation_evaluation_framework.common.analysis import relative_error
 
 ORDER_ORIGINAL = 'original'
 ORDER_REVERSED = 'reversed'
@@ -37,6 +38,18 @@ CORRELATED_SETS_ONE = 'one'
 # see page 14, Table 1 of the paper https://research.google/pubs/pub48387/
 DIRAC_MIXTURE_OPTIMAL_ALPHA = [0.164, 0.388, 0.312, 0.136]
 DIRAC_MIXTURE_OPTIMAL_X = [0.065, 0.4274, 1.275, 3.140]
+
+
+class _SetSizeGenerator(object):
+  """Get set_size_list from set_size (fixed for each set) and num_sets."""
+
+  def __init__(self, num_sets, set_size):
+    self.num_sets = num_sets
+    self.set_size = set_size
+
+  def __iter__(self):
+    for _ in range(self.num_sets):
+      yield self.set_size
 
 
 class SetGeneratorBase(object):
@@ -67,24 +80,34 @@ class IndependentSetGenerator(SetGeneratorBase):
   """Generator for independent sets."""
 
   @classmethod
-  def get_generator_factory(cls, universe_size, num_sets, set_size):
+  def get_generator_factory_with_num_and_size(cls, universe_size,
+                                              num_sets, set_size):
 
     def f(random_state):
-      return cls(universe_size, num_sets, set_size, random_state)
+      return cls(universe_size, _SetSizeGenerator(num_sets, set_size),
+                 random_state)
 
     return f
 
-  def __init__(self, universe_size, num_sets, set_size, random_state):
+  @classmethod
+  def get_generator_factory_with_set_size_list(cls, universe_size,
+                                               set_size_list):
+
+    def f(random_state):
+      return cls(universe_size, set_size_list, random_state)
+
+    return f
+
+  def __init__(self, universe_size, set_sizes, random_state):
     self.universe_size = universe_size
-    self.num_sets = num_sets
-    self.set_size = set_size
     self.union_ids = set()
     self.random_state = random_state
+    self.set_sizes = set_sizes
 
   def __iter__(self):
-    for _ in range(self.num_sets):
+    for set_size in self.set_sizes:
       set_ids = self.random_state.choice(
-          self.universe_size, self.set_size, replace=False)
+          self.universe_size, set_size, replace=False)
       self.union_ids = self.union_ids.union(set_ids)
       yield set_ids
     return self
@@ -98,17 +121,28 @@ class ExponentialBowSetGenerator(SetGeneratorBase):
   """
 
   @classmethod
-  def get_generator_factory(cls, user_activity_association, universe_size,
-                            num_sets, set_size):
+  def get_generator_factory_with_num_and_size(cls, user_activity_association,
+                                              universe_size,
+                                              num_sets, set_size):
 
     def f(random_state):
-      return cls(user_activity_association, universe_size, num_sets, set_size,
+      return cls(user_activity_association, universe_size,
+                 _SetSizeGenerator(num_sets, set_size), random_state)
+
+    return f
+
+  @classmethod
+  def get_generator_factory_with_set_size_list(cls, user_activity_association,
+                                               universe_size, set_size_list):
+
+    def f(random_state):
+      return cls(user_activity_association, universe_size, set_size_list,
                  random_state)
 
     return f
 
-  def __init__(self, user_activity_association, universe_size, num_sets,
-               set_size, random_state):
+  def __init__(self, user_activity_association, universe_size,
+               set_sizes, random_state):
     """Initialize an Exponential Bow set generator.
 
     Args:
@@ -123,10 +157,11 @@ class ExponentialBowSetGenerator(SetGeneratorBase):
         user_activity_association are not supported.
       universe_size: An integer value that specifies the size of the whole
         universe from which the ids will be sampled.
-      num_sets: An integer value that specifies the number of sets to be
-        generated.
-      set_size: An integer value that specifies the size of each set.
+      set_sizes: An iterator or a list containing the size of each set.
       random_state: A np.random.RandomState object.
+
+    Raises:
+      ValueError: if the given user_activity_association is not supported.
     """
     if user_activity_association == USER_ACTIVITY_ASSOCIATION_INDEPENDENT:
       self.shuffle_user = True
@@ -142,14 +177,13 @@ class ExponentialBowSetGenerator(SetGeneratorBase):
           f'user_activity_association={user_activity_association} '
           'is an invalid value.')
     self.universe_size = universe_size
-    self.num_sets = num_sets
-    assert set_size >= 50, 'Too small size is not supported for Dirac bow.'
-    self.set_size = set_size
     self.union_ids = set()
+    self.set_size_list = [set_size for set_size in set_sizes]
     self.random_state = random_state
+    if min(self.set_size_list) < 50:
+      raise ValueError('Too small size is not supported for Dirac bow.')
 
   def __iter__(self):
-    reach_rate = self.set_size / self.universe_size
     universe = np.arange(self.universe_size)
     alpha = np.array(DIRAC_MIXTURE_OPTIMAL_ALPHA) * self.universe_size
     cumsum_alpha = np.concatenate([0, np.cumsum(alpha)], axis=None)
@@ -168,10 +202,12 @@ class ExponentialBowSetGenerator(SetGeneratorBase):
     # between the actual set size and input set size for each set, and
     # report the worst case, i.e., the case when actual set size has largest
     # relative difference to the input set size.
-    worst_case_actual_size = self.set_size
+    worst_case_input_size = None
+    worst_case_actual_size = None
     worst_case_relative_error = 0
     threshold = 0.01
-    for _ in range(self.num_sets):
+    for set_size in self.set_size_list:
+      reach_rate = set_size / self.universe_size
       ids = np.hstack(
           [_select_ids(cumsum_alpha[i], cumsum_alpha[i+1],
                        int(reach_rate * x[i] * alpha[i]))
@@ -180,10 +216,10 @@ class ExponentialBowSetGenerator(SetGeneratorBase):
         self.random_state.shuffle(universe)
         ids = universe[ids]
       actual_set_size = len(ids)
-      relative_error = abs(
-          (actual_set_size - self.set_size) / self.set_size)
-      if relative_error > worst_case_relative_error:
-        worst_case_relative_error = relative_error
+      re = abs(relative_error(actual_set_size, set_size))
+      if re > worst_case_relative_error:
+        worst_case_relative_error = re
+        worst_case_input_size = set_size
         worst_case_actual_size = actual_set_size
       self.union_ids = self.union_ids.union(ids)
       yield ids
@@ -191,7 +227,7 @@ class ExponentialBowSetGenerator(SetGeneratorBase):
       logging.info(
           'Actual input size is smaller than input set size.\n'
           'Worst case: input set size = %s, actual set size: %s.',
-          self.set_size, worst_case_actual_size)
+          worst_case_input_size, worst_case_actual_size)
     return self
 
 
@@ -199,7 +235,8 @@ class FullyOverlapSetGenerator(SetGeneratorBase):
   """Generator for fully overlapping sets."""
 
   @classmethod
-  def get_generator_factory(cls, universe_size, num_sets, set_size):
+  def get_generator_factory_with_num_and_size(cls, universe_size, num_sets,
+                                              set_size):
 
     def f(random_state):
       return cls(universe_size, num_sets, set_size, random_state)
@@ -229,9 +266,9 @@ class SubSetGenerator(SetGeneratorBase):
   """
 
   @classmethod
-  def get_generator_factory(cls, order, universe_size,
-                            num_large_sets, num_small_sets,
-                            large_set_size, small_set_size):
+  def get_generator_factory_with_num_and_size(cls, order, universe_size,
+                                              num_large_sets, num_small_sets,
+                                              large_set_size, small_set_size):
 
     def f(random_state):
       return cls(order, universe_size, num_large_sets, num_small_sets,
@@ -243,21 +280,27 @@ class SubSetGenerator(SetGeneratorBase):
                num_small_sets, large_set_size, small_set_size, random_state):
     """Initialize the subset generator.
 
-    order: order of sets. When order = 'original', the first several sets are
-       large while the later sets are small (i.e., subset of the previous sets).
-       When order = 'reversed', the first several sets are small while the
-       later are large. When order = 'random', we randomly shuffle the order of
-       sets.
-    universe_size: An integer value that specifies the size of the whole
-      universe from which the ids will be sampled.
-    num_large_sets: An integer value that specifies the number of large sets to
-      be generated. These large sets are fully overlapped.
-    num_small_sets: An integer value that specifies the number of small sets to
-      be generated. These small sets are fully overlapped and are contained in
-      each large set.
-    large_set_size: An integer value that specifies the size of each large set.
-    small_set_size: An integer value that specifies the size of each small set.
-    random_state: A np.random.RandomState object.
+    Args:
+      order: order of sets. When order = 'original', the first several sets are
+         large while the later sets are small (i.e., subset of the previous
+         sets).When order = 'reversed', the first several sets are small while
+         the later are large. When order = 'random', we randomly shuffle the
+         order of sets.
+      universe_size: An integer value that specifies the size of the whole
+        universe from which the ids will be sampled.
+      num_large_sets: An integer value that specifies the number of large sets
+        to be generated. These large sets are fully overlapped.
+      num_small_sets: An integer value that specifies the number of small sets
+        to be generated. These small sets are fully overlapped and are
+        contained in each large set.
+      large_set_size: An integer value that specifies the size of each
+        large set.
+      small_set_size: An integer value that specifies the size of each
+        small set.
+      random_state: A np.random.RandomState object.
+
+    Raises:
+      ValueError: if the given order is not supported.
     """
     num_sets = num_large_sets + num_small_sets
     if order == ORDER_ORIGINAL:
@@ -284,8 +327,8 @@ class SubSetGenerator(SetGeneratorBase):
     small_set = self.random_state.choice(
         large_set, self.small_set_size, replace=False)
     self.union_ids.update(set(large_set))
-    set_ids_list = ([large_set] * self.num_large_sets +
-                    [small_set] * self.num_small_sets)
+    set_ids_list = ([large_set] * self.num_large_sets
+                    + [small_set] * self.num_small_sets)
     for i in self.set_indices:
       yield set_ids_list[i]
     return self
@@ -297,27 +340,30 @@ class _SequentiallyCorrelatedAllPreviousSetGenerator(SetGeneratorBase):
   Each set has some overlap with the union of previously generated campaigns.
   """
 
-  def __init__(self, universe_size, num_sets, set_size, shared_prop,
-               random_state):
+  def __init__(self, universe_size, shared_prop, set_size_list, random_state):
     self.universe_size = universe_size
-    self.num_sets = num_sets
-    self.set_size = set_size
-    self.overlap_size = int(set_size * shared_prop)
     self.random_state = random_state
-    total_ids_size = int(
-        set_size * num_sets - self.overlap_size * (num_sets - 1))
+    self.union_ids = np.array([], dtype=int)
+    self.set_size_list = set_size_list
+    self.overlap_size_list = ([0]
+                              + [int(set_size * shared_prop)
+                                 for set_size in self.set_size_list[:-1]]
+                              + [0])
+    # self.overlap_size_list[i] is the overlap of set.set_size_list[i]
+    # with the previous union, so in particular, self.overlap_size_list[0] = 0
+    total_ids_size = int(sum(self.set_size_list) - sum(self.overlap_size_list))
     self.ids_pool = self.random_state.choice(
         universe_size, total_ids_size, replace=False)
-    self.union_ids = np.array([], dtype=int)
 
   def __iter__(self):
-    for _ in range(self.num_sets):
-      overlap_size = min(self.overlap_size, len(self.union_ids))
+    for i in range(len(self.set_size_list)):
+      overlap_size = min(self.overlap_size_list[i], len(self.union_ids))
       set_ids_overlapped = self.random_state.choice(
           self.union_ids,
           overlap_size,
           replace=False)
-      set_ids_non_overlapped = self.ids_pool[:(self.set_size - overlap_size)]
+      set_size = self.set_size_list[i]
+      set_ids_non_overlapped = self.ids_pool[:(set_size - overlap_size)]
       self.ids_pool = self.ids_pool[len(set_ids_non_overlapped):]
       self.union_ids = np.concatenate([self.union_ids, set_ids_non_overlapped])
       set_ids = np.concatenate([set_ids_overlapped, set_ids_non_overlapped])
@@ -331,23 +377,27 @@ class _SequentiallyCorrelatedThePreviousSetGenerator(SetGeneratorBase):
   Each set has some overlap with THE previously generated campaign.
   """
 
-  def __init__(self, universe_size, num_sets, set_size, shared_prop,
-               random_state):
+  def __init__(self, universe_size, shared_prop, set_size_list, random_state):
     self.universe_size = universe_size
-    self.num_sets = num_sets
-    self.set_size = set_size
-    self.overlap_size = int(set_size * shared_prop)
     self.random_state = random_state
-    total_ids_size = int(
-        set_size * num_sets - self.overlap_size * (num_sets - 1))
+    self.union_ids = np.array([], dtype=int)
+    self.set_size_list = set_size_list
+    self.overlap_size_list = ([0]
+                              + [int(set_size * shared_prop)
+                                 for set_size in self.set_size_list[:-1]]
+                              + [0])
+    # self.overlap_size_list[i] is the overlap of set.set_size_list[i]
+    # with the previous set, so in particular, self.overlap_size_list[0] = 0
+    total_ids_size = int(sum(self.set_size_list) - sum(self.overlap_size_list))
     self.ids_pool = self.random_state.choice(
         universe_size, total_ids_size, replace=False)
 
   def __iter__(self):
-    for i in range(self.num_sets):
-      start = i * (self.set_size - self.overlap_size)
-      end = start + self.set_size
+    start = 0
+    for i in range(len(self.set_size_list)):
+      end = start + self.set_size_list[i]
       yield self.ids_pool[start:end]
+      start += self.set_size_list[i] - self.overlap_size_list[i + 1]
     return self
 
 
@@ -372,17 +422,29 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
   """
 
   @classmethod
-  def get_generator_factory(cls, order, correlated_sets, universe_size,
-                            num_sets, set_size, shared_prop):
+  def get_generator_factory_with_num_and_size(cls, order, correlated_sets,
+                                              universe_size, shared_prop,
+                                              num_sets, set_size):
 
     def f(random_state):
-      return cls(order, correlated_sets, universe_size, num_sets, set_size,
-                 shared_prop, random_state)
+      return cls(order, correlated_sets, universe_size, shared_prop,
+                 _SetSizeGenerator(num_sets, set_size), random_state)
 
     return f
 
-  def __init__(self, order, correlated_sets, universe_size, num_sets, set_size,
-               shared_prop, random_state):
+  @classmethod
+  def get_generator_factory_with_set_size_list(cls, order, correlated_sets,
+                                               universe_size, shared_prop,
+                                               set_size_list):
+
+    def f(random_state):
+      return cls(order, correlated_sets, universe_size, shared_prop,
+                 set_size_list, random_state)
+
+    return f
+
+  def __init__(self, order, correlated_sets, universe_size, shared_prop,
+               set_sizes, random_state):
     """Initialize a sequentially correlated sets generator.
 
     Args:
@@ -393,17 +455,17 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
         'original'.
       universe_size: An integer value that specifies the size of the whole
         universe from which the ids will be sampled.
-      num_sets: An integer value that specifies the number of sets to be
-        generated.
-      set_size: An integer value that specifies the size of each set.
       shared_prop: A number between 0 and 1 that specifies the proportion of ids
         which has overlaps with all the previously generated campaigns.
+      set_sizes: A generator or a list containing the size of each set.
       random_state: A np.random.RandomState object.
 
     Raises:
       ValueError: if the given order is not supported, or if the
       correlated_sets is not supported.
     """
+    self.set_size_list = [set_size for set_size in set_sizes]
+    num_sets = len(self.set_size_list)
     if order == ORDER_ORIGINAL:
       self.set_indices = list(range(num_sets))
     elif order == ORDER_REVERSED:
@@ -415,10 +477,10 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
 
     if correlated_sets == CORRELATED_SETS_ALL:
       self.generator = _SequentiallyCorrelatedAllPreviousSetGenerator(
-          universe_size, num_sets, set_size, shared_prop, random_state)
+          universe_size, shared_prop, self.set_size_list, random_state)
     elif correlated_sets == CORRELATED_SETS_ONE:
       self.generator = _SequentiallyCorrelatedThePreviousSetGenerator(
-          universe_size, num_sets, set_size, shared_prop, random_state)
+          universe_size, shared_prop, self.set_size_list, random_state)
     else:
       raise ValueError(
           f'correlated_sets={correlated_sets} is not supported.')

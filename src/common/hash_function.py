@@ -22,7 +22,7 @@ MAX_HASH_VALUE = 2**64-1
 class HashFunction(object):
   """A wrapper around 64bit farmhash that supports equality testing and sorting.
 
-  This class exists so that we can ensure comptibility of sketches when
+  This class exists so that we can ensure compatibility of sketches when
   an estimator is combining them.
   """
 

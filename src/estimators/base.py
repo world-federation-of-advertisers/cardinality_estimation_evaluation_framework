@@ -103,10 +103,10 @@ class EstimateNoiserBase(object):
 
     Args:
       cardinality_estimate: A float, list or numpy vector of values to be
-      noised.
+        noised.
+
     Returns:
-      A noised float, list or numpy vector of the same type and dimenions as
+      A noised float, list or numpy vector of the same type and dimensions as
       cardinality_estimate.
     """
     raise NotImplementedError()
-
