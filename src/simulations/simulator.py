@@ -18,6 +18,8 @@
 import collections
 import numpy as np
 import pandas as pd
+from wfa_cardinality_estimation_evaluation_framework.common.analysis import relative_error
+
 
 RUN_INDEX = 'run_index'
 ESTIMATED_CARDINALITY = 'estimated_cardinality'
@@ -26,31 +28,17 @@ RELATIVE_ERROR = 'relative_error'
 NUM_SETS = 'num_sets'
 
 
-def relative_error(estimated, truth):
-  """Calculate relative error.
-
-  The relative error is defined as (estimated - truth) / truth.
-
-  Args:
-    estimated: the estimated value.
-    truth: the true value.
-
-  Returns:
-    The relative error.
-  """
-  return (estimated - truth) / truth
-
-
-_EstimatorConfig = collections.namedtuple(
-    'EstimatorConfig', ['sketch_factory', 'estimator', 'sketch_noiser',
+_SketchEstimatorConfig = collections.namedtuple(
+    'EstimatorConfig', ['name', 'sketch_factory', 'estimator', 'sketch_noiser',
                         'estimate_noiser'])
 
 
 # This class exists as a placeholder for a docstring.
-class EstimatorConfig(_EstimatorConfig):
+class SketchEstimatorConfig(_SketchEstimatorConfig):
   """A subclass of namedtuple for providing a estimator config to the simulator.
 
   The arguments to the named tuple are as follows:
+    name: A string that represents the name of the sketch and estimator.
     sketch_factory: A callable that takes as a single argument a
       numpy.random.RandomState and returns a class that conforms to
       cardinality_estimator_base.Sketch.
@@ -60,7 +48,11 @@ class EstimatorConfig(_EstimatorConfig):
     estimate_noiser: A class that conforms to
       cardinality_estimator_base.EstimateNoiser.
   """
-  pass
+
+  def __new__(cls, name, sketch_factory, estimator, sketch_noiser=None,
+              estimate_noiser=None):
+    return super(cls, SketchEstimatorConfig).__new__(
+        cls, name, sketch_factory, estimator, sketch_noiser, estimate_noiser)
 
 
 class Simulator(object):
@@ -69,7 +61,7 @@ class Simulator(object):
   def __init__(self,
                num_runs,
                set_generator_factory,
-               estimator_config,
+               sketch_estimator_config,
                sketch_random_state=None,
                set_random_state=None,
                file_handle_raw=None,
@@ -81,7 +73,7 @@ class Simulator(object):
       set_generator_factory: a method set_generator_factory from a set
         generator, each call of which takes a random_state as its argument and
         will return a set generator.
-      estimator_config: an object from class EstimatorConfig.
+      sketch_estimator_config: an object from class EstimatorConfig.
       sketch_random_state: an optional random state to generate the random
         seeds for sketches in different runs.
       set_random_state: an optional initial random state of the set generator.
@@ -90,7 +82,7 @@ class Simulator(object):
     """
     self.num_runs = num_runs
     self.set_generator_factory = set_generator_factory
-    self.estimator_config = estimator_config
+    self.sketch_estimator_config = sketch_estimator_config
 
     if sketch_random_state is None:
       sketch_random_state = np.random.RandomState()
@@ -158,24 +150,24 @@ class Simulator(object):
     actual_ids = []
     for campaign_ids in set_generator:
       actual_ids.append(campaign_ids)
-      sketch = self.estimator_config.sketch_factory(sketch_random_seed)
+      sketch = self.sketch_estimator_config.sketch_factory(sketch_random_seed)
       sketch.add_ids(campaign_ids)
       sketches.append(sketch)
 
-    # Optionally noise the sketches if it exists in the estimator_config.
-    if hasattr(self.estimator_config, 'sketch_noiser') and self.estimator_config.sketch_noiser:
-      sketch_noiser = self.estimator_config.sketch_noiser
+    # Optionally noise the sketches.
+    sketch_noiser = self.sketch_estimator_config.sketch_noiser
+    if sketch_noiser:
       sketches = [sketch_noiser(s) for s in sketches]
 
     # Estimate cardinality for 1, 2, ..., n pubs.
-    estimator = self.estimator_config.estimator
+    estimator = self.sketch_estimator_config.estimator
     # A set that keeps the running union.
     true_union = set()
     metrics = []
     for i in range(len(sketches)):
       estimated_cardinality = estimator(sketches[:i + 1])
-      if hasattr(self.estimator_config, 'estimate_noiser') and self.estimator_config.estimate_noiser:
-        estimated_cardinality = self.estimator_config.estimate_noiser(
+      if self.sketch_estimator_config.estimate_noiser:
+        estimated_cardinality = self.sketch_estimator_config.estimate_noiser(
             estimated_cardinality)
       true_union.update(actual_ids[i])
       metrics.append((i + 1, estimated_cardinality, len(true_union)))
