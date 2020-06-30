@@ -27,7 +27,7 @@ from wfa_cardinality_estimation_evaluation_framework.simulations import set_gene
 def _smoke_test(num_runs=100):
   """Smoke test evaluation configurations.
 
-  We set the smoke test parameters accrording to Appendix 3: Example
+  We set the smoke test parameters according to Appendix 3: Example
   Parameters of Scenarios of the Cardinality and Frequency Estimation
   Evaluation Framework.
 

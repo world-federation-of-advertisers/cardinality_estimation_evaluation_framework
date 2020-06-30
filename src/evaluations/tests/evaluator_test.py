@@ -75,7 +75,7 @@ class EvaluatorTest(absltest.TestCase):
     self.get_test_evaluator = _get_test_evaluator
 
   def test_create_directory_works(self):
-    out_dir = self.create_tempdir()
+    out_dir = self.create_tempdir().full_path
     # Results.
     test_evaluator = self.get_test_evaluator(out_dir)
     # Expected
@@ -102,17 +102,17 @@ class EvaluatorTest(absltest.TestCase):
     self.assertEqual(test_evaluator.description_to_file_dir, expected)
 
   def test_create_directory_prevents_overwrite(self):
-    out_dir = self.create_tempdir(name='test_same_dir')
+    out_dir = self.create_tempdir(name='test_same_dir').full_path
     e1 = self.get_test_evaluator(out_dir)
     with self.assertRaises(FileExistsError):
       e2 = self.get_test_evaluator(out_dir, overwrite=False)
 
   def test_create_directory_optionally_allow_overwrite(self):
-    out_dir = self.create_tempdir(name='test_same_dir2')
+    out_dir = self.create_tempdir(name='test_same_dir2').full_path
     e1 = self.get_test_evaluator(out_dir)
     # Add a random file to check if it is removed.
     test_file_overwrite = os.path.join(out_dir, self.run_name, 'test_file')
-    self.create_tempfile(test_file_overwrite)
+    self.create_tempfile(test_file_overwrite).full_path
 
     try:
       e2 = self.get_test_evaluator(out_dir, overwrite=True)
@@ -124,7 +124,7 @@ class EvaluatorTest(absltest.TestCase):
 
   def test_load_directory_tree(self):
     # Create directory.
-    out_dir = self.create_tempdir('test_load_directory_tree')
+    out_dir = self.create_tempdir('test_load_directory_tree').full_path
     created = evaluator._create_directory_tree(
         run_name=self.run_name,
         evaluation_config=self.evaluation_config,
@@ -139,7 +139,7 @@ class EvaluatorTest(absltest.TestCase):
     self.assertEqual(created, loaded)
 
   def test_evaluate_all_generate_save_configs(self):
-    test_evaluator = self.get_test_evaluator(self.create_tempdir())
+    test_evaluator = self.get_test_evaluator(self.create_tempdir().full_path)
     test_evaluator()
     for sketch_estimator_config in self.sketch_estimator_config_list:
       sketch_estimator_config_file = os.path.join(
@@ -161,7 +161,7 @@ class EvaluatorTest(absltest.TestCase):
             f'Scenario config file doesn\'t exist: {scenario_config.name}')
 
   def test_evaluate_all_save_results(self):
-    test_evaluator = self.get_test_evaluator(self.create_tempdir())
+    test_evaluator = self.get_test_evaluator(self.create_tempdir().full_path)
     test_evaluator()
     for sketch_estimator_config in self.sketch_estimator_config_list:
       for scenario_config in self.evaluation_config.scenario_config_list:
@@ -178,7 +178,7 @@ class EvaluatorTest(absltest.TestCase):
               f'{sketch_estimator_config.name}/{scenario_config.name}')
 
   def test_same_random_state_of_same_scenario(self):
-    test_evaluator = self.get_test_evaluator(self.create_tempdir())
+    test_evaluator = self.get_test_evaluator(self.create_tempdir().full_path)
     test_evaluator()
     for scenario_config in self.evaluation_config.scenario_config_list:
       # Get the true union cardinality.
