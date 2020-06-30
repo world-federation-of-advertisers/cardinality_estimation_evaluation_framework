@@ -28,15 +28,23 @@ from absl import logging
 
 from wfa_cardinality_estimation_evaluation_framework.evaluations import analyzer
 from wfa_cardinality_estimation_evaluation_framework.evaluations import evaluator
-from data import evaluation_configs
+from wfa_cardinality_estimation_evaluation_framework.evaluations import report_generator
+from wfa_cardinality_estimation_evaluation_framework.evaluations.data import evaluation_configs
 
 
 FLAGS = flags.FLAGS
+
+flags.DEFINE_bool('run_evaluation', True, 'Run evaluation or not.')
+flags.DEFINE_bool('run_analysis', True, 'Run analysis or not.')
+flags.DEFINE_bool('generate_html_report', True,
+                  'Generate an HTML report or not.')
 
 # Directories.
 flags.DEFINE_string('evaluation_out_dir', None,
                     'The output directory of evaluation results.')
 flags.DEFINE_string('analysis_out_dir', None,
+                    'The output directory of analysis results.')
+flags.DEFINE_string('report_out_dir', None,
                     'The output directory of analysis results.')
 
 # Configs.
@@ -58,16 +66,16 @@ flags.DEFINE_integer(
     'num_runs', None, 'The number of runs per scenario.', lower_bound=1)
 
 # Analysis parameters.
-flags.DEFINE_float(
-    'error_margin', 0.05,
-    'a positive number setting the upper bound of the error. '
-    'By default, set to 0.05.',
-    lower_bound=0)
-flags.DEFINE_float(
-    'proportion_of_runs', 0.95,
-    'a number between 0 and 1 that specifies the proportion of runs. '
-    'By default, set to 0.95.',
-    lower_bound=0, upper_bound=1)
+flags.DEFINE_list(
+    'error_margin', '0.05',
+    'A comma-separated list of positive numbers setting the upper bound of '
+    'the error. By default, use 0.05.')
+flags.DEFINE_list(
+    'proportion_of_runs', '0.95',
+    'A comma-separated list of a number between 0 and 1 that specifies the '
+    'proportion of runs. By default, use 0.95.')
+flags.DEFINE_integer('boxplot_xlabel_rotate', 0,
+                     'The degrees of rotation of the x labels in the boxplot.')
 flags.DEFINE_integer('boxplot_size_width_inch', 12,
                      'The widths of the boxplot in inches.')
 flags.DEFINE_integer('boxplot_size_height_inch', 6,
@@ -79,17 +87,12 @@ def main(argv):
     raise app.UsageError('Too many command-line arguments.')
 
   required_flags = (
-      'evaluation_out_dir', 'analysis_out_dir',
       'evaluation_config', 'sketch_estimator_configs', 'evaluation_run_name',
       'num_runs')
   for f in required_flags:
     flags.mark_flag_as_required(f)
 
   logging.set_verbosity(logging.INFO)
-  logging.info('====Running %s using evaluation %s for:\n%s',
-               FLAGS.evaluation_config,
-               FLAGS.evaluation_run_name,
-               ', '.join(FLAGS.sketch_estimator_configs))
 
   evaluation_config = evaluation_configs.NAME_TO_EVALUATION_CONFIGS[
       FLAGS.evaluation_config](FLAGS.num_runs)
@@ -97,30 +100,47 @@ def main(argv):
       evaluation_configs.NAME_TO_ESTIMATOR_CONFIGS[conf]
       for conf in FLAGS.sketch_estimator_configs]
 
-  # Run simulations.
-  generate_results = evaluator.Evaluator(
-      evaluation_config=evaluation_config,
-      sketch_estimator_config_list=sketch_estimator_config_list,
-      run_name=FLAGS.evaluation_run_name,
-      out_dir=FLAGS.evaluation_out_dir)
-  generate_results()
+  if FLAGS.run_evaluation:
+    logging.info('====Running %s using evaluation %s for:\n%s',
+                 FLAGS.evaluation_config,
+                 FLAGS.evaluation_run_name,
+                 ', '.join(FLAGS.sketch_estimator_configs))
+    generate_results = evaluator.Evaluator(
+        evaluation_config=evaluation_config,
+        sketch_estimator_config_list=sketch_estimator_config_list,
+        run_name=FLAGS.evaluation_run_name,
+        out_dir=FLAGS.evaluation_out_dir)
+    generate_results()
 
-  # Analyze results.
-  logging.info('====Analyzing the results.')
-  generate_summary = analyzer.CardinalityEstimatorEvaluationAnalyzer(
-      out_dir=FLAGS.analysis_out_dir,
-      evaluation_directory=FLAGS.evaluation_out_dir,
-      evaluation_run_name=FLAGS.evaluation_run_name,
-      evaluation_name=evaluation_config.name,
-      error_margin=FLAGS.error_margin,
-      proportion_of_runs=FLAGS.proportion_of_runs,
-      plot_params={
-          analyzer.BOXPLOT_SIZE_WIDTH_INCH: FLAGS.boxplot_size_width_inch,
-          analyzer.BOXPLOT_SIZE_HEIGHT_INCH: FLAGS.boxplot_size_height_inch,
-      })
-  generate_summary()
+  error_margin = [float(x) for x in FLAGS.error_margin]
+  proportion_of_runs = [float(x) for x in FLAGS.proportion_of_runs]
+  estimable_criteria_list = zip(error_margin, proportion_of_runs)
+
+  if FLAGS.run_analysis:
+    logging.info('====Analyzing the results.')
+    generate_summary = analyzer.CardinalityEstimatorEvaluationAnalyzer(
+        out_dir=FLAGS.analysis_out_dir,
+        evaluation_directory=FLAGS.evaluation_out_dir,
+        evaluation_run_name=FLAGS.evaluation_run_name,
+        evaluation_name=evaluation_config.name,
+        estimable_criteria_list=estimable_criteria_list,
+        plot_params={
+            analyzer.XLABEL_ROTATE: FLAGS.boxplot_xlabel_rotate,
+            analyzer.BOXPLOT_SIZE_WIDTH_INCH: FLAGS.boxplot_size_width_inch,
+            analyzer.BOXPLOT_SIZE_HEIGHT_INCH: FLAGS.boxplot_size_height_inch,
+        })
+    generate_summary()
 
   logging.info('====Evaluation and analysis done!')
+
+  if FLAGS.generate_html_report:
+    generate_report = report_generator.ReportGenerator(
+        out_dir=FLAGS.report_out_dir,
+        analysis_out_dir=FLAGS.analysis_out_dir,
+        evaluation_run_name=FLAGS.evaluation_run_name,
+        evaluation_name=evaluation_config.name)
+    report_url = generate_report()
+    logging.info('====Report generated: %s.', report_url)
 
 if __name__ == '__main__':
   app.run(main)

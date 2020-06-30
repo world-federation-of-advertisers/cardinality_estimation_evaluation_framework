@@ -12,6 +12,8 @@ This repo includes code for
     of relationships between the created sets
 *   Simulator to combine all of the above, calculate error statistics, and
     compare possible methods.
+*   Evaluators which bring together multiple simulations to help chose a best
+    method
 
 ### Example
 

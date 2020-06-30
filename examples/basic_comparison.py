@@ -30,8 +30,8 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log im
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import SequentialEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import VectorOfCounts
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
-from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import EstimatorConfig
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
+from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
 
 FLAGS = flags.FLAGS
 
@@ -54,51 +54,54 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  estimator_config_cascading_legions = EstimatorConfig(
+  estimator_config_cascading_legions = SketchEstimatorConfig(
+      name='cascading-legions',
       sketch_factory=CascadingLegions.get_sketch_factory(
           FLAGS.sketch_size, FLAGS.sketch_size),
-      estimator=Estimator(),
-      sketch_noiser=None,
-      estimate_noiser=None)
+      estimator=Estimator())
 
-  estimator_config_bloom_filter = EstimatorConfig(
+  estimator_config_bloom_filter = SketchEstimatorConfig(
+      name='bloom_filter-union_estimator',
       sketch_factory=BloomFilter.get_sketch_factory(
           FLAGS.sketch_size, FLAGS.num_bloom_filter_hashes),
-      estimator=UnionEstimator(),
-      sketch_noiser=None,
-      estimate_noiser=None)
+      estimator=UnionEstimator())
 
-  estimator_config_logarithmic_bloom_filter = EstimatorConfig(
+  estimator_config_logarithmic_bloom_filter = SketchEstimatorConfig(
+      name='log_bloom_filter-first_moment_log',
       sketch_factory=LogarithmicBloomFilter.get_sketch_factory(
           FLAGS.sketch_size),
-      estimator=FirstMomentEstimator(method='log'),
-      sketch_noiser=None,
-      estimate_noiser=None)
+      estimator=FirstMomentEstimator(method='log'))
 
-  estimator_config_exponential_bloom_filter = EstimatorConfig(
+  estimator_config_exponential_bloom_filter = SketchEstimatorConfig(
+      name='exp_bloom_filter-first_moment_exp',
       sketch_factory=ExponentialBloomFilter.get_sketch_factory(
           FLAGS.sketch_size, FLAGS.exponential_bloom_filter_decay_rate),
-      estimator=FirstMomentEstimator(method='exp'),
-      sketch_noiser=None,
-      estimate_noiser=None)
+      estimator=FirstMomentEstimator(method='exp'))
 
-  estimator_config_voc = EstimatorConfig(
+  estimator_config_voc = SketchEstimatorConfig(
+      name='vector_of_counts-sequential',
       sketch_factory=VectorOfCounts.get_sketch_factory(FLAGS.sketch_size),
-      estimator=SequentialEstimator(),
-      sketch_noiser=None,
-      estimate_noiser=None)
+      estimator=SequentialEstimator())
 
-  estimator_config_hll = EstimatorConfig(
+  estimator_config_hll = SketchEstimatorConfig(
+      name='hll++',
       sketch_factory=HyperLogLogPlusPlus.get_sketch_factory(FLAGS.sketch_size),
-      estimator=HllCardinality(),
-      sketch_noiser=None,
-      estimate_noiser=None)
+      estimator=HllCardinality())
 
-  estimator_config_exact = EstimatorConfig(
+  estimator_config_exact = SketchEstimatorConfig(
+      name='exact_set-lossless',
       sketch_factory=ExactSet.get_sketch_factory(),
-      estimator=LosslessEstimator(),
-      sketch_noiser=None,
-      estimate_noiser=None)
+      estimator=LosslessEstimator())
+
+  estimator_config_list = [
+      estimator_config_bloom_filter,
+      estimator_config_logarithmic_bloom_filter,
+      estimator_config_exponential_bloom_filter,
+      estimator_config_cascading_legions,
+      estimator_config_exact,
+      estimator_config_hll,
+      estimator_config_voc,
+  ]
 
   name_to_estimator_config = {
       'bloom_filter': estimator_config_bloom_filter,
@@ -110,24 +113,25 @@ def main(argv):
       'vector_of_counts': estimator_config_voc,
   }
   set_generator_factory = (
-      set_generator.IndependentSetGenerator.get_generator_factory(
+      set_generator.IndependentSetGenerator.
+      get_generator_factory_with_num_and_size(
           universe_size=FLAGS.universe_size,
           num_sets=FLAGS.number_of_sets,
           set_size=FLAGS.set_size))
 
-  for method_name, estimator_method_config in name_to_estimator_config.items():
-    print(f'Calculations for {method_name}')
+  for estimator_method_config in estimator_config_list:
+    print(f'Calculations for {estimator_method_config.name}')
     set_rs = np.random.RandomState(1)
     sketch_rs = np.random.RandomState(1)
     simulator = Simulator(
         num_runs=FLAGS.number_of_trials,
         set_generator_factory=set_generator_factory,
-        estimator_config=estimator_method_config,
+        sketch_estimator_config=estimator_method_config,
         set_random_state=set_rs,
         sketch_random_state=sketch_rs)
 
     _, agg_data = simulator.run_all_and_aggregate()
-    print(f'Aggregate Statistics for {method_name}')
+    print(f'Aggregate Statistics for {estimator_method_config.name}')
     print(agg_data)
 
 
