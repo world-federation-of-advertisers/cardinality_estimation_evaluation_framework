@@ -25,6 +25,7 @@ We have implemented the following simulation data:
 from absl import logging
 import numpy as np
 from wfa_cardinality_estimation_evaluation_framework.common.analysis import relative_error
+import collections
 
 ORDER_ORIGINAL = 'original'
 ORDER_REVERSED = 'reversed'
@@ -51,6 +52,48 @@ class _SetSizeGenerator(object):
     for _ in range(self.num_sets):
       yield self.set_size
 
+def _choice_fast(n, m, random_state):
+    """O(m) space-optimal algorithm for generating m random indices for list 
+    of size n without replacement
+    
+    Args:
+      n: list or integer to choose from. If n is a list, this method will return
+      values. If n is an integer, this method will return indices.
+
+      m: Number of elements to choose.
+
+      random_state: RandomState object to control randomness.
+    
+    Returns:
+      List of elements chosen from n or list of indices from 0 (inclusive) to n (exclusive)
+    """
+    assert isinstance(n, collections.abc.Iterable) or isinstance(n, int)
+    # Get the maximum number as size
+    if isinstance(n, int):
+      size = n
+    else:
+      size = len(n)
+    # We should always be choosing fewer than the size
+    assert m <= size
+
+    ### Robert Floyd's No-Replacement Sampling Algorithm ###
+    # Create an empty set to place numbers in
+    s = set()
+    for j in range(size-m, size):
+        t = random_state.randint(0, j + 1)
+        if t not in s:
+            s.add(t)
+        else:
+            s.add(j)
+    assert len(s) == m
+
+    # Turn set into numpy array
+    ret = np.fromiter(s, np.long, len(s))
+    # If the input was an int, return the indices
+    if isinstance(n, int):
+      return ret
+    # Otherwise, return the elements from the indices
+    return n[ret]
 
 class SetGeneratorBase(object):
   """Base object for generating test sets."""
@@ -106,8 +149,7 @@ class IndependentSetGenerator(SetGeneratorBase):
 
   def __iter__(self):
     for set_size in self.set_sizes:
-      set_ids = self.random_state.choice(
-          self.universe_size, set_size, replace=False)
+      set_ids = _choice_fast(self.universe_size, set_size, self.random_state)
       self.union_ids = self.union_ids.union(set_ids)
       yield set_ids
     return self
@@ -195,7 +237,7 @@ class ExponentialBowSetGenerator(SetGeneratorBase):
       candidate_ids = np.arange(lb, ub)
       if size >= ub - lb:
         return candidate_ids
-      return self.random_state.choice(candidate_ids, size, replace=False)
+      return _choice_fast(candidate_ids, size, self.random_state)
 
     # The actual set size generated from Exponential bow could be smaller
     # than the input set size. The following codes extract the difference
@@ -251,8 +293,8 @@ class FullyOverlapSetGenerator(SetGeneratorBase):
     self.random_state = random_state
 
   def __iter__(self):
-    self.union_ids.update(self.random_state.choice(
-        self.universe_size, self.set_size, replace=False))
+    self.union_ids.update(_choice_fast(
+        self.universe_size, self.set_size, self.random_state))
     for _ in range(self.num_sets):
       yield list(self.union_ids)
     return self
@@ -322,17 +364,16 @@ class SubSetGenerator(SetGeneratorBase):
     self.random_state = random_state
 
   def __iter__(self):
-    large_set = self.random_state.choice(
-        self.universe_size, self.large_set_size, replace=False)
-    small_set = self.random_state.choice(
-        large_set, self.small_set_size, replace=False)
+    large_set = _choice_fast(
+        self.universe_size, self.large_set_size, self.random_state)
+    small_set = _choice_fast(
+        large_set, self.small_set_size, self.random_state)
     self.union_ids.update(set(large_set))
     set_ids_list = ([large_set] * self.num_large_sets
                     + [small_set] * self.num_small_sets)
     for i in self.set_indices:
       yield set_ids_list[i]
     return self
-
 
 class _SequentiallyCorrelatedAllPreviousSetGenerator(SetGeneratorBase):
   """Generator for sequentailly correlated sets.
@@ -352,16 +393,15 @@ class _SequentiallyCorrelatedAllPreviousSetGenerator(SetGeneratorBase):
     # self.overlap_size_list[i] is the overlap of set.set_size_list[i]
     # with the previous union, so in particular, self.overlap_size_list[0] = 0
     total_ids_size = int(sum(self.set_size_list) - sum(self.overlap_size_list))
-    self.ids_pool = self.random_state.choice(
-        universe_size, total_ids_size, replace=False)
+    self.ids_pool = _choice_fast(universe_size, total_ids_size, self.random_state)
 
   def __iter__(self):
     for i in range(len(self.set_size_list)):
       overlap_size = min(self.overlap_size_list[i], len(self.union_ids))
-      set_ids_overlapped = self.random_state.choice(
+      set_ids_overlapped = _choice_fast(
           self.union_ids,
           overlap_size,
-          replace=False)
+          self.random_state)
       set_size = self.set_size_list[i]
       set_ids_non_overlapped = self.ids_pool[:(set_size - overlap_size)]
       self.ids_pool = self.ids_pool[len(set_ids_non_overlapped):]
@@ -389,8 +429,8 @@ class _SequentiallyCorrelatedThePreviousSetGenerator(SetGeneratorBase):
     # self.overlap_size_list[i] is the overlap of set.set_size_list[i]
     # with the previous set, so in particular, self.overlap_size_list[0] = 0
     total_ids_size = int(sum(self.set_size_list) - sum(self.overlap_size_list))
-    self.ids_pool = self.random_state.choice(
-        universe_size, total_ids_size, replace=False)
+    self.ids_pool = _choice_fast(
+        universe_size, total_ids_size, self.random_state)
 
   def __iter__(self):
     start = 0
@@ -471,7 +511,9 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
     elif order == ORDER_REVERSED:
       self.set_indices = list(reversed(range(num_sets)))
     elif order == ORDER_RANDOM:
-      self.set_indices = random_state.choice(num_sets, num_sets, replace=False)
+      self.set_indices = list(range(num_sets))
+      np.random.shuffle(self.set_indices)
+      # random_state.choice(num_sets, num_sets, replace=False)
     else:
       raise ValueError(f'order={order} is not supported.')
 
