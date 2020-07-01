@@ -482,7 +482,7 @@ Finally, we anticipate additional methods to be developed and will test those as
 
 For each parameter setting of each reach scenario, we will provide a box similar to the one below. This plot shows the mean relative error (horizontal line in center), the 50th percentile of the error (boxes), and the 95th percentile of the error (whiskers), as well as outliers (diamonds).
 
-![example boxplot](https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/tree/master/img/reach_box_plot.png)
+![example boxplot](https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/doc/img/reach_box_plot.png)
 
 <br>
 
