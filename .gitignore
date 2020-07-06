@@ -130,3 +130,5 @@ dmypy.json
 
 # VS Code Settings
 .vscode/
+.DS_Store
+img/.DS_Store
