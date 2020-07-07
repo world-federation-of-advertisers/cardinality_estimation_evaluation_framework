@@ -19,8 +19,16 @@ from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_le
 from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import EvaluationConfig
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import ScenarioConfig
-from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import SketchEstimatorConfig
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
+from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
+
+SKETCH = 'sketch'
+SKETCH_CONFIG = 'sketch_config'
+EPSILON = 'epsilon'
+ESTIMATOR = 'estimator'
+
+SKETCH_ESTIMATOR_CONFIG_NAMES_FORMAT = (
+    SKETCH, SKETCH_CONFIG, EPSILON, ESTIMATOR)
 
 
 # Document the evaluation configurations.
@@ -44,23 +52,26 @@ def _smoke_test(num_runs=100):
           ScenarioConfig(
               name='independent',
               set_generator_factory=(
-                  set_generator.IndependentSetGenerator.get_generator_factory(
+                  set_generator.IndependentSetGenerator.
+                  get_generator_factory_with_num_and_size(
                       universe_size=200000, num_sets=20, set_size=20000))),
           ScenarioConfig(
               name='remarketing',
               set_generator_factory=(
-                  set_generator.IndependentSetGenerator.get_generator_factory(
+                  set_generator.IndependentSetGenerator.
+                  get_generator_factory_with_num_and_size(
                       universe_size=40000, num_sets=20, set_size=20000))),
           ScenarioConfig(
               name='fully_overlapping',
               set_generator_factory=(
-                  set_generator.FullyOverlapSetGenerator.get_generator_factory(
+                  set_generator.FullyOverlapSetGenerator.
+                  get_generator_factory_with_num_and_size(
                       universe_size=200000, num_sets=20, set_size=20000))),
           ScenarioConfig(
               name='sequentially_correlated_all',
               set_generator_factory=(
                   set_generator.SequentiallyCorrelatedSetGenerator
-                  .get_generator_factory(
+                  .get_generator_factory_with_num_and_size(
                       order=set_generator.ORDER_ORIGINAL,
                       correlated_sets=set_generator.CORRELATED_SETS_ALL,
                       universe_size=3 * 10**8, num_sets=20, set_size=10000,
@@ -69,7 +80,7 @@ def _smoke_test(num_runs=100):
               name='sequentially_correlated_one',
               set_generator_factory=(
                   set_generator.SequentiallyCorrelatedSetGenerator
-                  .get_generator_factory(
+                  .get_generator_factory_with_num_and_size(
                       order=set_generator.ORDER_ORIGINAL,
                       correlated_sets=set_generator.CORRELATED_SETS_ONE,
                       universe_size=3 * 10**8, num_sets=20, set_size=10000,
@@ -101,51 +112,66 @@ LOG_BLOOM_FILTER_1E5_LN3_FIRST_MOMENT_LOG = SketchEstimatorConfig(
     estimator=bloom_filters.FirstMomentEstimator(
         method=bloom_filters.FirstMomentEstimator.METHOD_LOG,
         denoiser=bloom_filters.SurrealDenoiser(probability=0.25)),
-    noiser=bloom_filters.BlipNoiser(epsilon=np.log(3)))
+    sketch_noiser=bloom_filters.BlipNoiser(epsilon=np.log(3)))
 
-LOG_BLOOM_FILTER_1E5_0_FIRST_MOMENT_LOG = SketchEstimatorConfig(
-    name='log_bloom_filter-1e5-0-first_moment_log',
+LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(
+    name='log_bloom_filter-1e5-infty-first_moment_log',
     sketch_factory=bloom_filters.LogarithmicBloomFilter.get_sketch_factory(
         length=10**5),
     estimator=bloom_filters.FirstMomentEstimator(
-        method=bloom_filters.FirstMomentEstimator.METHOD_LOG),
-    noiser=None)
+        method=bloom_filters.FirstMomentEstimator.METHOD_LOG))
+
+EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG = SketchEstimatorConfig(
+    name='exp_bloom_filter-1e5_10-ln3-first_moment_exp',
+    sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
+        length=10**5, decay_rate=10),
+    estimator=bloom_filters.FirstMomentEstimator(
+        method=bloom_filters.FirstMomentEstimator.METHOD_EXP,
+        denoiser=bloom_filters.SurrealDenoiser(probability=0.25)),
+    sketch_noiser=bloom_filters.BlipNoiser(epsilon=np.log(3)))
+
+EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(
+    name='exp_bloom_filter-1e5_10-infty-first_moment_exp',
+    sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
+        length=10**5, decay_rate=10),
+    estimator=bloom_filters.FirstMomentEstimator(
+        method=bloom_filters.FirstMomentEstimator.METHOD_EXP))
 
 LIQUID_LEGIONS_1E5_10_LN3_SEQUENTIAL = SketchEstimatorConfig(
     name='liquid_legions-1e5_10-ln3-sequential',
     sketch_factory=liquid_legions.LiquidLegions.get_sketch_factory(
         a=10, m=10**5),
     estimator=liquid_legions.SequentialEstimator(),
-    noiser=liquid_legions.Noiser(flip_probability=0.25))
+    sketch_noiser=liquid_legions.Noiser(flip_probability=0.25))
 
-LIQUID_LEGIONS_1E5_10_0_SEQUENTIAL = SketchEstimatorConfig(
-    name='liquid_legions-1e5_10-0-sequential',
+LIQUID_LEGIONS_1E5_10_INFTY_SEQUENTIAL = SketchEstimatorConfig(
+    name='liquid_legions-1e5_10-infty-sequential',
     sketch_factory=liquid_legions.LiquidLegions.get_sketch_factory(
         a=10, m=10**5),
-    estimator=liquid_legions.SequentialEstimator(),
-    noiser=None)
+    estimator=liquid_legions.SequentialEstimator())
 
 VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL = SketchEstimatorConfig(
     name='vector_of_counts-4096-ln3-sequential',
     sketch_factory=vector_of_counts.VectorOfCounts.get_sketch_factory(
         num_buckets=4096),
     estimator=vector_of_counts.SequentialEstimator(),
-    noiser=vector_of_counts.LaplaceNoiser(epsilon=np.log(3)))
+    sketch_noiser=vector_of_counts.LaplaceNoiser(epsilon=np.log(3)))
 
-VECTOR_OF_COUNTS_4096_0_SEQUENTIAL = SketchEstimatorConfig(
-    name='vector_of_counts-4096-0-sequential',
+VECTOR_OF_COUNTS_4096_INFTY_SEQUENTIAL = SketchEstimatorConfig(
+    name='vector_of_counts-4096-infty-sequential',
     sketch_factory=vector_of_counts.VectorOfCounts.get_sketch_factory(
         num_buckets=4096),
-    estimator=vector_of_counts.SequentialEstimator(),
-    noiser=None)
+    estimator=vector_of_counts.SequentialEstimator())
 
 SKETCH_ESTIMATOR_CONFIGS_TUPLE = (
     LOG_BLOOM_FILTER_1E5_LN3_FIRST_MOMENT_LOG,
-    LOG_BLOOM_FILTER_1E5_0_FIRST_MOMENT_LOG,
+    LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG,
+    EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG,
+    EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG,
     LIQUID_LEGIONS_1E5_10_LN3_SEQUENTIAL,
-    LIQUID_LEGIONS_1E5_10_0_SEQUENTIAL,
+    LIQUID_LEGIONS_1E5_10_INFTY_SEQUENTIAL,
     VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL,
-    VECTOR_OF_COUNTS_4096_0_SEQUENTIAL)
+    VECTOR_OF_COUNTS_4096_INFTY_SEQUENTIAL)
 
 NAME_TO_ESTIMATOR_CONFIGS = {
     conf.name: conf for conf in SKETCH_ESTIMATOR_CONFIGS_TUPLE}

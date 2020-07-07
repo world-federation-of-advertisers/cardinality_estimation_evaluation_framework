@@ -24,8 +24,8 @@ from absl import logging
 import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import EvaluationConfig
-from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import SketchEstimatorConfig
-from wfa_cardinality_estimation_evaluation_framework.simulations import simulator
+from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
+from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
 
 # Pickle filenames for saving the configurations.
 SCENARIO_SEED_FILE = 'set_generator_seed.p'
@@ -272,10 +272,10 @@ class Evaluator(object):
     df_raw_file = os.path.join(scenario_dir, RAW_RESULT_DF_FILENAME)
     df_agg_file = os.path.join(scenario_dir, AGG_RESULT_DF_FILENAME)
     with open(df_raw_file, 'w') as f1, open(df_agg_file, 'w') as f2:
-      sim = simulator.Simulator(
+      sim = Simulator(
           num_runs=self.evaluation_config.num_runs,
           set_generator_factory=scenario_config.set_generator_factory,
-          estimator_config=sketch_estimator_config,
+          sketch_estimator_config=sketch_estimator_config,
           set_random_state=copy.deepcopy(
               self.scenario_random_states[scenario_config.name]),
           file_handle_raw=f1,
