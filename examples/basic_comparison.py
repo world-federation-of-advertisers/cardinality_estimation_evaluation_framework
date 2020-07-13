@@ -49,7 +49,8 @@ flags.DEFINE_integer('exponential_bloom_filter_decay_rate', 10,
                      'The decay rate in exponential bloom filter')
 flags.DEFINE_integer('num_bloom_filter_hashes', 3,
                      'The number of hashes for the bloom filter to use')
-
+flags.DEFINE_float('geometric_bloom_filter_probability', 0.0015,
+                     'probability of geometric distribution')
 
 def main(argv):
   if len(argv) > 1:
@@ -71,7 +72,7 @@ def main(argv):
 
   estimator_config_geometric_bloom_filter = EstimatorConfig(
       sketch_factory=GeometricBloomFilter.get_sketch_factory(
-          FLAGS.sketch_size),
+          FLAGS.sketch_size, FLAGS.geometric_bloom_filter_probability),
       estimator=FirstMomentEstimator(method='geo'),
       sketch_noiser=None,
       estimate_noiser=None)

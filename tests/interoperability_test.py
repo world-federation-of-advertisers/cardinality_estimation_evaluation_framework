@@ -63,6 +63,7 @@ class InteroperabilityTest(absltest.TestCase):
     self.shared_prop = 0.2
     self.num_bloom_filter_hashes = 2
     self.exponential_bloom_filter_decay_rate = 10
+    self.geometic_bloom_filter_probability = 0.08
     self.noiser_epsilon = np.log(3)
     self.noiser_flip_probability = .25
 
@@ -87,7 +88,7 @@ class InteroperabilityTest(absltest.TestCase):
 
     estimator_config_geometric_bloom_filter = EstimatorConfig(
         sketch_factory=GeometricBloomFilter.get_sketch_factory(
-            self.sketch_size),
+            self.sketch_size, self.geometic_bloom_filter_probability),
         estimator=FirstMomentEstimator(method='geo'),
         sketch_noiser=None,
         estimate_noiser=None)

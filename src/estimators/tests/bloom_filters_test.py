@@ -82,6 +82,7 @@ class AnyDistributionBloomFilterTest(parameterized.TestCase):
       (UniformBloomFilter, {}),
       (LogarithmicBloomFilter, {}),
       (ExponentialBloomFilter, {'decay_rate': 1}),
+      (GeometricBloomFilter, {'probability': 0.08}),
   )
   def test_insert(self, bloom_filter_class, kwargs):
     adbf = bloom_filter_class(length=2, random_seed=1, **kwargs)
@@ -89,39 +90,18 @@ class AnyDistributionBloomFilterTest(parameterized.TestCase):
     adbf.add([1, 1])
     self.assertEqual(np.sum(adbf.sketch), 1)
 
-  @parameterized.parameters(
-      (GeometricBloomFilter, {}),
-  )
-  def test_geobf_insert(self, bloom_filter_class, kwargs):
-    adbf = bloom_filter_class(length=2, random_seed=1, **kwargs)
-    self.assertEqual(np.sum(adbf.sketch), 0)
-    adbf.add([1, 1])
-    self.assertEqual(np.sum(adbf.sketch), 0)
-    adbf.add([0.2, 1])
-    self.assertEqual(np.sum(adbf.sketch), 1)
 
   @parameterized.parameters(
       (UniformBloomFilter, {}),
       (LogarithmicBloomFilter, {}),
       (ExponentialBloomFilter, {'decay_rate': 1}),
+      (GeometricBloomFilter, {'probability': 0.08}),
   )
   def test_factory(self, bloom_filter_class, kwargs):
     factory = bloom_filter_class.get_sketch_factory(length=4, **kwargs)
     adbf = factory(2)
     self.assertEqual(np.sum(adbf.sketch), 0)
     adbf.add([1, 1])
-    self.assertEqual(np.sum(adbf.sketch), 1)
-
-  @parameterized.parameters(
-      (GeometricBloomFilter, {}),
-  )
-  def test_geobf_factory(self, bloom_filter_class, kwargs):
-    factory = bloom_filter_class.get_sketch_factory(length=2, **kwargs)
-    adbf = factory(1)
-    self.assertEqual(np.sum(adbf.sketch), 0)
-    adbf.add([1, 1])
-    self.assertEqual(np.sum(adbf.sketch), 0)
-    adbf.add([0.2, 1])
     self.assertEqual(np.sum(adbf.sketch), 1)
 
   def test_inversion(self):
@@ -134,7 +114,7 @@ class AnyDistributionBloomFilterTest(parameterized.TestCase):
 class GeometricBloomFilterTest(absltest.TestCase):
 
   def test_insert_lookup_with_random_seed(self):
-    b = BloomFilter(length=15, random_seed=2)
+    b = GeometricBloomFilter(length=15, probability=0.08, random_seed=2)
 
     self.assertNotIn(1, b)
     b.add(1)
@@ -142,7 +122,7 @@ class GeometricBloomFilterTest(absltest.TestCase):
     self.assertNotIn(2, b)
 
   def test_factory(self):
-    factory = GeometricBloomFilter.get_sketch_factory(length=15)
+    factory = GeometricBloomFilter.get_sketch_factory(length=15, probability=0.08)
 
     b = factory(2)
     b.add(1)
@@ -151,24 +131,24 @@ class GeometricBloomFilterTest(absltest.TestCase):
     self.assertNotIn(2, b)
 
   def test_not_compatible_different_seeds(self):
-    b1 = GeometricBloomFilter(length=15, random_seed=1)
-    b2 = GeometricBloomFilter(length=15, random_seed=2)
+    b1 = GeometricBloomFilter(length=15, probability=0.08, random_seed=1)
+    b2 = GeometricBloomFilter(length=15, probability=0.08, random_seed=2)
     with self.assertRaises(AssertionError):
       b1.assert_compatible(b2)
     with self.assertRaises(AssertionError):
       b2.assert_compatible(b1)
 
   def test_not_compatible_different_lengths(self):
-    b1 = GeometricBloomFilter(length=10, random_seed=2)
-    b2 = GeometricBloomFilter(length=15, random_seed=2)
+    b1 = GeometricBloomFilter(length=10, probability=0.08, random_seed=2)
+    b2 = GeometricBloomFilter(length=15, probability=0.08, random_seed=2)
     with self.assertRaises(AssertionError):
       b1.assert_compatible(b2)
     with self.assertRaises(AssertionError):
       b2.assert_compatible(b1)
 
   def test_compatible(self):
-    b1 = GeometricBloomFilter(length=15, random_seed=2)
-    b2 = GeometricBloomFilter(length=15, random_seed=2)
+    b1 = GeometricBloomFilter(length=15, probability=0.08, random_seed=2)
+    b2 = GeometricBloomFilter(length=15, probability=0.08, random_seed=2)
     self.assertTrue(b1.assert_compatible(b2))
     self.assertTrue(b2.assert_compatible(b1))
 

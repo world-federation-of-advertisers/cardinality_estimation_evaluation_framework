@@ -112,7 +112,7 @@ class GeometricDistribution(Distribution):
   def __eq__(self, other):
     return (isinstance(other, GeometricDistribution) and
             self.num_values == other.num_values and
-            np.array_equal(self.register_bounds, other.register_bounds))
+            self.probability == other.probability)
 
   @property
   def register_probs(self):
@@ -122,13 +122,16 @@ class GeometricDistribution(Distribution):
   def _compute_register_probs(cls, num_values, probability):
     """Compute per register probability."""
     bits = np.arange(1, num_values + 1)
-    return scipy.stats.geom.pmf(bits, probability)
+    probs = scipy.stats.geom.pmf(bits, probability)
+
+    return probs / sum(probs)
 
   @classmethod
   def _compute_register_bounds(cls, num_values, probability):
     """Compute the right bound of the registers."""
     bits = np.arange(1, num_values + 1)
-    return scipy.stats.geom.cdf(bits, probability)
+    probs = scipy.stats.geom.cdf(bits, probability)
+    return probs / probs[-1]
 
   def get_index(self, hash_value, max_hash_value=MAX_HASH_VALUE):
     return np.searchsorted(self.register_bounds, hash_value / max_hash_value)
@@ -307,8 +310,6 @@ class AnySketch(SketchBase):
       combined_index = []
       for idx_spec, hash_func in zip(self.config.index_specs, index_hashes):
         idx = idx_spec.distribution.get_index(hash_func(x))
-        if idx >= len(idx_spec.distribution):
-          continue
         combined_index.append(idx)
 
       if len(combined_index) == 0:

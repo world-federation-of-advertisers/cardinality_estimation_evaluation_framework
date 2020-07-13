@@ -39,11 +39,27 @@ class DistributionTest(parameterized.TestCase):
     self.assertEqual(u1.get_index(42), 2)
 
   def test_geometric_distribution(self):
-    u1 = GeometricDistribution(10)
-    u2 = GeometricDistribution(10)
+    u1 = GeometricDistribution(10, 0.08)
+    u2 = GeometricDistribution(10,)
     self.assertLen(u1, 10)
     self.assertEqual(u1, u2)
     self.assertEqual(u1.get_index(42), 0)
+
+  def test_geo_bucket_distribution_get_bounds(self):
+    bounds = GeometricDistribution(num_values=4, probability=0.08).register_bounds
+    expected = np.array([0.28208044, 0.54159445, 0.78034734, 1.])
+    np.testing.assert_allclose(bounds, expected, atol=1e-8)
+
+  @parameterized.parameters(
+      (0, 0),
+      (0.28208044, 1),
+      (0.5, 1),
+      (0.8, 3),
+      (0.94, 3),
+      (1, 3))
+  def test_log_bucket_distribution_get_index(self, hash_value, index):
+    exp_dist = LogBucketDistribution(num_values=4, probability=0.08)
+    self.assertEqual(exp_dist.get_index(hash_value, max_hash_value=1), index)
 
   def test_log_bucket_distribution_get_bounds(self):
     bounds = LogBucketDistribution(num_values=4).register_bounds

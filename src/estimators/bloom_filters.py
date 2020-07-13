@@ -147,18 +147,20 @@ class GeometricBloomFilter(AnyDistributionBloomFilter):
   """Implement a Geometric Bloom Filter."""
 
   @classmethod
-  def get_sketch_factory(cls, length, num_hashes=1):
-
+  def get_sketch_factory(cls, length, probability):
     def f(random_seed):
-      return cls(length, num_hashes, random_seed)
+      return cls(length, probability, random_seed)
 
     return f
 
-  def __init__(self, length, num_hashes=1, random_seed=None, probability=0.08):
+  def __init__(self, length, probability, random_seed=None):
     """Creates a BloomFilter.
 
     Args:
        length: The length of bit vector for the bloom filter
+       probability: p of geometric distribution, p should be small enough
+       that geom.cdf(length, probability) won't be 1 in the middle of the
+       array so all bits can be used
        random_seed: An optional integer specifying the random seed for
          generating the random seeds for hash functions.
     """
@@ -315,21 +317,6 @@ class FirstMomentEstimator(EstimatorBase):
     x = sum(sketch.sketch)
     m = len(sketch.sketch)
     return - m * math.log(1 - x / m)
-
-  @classmethod
-  def _estimate_cardinality_geo(cls, sketch):
-    """Estimate cardinality of an Geometric Bloom Filter.
-
-    Args:
-      sketch: An GeometricBloomFilter. It should be unnoised or obtained
-        after denoising.
-    Returns:
-      The estimated cardinality of the BF.
-    """
-    z = np.sum(sketch.sketch)
-    k = float(sketch.num_hashes())
-    m = float(sketch.max_size())
-    return int(abs(math.log(z/m) / (k * math.log(1 - 1 / m))))
 
   @classmethod
   def _estimate_cardinality_log(cls, sketch):
