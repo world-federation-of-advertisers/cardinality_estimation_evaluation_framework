@@ -62,7 +62,7 @@ def _choice_fast(n, m, random_state):
     else:
       size = len(n)
     # We should always be choosing fewer than the size
-    assert m <= size
+    assert m < size
 
     ### Robert Floyd's No-Replacement Sampling Algorithm ###
     # Create an empty set to place numbers in
@@ -127,6 +127,7 @@ class IndependentSetGenerator(SetGeneratorBase):
 
   def __iter__(self):
     for _ in range(self.num_sets):
+      print(f"universe:{self.universe_size} \t set:{self.set_size}")
       set_ids = _choice_fast(self.universe_size, self.set_size, self.random_state)
       # self.random_state.choice(
       #     self.universe_size, self.set_size, replace=False)
