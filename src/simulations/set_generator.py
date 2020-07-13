@@ -74,7 +74,7 @@ def _choice_fast(n, m, random_state):
     else:
       size = len(n)
     # We should always be choosing fewer than the size
-    assert m <= size
+    assert m < size
 
     ### Robert Floyd's No-Replacement Sampling Algorithm ###
     # Create an empty set to place numbers in
