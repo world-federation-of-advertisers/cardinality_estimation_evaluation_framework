@@ -94,7 +94,7 @@ class UniformDistribution(Distribution):
 class GeometricDistribution(Distribution):
   """Distributes indexes in the range [0, num_values) according to geometric distribution."""
 
-  def __init__(self, num_values, probability=0.08):
+  def __init__(self, num_values, probability):
     """Create a truncated geometric distribution.
     Args:
       num_values: The number of values that the geometric distribuition can take
@@ -309,11 +309,7 @@ class AnySketch(SketchBase):
     for index_hashes in self.hash_functions:
       combined_index = []
       for idx_spec, hash_func in zip(self.config.index_specs, index_hashes):
-        idx = idx_spec.distribution.get_index(hash_func(x))
-        combined_index.append(idx)
-
-      if len(combined_index) == 0:
-        continue
+        combined_index.append(idx_spec.distribution.get_index(hash_func(x)))
       indexes.append(tuple(combined_index))
     return indexes
 
