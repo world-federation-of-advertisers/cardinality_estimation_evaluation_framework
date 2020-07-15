@@ -157,7 +157,7 @@ class UnionEstimatorTest(absltest.TestCase):
     b2 = BloomFilter(length=10, random_seed=3)
     b2.sketch[1] = 1
 
-    cardinality = UnionEstimator()([b1, b2])
+    cardinality = UnionEstimator()([b1, b2])[0]
     self.assertEqual(cardinality, 2)
 
 
@@ -190,7 +190,7 @@ class FirstMomentEstimatorTest(parameterized.TestCase):
     adbf = bf(length=4, random_seed=0, **bf_kwargs)
     adbf.add_ids([1])
     estimator = FirstMomentEstimator(method=method)
-    estimate = estimator([adbf])
+    estimate = estimator([adbf])[0]
     self.assertAlmostEqual(estimate, truth, 3, msg=method)
 
   def test_denoise_and_union(self):

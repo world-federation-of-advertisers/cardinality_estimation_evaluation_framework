@@ -230,4 +230,4 @@ class HllCardinality(EstimatorBase):
 
   def __call__(self, sketch_list):
     """Does a bit-wise of all sketches and returns a combined cardinality estimate."""
-    return HllCardinality.union_sketches(sketch_list).estimate_cardinality()
+    return [HllCardinality.union_sketches(sketch_list).estimate_cardinality()]

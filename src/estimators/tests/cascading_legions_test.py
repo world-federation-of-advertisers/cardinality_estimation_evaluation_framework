@@ -76,7 +76,7 @@ class LegionsTest(absltest.TestCase):
           s.add_id(f'{sketch_index}-{i}')
       noised_sketch_list = list(map(noiser, sketch_list))
       true_cardinality = (num_sketches + 1) * 10 ** 5
-      estimate = estimator(noised_sketch_list)
+      estimate = estimator(noised_sketch_list)[0]
       logging.info(
           'True cardinality: %s, estimate: %s', true_cardinality, estimate)
       self.assertAlmostEqual(

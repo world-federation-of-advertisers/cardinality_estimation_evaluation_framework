@@ -40,7 +40,7 @@ class ExactSetTest(absltest.TestCase):
     s = ExactSet()
     s.add_ids([1, 2])
     e = LosslessEstimator()
-    self.assertEqual(e([s]), 2)
+    self.assertEqual(e([s])[0], 2)
 
   def test_less_one_estimator_multiple(self):
     s1 = ExactSet()
@@ -48,7 +48,7 @@ class ExactSetTest(absltest.TestCase):
     s2 = ExactSet()
     s2.add_ids([1, 3, 4])
     e = LessOneEstimator()
-    self.assertEqual(e([s1, s2]), 3)
+    self.assertEqual(e([s1, s2])[0], 3)
 
   def test_noiser(self):
     s = ExactSet()

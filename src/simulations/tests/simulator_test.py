@@ -68,7 +68,7 @@ class RandomSketchForTestRandomSeed(SketchBase):
 class EstimatorForTestRandomSeed(EstimatorBase):
 
   def __call__(self, sketch_list):
-    return sketch_list[-1].cardinality
+    return [sketch_list[-1].cardinality]
 
 
 class FakeEstimateNoiser(EstimateNoiserBase):

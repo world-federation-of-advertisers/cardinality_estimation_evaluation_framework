@@ -155,7 +155,7 @@ class SequentialEstimatorTest(absltest.TestCase):
       sketch.add_ids([1])
       sketch_list.append(sketch)
     estimator = SequentialEstimator()
-    result = estimator(sketch_list)
+    result = estimator(sketch_list)[0]
     actual = 1.75
     self.assertEqual(result, actual)
 
@@ -169,8 +169,8 @@ class SequentialEstimatorTest(absltest.TestCase):
       sketch_list_a.append(empty_sketch)  # add empty sketch
       sketch_list_b.append(base_sketch)  # add same sketch
     estimator = SequentialEstimator(clip=True)
-    result_a = estimator(sketch_list_a)
-    result_b = estimator(sketch_list_b)
+    result_a = estimator(sketch_list_a)[0]
+    result_b = estimator(sketch_list_b)[0]
     self.assertEqual(result_a, base_sketch.cardinality(),
                      msg='Fail to detect the no-intersection case.')
     self.assertEqual(result_b, base_sketch.cardinality(),

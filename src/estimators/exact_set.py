@@ -71,7 +71,7 @@ class LosslessEstimator(EstimatorBase):
     union = ExactSet()
     for s in sketch_list:
       union.add_ids(s.ids())
-    return len(union)
+    return [len(union)]
 
 
 class LessOneEstimator(EstimatorBase):
@@ -83,7 +83,8 @@ class LessOneEstimator(EstimatorBase):
   def __call__(self, sketch_list):
     """Return len(sketch)."""
     e = LosslessEstimator()
-    return e(sketch_list) - 1
+    histogram = e(sketch_list)
+    return [histogram[0]-1] + [histogram[1:]]
 
 
 class AddRandomElementsNoiser(SketchNoiserBase):
