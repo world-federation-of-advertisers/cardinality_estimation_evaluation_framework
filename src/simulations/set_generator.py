@@ -159,7 +159,7 @@ class IndependentSetGenerator(SetGeneratorBase):
 
   def __iter__(self):
     for set_size in self.set_sizes:
-      set_ids = _choice_fast(self.universe_size, self.set_size, 
+      set_ids = _choice_fast(self.universe_size, set_size, 
         self.random_state)
       self.union_ids = self.union_ids.union(set_ids)
       yield set_ids
