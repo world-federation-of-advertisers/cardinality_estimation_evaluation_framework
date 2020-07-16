@@ -111,7 +111,7 @@ class EvaluatorTest(absltest.TestCase):
     self.get_test_evaluator(out_dir)
     # Add a random file to check if it is removed.
     test_file_overwrite = os.path.join(out_dir, self.run_name, 'test_file')
-    self.create_tempfile(test_file_overwrite).full_path
+    self.create_tempfile(test_file_overwrite)
 
     try:
       self.get_test_evaluator(out_dir, overwrite=True)

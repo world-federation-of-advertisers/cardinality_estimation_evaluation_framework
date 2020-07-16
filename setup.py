@@ -27,5 +27,4 @@ setup(
         'wfa_cardinality_estimation_evaluation_framework.evaluations',
         'wfa_cardinality_estimation_evaluation_framework.evaluations.data',
         'wfa_cardinality_estimation_evaluation_framework.simulations',
-        'wfa_cardinality_estimation_evaluation_framework.evaluations'
     ])

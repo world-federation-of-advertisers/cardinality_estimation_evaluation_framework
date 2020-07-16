@@ -32,11 +32,6 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations import evaluato
 from wfa_cardinality_estimation_evaluation_framework.evaluations import report_generator
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data import evaluation_configs
 
-# Define flags that must be set to a value
-required_flags = (
-    'evaluation_out_dir', 'analysis_out_dir',
-    'evaluation_config', 'sketch_estimator_configs', 'evaluation_run_name',
-    'num_runs')
 
 FLAGS = flags.FLAGS
 
