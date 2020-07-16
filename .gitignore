@@ -133,3 +133,5 @@ dmypy.json
 
 # Simulation results
 *evaluation_output/
+.DS_Store
+img/.DS_Store
