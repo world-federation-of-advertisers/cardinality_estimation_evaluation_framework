@@ -77,9 +77,130 @@ def _smoke_test(num_runs=100):
           )
       )
 
+
+def _test_with_selected_parameters_second_part(num_runs=100):
+  """Configurations with handy selected parameters for scenarios 3b - 5.
+
+  Args:
+    num_runs: the number of runs per scenario * parameter setting.
+
+  Returns:
+    An EvaluationConfig.
+  """
+  scenario_config_list = []
+  # Common parameters
+  universe_size = 100000
+  # Now fix the universe size. Can vary it if necessary.
+  num_sets = 20
+  order = set_generator.ORDER_RANDOM
+  # Apply random order of sets here, assuming that we shuffle the publishers
+  # before the estimation.
+  small_reach_rate = 0.01
+  large_reach_rate = 0.2
+  small_reach = int(small_reach_rate * universe_size)
+  large_reach = int(large_reach_rate * universe_size)
+
+  # Scenario 3 (b). Exponential bow, identical user behavior
+  user_activity_assciation = set_generator.USER_ACTIVITY_ASSOCIATION_IDENTICAL
+  choises_of_set_size_list = (
+      [small_reach] * num_sets,
+      [large_reach] * num_sets,
+      [small_reach] + [large_reach] * (num_sets - 1),
+      [small_reach] * int(num_sets / 2) +
+      [large_reach] * (num_sets - int(num_sets / 2)),
+      [small_reach] * (num_sets - 1) + [large_reach],
+      [large_reach / np.sqrt(i + 1) for i in range(num_sets)]
+  )
+  for set_size_list in choises_of_set_size_list:
+    scenario_config_list.append(
+        ScenarioConfig(
+            name='exponential_bow',
+            set_generator_factory=(
+                set_generator.ExponentialBowSetGenerator.
+                get_generator_factory_with_set_size_list(
+                    user_activity_association=user_activity_assciation,
+                    universe_size=universe_size,
+                    set_size_list=set_size_list)))
+    )
+
+  # Scenario 4(a). Fully overlapped
+  for set_size in [small_reach, large_reach]:
+    scenario_config_list.append(
+        ScenarioConfig(
+            name='fully_overlapped',
+            set_generator_factory=(
+                set_generator.FullyOverlapSetGenerator.
+                get_generator_factory_with_num_and_size(
+                    universe_size=universe_size,
+                    num_sets=num_sets,
+                    set_size=set_size)))
+    )
+
+  # Scenario 4(b). Subset campaigns
+  # Currently only support a small set contained in a large set.
+  # Need to update set_generator.py to support more flexible set sizes.
+  for num_large_sets in [1, 10, 19]:
+    scenario_config_list.append(
+        ScenarioConfig(
+            name='subset',
+            set_generator_factory=(
+                set_generator.SubSetGenerator.
+                get_generator_factory_with_num_and_size(
+                    order=order,
+                    universe_size=universe_size,
+                    num_large_sets=num_large_sets,
+                    num_small_sets=num_sets - num_large_sets,
+                    large_set_size=large_reach,
+                    small_set_size=small_reach)))
+    )
+
+  # Scenario 5. Sequantially correlated campaigns
+  choices_of_set_size_list = [
+      [small_reach] + [large_reach] * (num_sets - 1),
+      [large_reach] * (num_sets - 1) + [small_reach],
+      [large_reach] * int(num_sets / 2) + [small_reach] +
+      [large_reach] * (num_sets - 1 - int(num_sets / 2)),
+      [large_reach] + [small_reach] * (num_sets - 1),
+      [small_reach] * (num_sets - 1) + [large_reach],
+      [small_reach] * int(num_sets / 2) + [large_reach] +
+      [small_reach] * (num_sets - 1 - int(num_sets / 2)),
+      [small_reach] * int(num_sets / 2) +
+      [large_reach] * (num_sets - int(num_sets / 2)),
+      [large_reach] * int(num_sets / 2) +
+      [small_reach] * (num_sets - int(num_sets / 2)),
+      [small_reach, large_reach] * int(num_sets / 2) +
+      ([] if num_sets % 2 == 0 else [small_reach])
+  ]
+  choices_of_shared_prop = [0.25, 0.5, 0.75]
+
+  for correlated_sets in (set_generator.CORRELATED_SETS_ONE,
+                          set_generator.CORRELATED_SETS_ALL):
+    for shared_prop in choices_of_shared_prop:
+      for set_size_list in choices_of_set_size_list:
+        scenario_config_list.append(
+            ScenarioConfig(
+                name='sequentially_correlated',
+                set_generator_factory=(
+                    set_generator.SequentiallyCorrelatedSetGenerator.
+                    get_generator_factory_with_set_size_list(
+                        order=order,
+                        correlated_sets=correlated_sets,
+                        universe_size=universe_size,
+                        shared_prop=shared_prop,
+                        set_size_list=set_size_list)))
+        )
+
+  return EvaluationConfig(
+      name='test_with_selected_parameters_second_part',
+      num_runs=num_runs,
+      scenario_config_list=scenario_config_list)
+
+
 EVALUATION_CONFIGS_TUPLE = (
     _smoke_test,
+    _test_with_selected_parameters_second_part,
 )
+
 
 NAME_TO_EVALUATION_CONFIGS = {
     conf().name: conf for conf in EVALUATION_CONFIGS_TUPLE
