@@ -171,7 +171,7 @@ class Evaluator(object):
 
   def __init__(self, evaluation_config, sketch_estimator_config_list, run_name,
                scenario_random_state=np.random.RandomState(), out_dir=None,
-               overwrite=False):
+               overwrite=False, parallel_cores=0):
     """Construct an evaluator.
 
     Args:
@@ -186,6 +186,9 @@ class Evaluator(object):
       overwrite: a boolean variable. If set to True, will allow to overwrite the
         results even if the run exists. Otherwise, will raise error. By default,
         set to False.
+      parallel_cores: (integer) number of cores to use in parallel. If this is set to 0, 
+        the evaluations will run serially. If this is set to -1 (or any number below 0), 
+        the evaluations will run in parallel utilizing as many cores as possible.
 
     Raises:
       AssertionError: if the evaluation_config is not an EvaluationConfig,
@@ -198,7 +201,9 @@ class Evaluator(object):
       assert isinstance(sketch_estimator_config, SketchEstimatorConfig), (
           'sketch_estimator_config_list does not contain all '
           'SketchEstimatorConfig objects')
-
+    assert isinstance(parallel_cores, int), (
+        'parallel_cores must be an int')
+    self.parallel_cores = parallel_cores if parallel_cores >= 0 else cpu_count()
     self.evaluation_config = evaluation_config
     self.sketch_estimator_config_list = sketch_estimator_config_list
 
@@ -224,14 +229,17 @@ class Evaluator(object):
     self.scenario_random_states = scenario_random_states
 
   def __call__(self):
-    self.evaluate_all()
+    if self.parallel_cores:
+      self.evaluate_all_parallel()
+    else:
+      self.evaluate_all()
 
   def evaluate_all(self):
     """Evaluate all estimators under all scenarios."""
     for sketch_estimator_config in self.sketch_estimator_config_list:
-      start_time = time.time()
+      start_time = time.perf_counter()
       self.evaluate_estimator(sketch_estimator_config)
-      elapsed_time = str(time.time() - start_time)
+      elapsed_time = str(time.perf_counter() - start_time)
       time_file = os.path.join(
           self.description_to_file_dir[KEY_ESTIMATOR_DIRS][
               sketch_estimator_config.name],
@@ -243,18 +251,20 @@ class Evaluator(object):
     """Evaluate one estimator under all the scenarios."""
     logging.info('====Estimator: %s', sketch_estimator_config.name)
 
+    # Save an example of the sketch_estimator_config.
+    self.save_estimator(sketch_estimator_config)
+
+    for scenario_config in self.evaluation_config.scenario_config_list:
+      self.run_one_scenario(scenario_config, sketch_estimator_config)
+
+  def save_estimator(self, sketch_estimator_config):
     estimator_dir = self.description_to_file_dir[KEY_ESTIMATOR_DIRS][
         sketch_estimator_config.name]
-
-    # Save an example of the sketch_estimator_config.
     estimator = sketch_estimator_config.sketch_factory(0)
     sketch_estimator_config_file = os.path.join(
         estimator_dir, ESTIMATOR_CONFIG_FILE)
     with open(sketch_estimator_config_file, 'wb') as f:
       pickle.dump(estimator, f)
-
-    for scenario_config in self.evaluation_config.scenario_config_list:
-      self.run_one_scenario(scenario_config, sketch_estimator_config)
 
   def run_one_scenario(self, scenario_config, sketch_estimator_config):
     """Run evaluation for an estimator under a scenario."""
@@ -281,3 +291,64 @@ class Evaluator(object):
           file_handle_raw=f1,
           file_handle_agg=f2)
       _ = sim()
+
+  def evaluate_all_parallel(self):
+    # Spawnable process to evaluate a sketch estimator on a certain scenario.
+    def run_scenario(args):
+      """
+      Tests each scenario on the given estimator. Writes output to folder
+      specified on instantiation of this object.
+
+      Returns:
+        tuple: (elapsed time, estimator name, scenario name)
+      """
+      scenario_config, sketch_estimator_config = args
+      # logging.info(f'Estimator: {sketch_estimator_config.name}'
+      #         f'=== Scenario: {scenario_config.name}')
+      start_time = time.perf_counter()
+      # This is where the bulk of the work happens
+      self.run_one_scenario(scenario_config, sketch_estimator_config)
+      elapsed_time = time.perf_counter() - start_time
+      # logging.info('Finished')
+
+      return elapsed_time, sketch_estimator_config.name, scenario_config.name
+
+    # Get all combinations of (scenario, estimator)
+    work_items = itertools.product(
+                  self.evaluation_config.scenario_config_list,
+                  self.sketch_estimator_config_list
+                 )
+    total_length = len(self.evaluation_config.scenario_config_list) * \
+                len(self.sketch_estimator_config_list)
+
+    # Start scenarios, returns the elapsed time for each.
+    with ProcessPool(self.parallel_cores) as pool:
+      times = pool.uimap(run_scenario, work_items)
+    
+    # While the scenarios are running, save estimator configs
+    for sketch_estimator_config in self.sketch_estimator_config_list:
+      self.save_estimator(sketch_estimator_config)
+
+    # Aggregate time spent on each scenario by file 
+    # (which aggregates them by estimator)
+    performance_stats = dict()
+    # Progress visualization
+    pbar = tqdm(total=total_length)
+    # The 'times' uimap will return items which finish first
+    for elapsed_time, sketch_estimator_name, scenario_name in times:
+      time_file = os.path.join(
+        self.description_to_file_dir[KEY_ESTIMATOR_DIRS][
+            sketch_estimator_name],
+        EVALUATION_RUN_TIME_FILE)
+      if time_file not in performance_stats.keys():
+        performance_stats[time_file] = 0
+      performance_stats[time_file] += elapsed_time
+      # Update progress
+      pbar.update()
+      pbar.set_description(f'Finished {sketch_estimator_name}: {scenario_name}')
+
+    # Write performance stats
+    for time_file, elapsed_time in performance_stats.items():
+      with open(time_file, 'w') as f:
+        f.write(str(elapsed_time))
+    
