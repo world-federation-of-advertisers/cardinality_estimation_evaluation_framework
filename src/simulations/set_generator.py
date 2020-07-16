@@ -519,9 +519,7 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
     elif order == ORDER_REVERSED:
       self.set_indices = list(reversed(range(num_sets)))
     elif order == ORDER_RANDOM:
-      self.set_indices = list(range(num_sets))
-      np.random.shuffle(self.set_indices)
-      # random_state.choice(num_sets, num_sets, replace=False)
+      self.set_indices = random_state.choice(num_sets, num_sets, replace=False)
     else:
       raise ValueError(f'order={order} is not supported.')
 
