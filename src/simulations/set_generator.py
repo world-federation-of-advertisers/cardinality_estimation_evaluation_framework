@@ -21,13 +21,11 @@ We have implemented the following simulation data:
 * Sequentially correlated sets with all the previously generated ones.
 * Sequentially correlated sets with the previously generated one.
 """
-import collections
-
-import numpy as np
 from absl import logging
+import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.common.analysis import relative_error
-
+from wfa_cardinality_estimation_evaluation_framework.common.random import choice_fast
 ORDER_ORIGINAL = 'original'
 ORDER_REVERSED = 'reversed'
 ORDER_RANDOM = 'random'
@@ -52,58 +50,6 @@ class _SetSizeGenerator(object):
   def __iter__(self):
     for _ in range(self.num_sets):
       yield self.set_size
-
-def _choice_fast(n, m, random_state=np.random.RandomState()):
-    """Chooses m numbers or objects from population n.
-
-    O(m) space-optimal algorithm for generating m random indices for list 
-    of size n without replacement. NumPy's built-in choice function is slow when
-    replace=False because it allocates n-sized arrays. This method is around 
-    1000x faster for the sizes of n and m we are dealing with.
-    
-    Args:
-      n: list or integer to choose from. If n is a list, this method will return
-        values in n. If n is an integer, this method will return indices.
-      m: Number of elements to choose.
-      random_state: RandomState object to control randomness.
-    
-    Returns:
-      List of elements chosen from n or list of indices from 0 (inclusive) to n (exclusive)
-    """
-    assert isinstance(n, collections.abc.Iterable) or isinstance(n, int)
-    # Get the maximum number as size
-    if isinstance(n, int):
-      size = n
-    else:
-      size = len(n)
-    # We should always be choosing fewer than or up to size
-    assert m <= size
-
-    ### Robert Floyd's No-Replacement Sampling Algorithm ###
-    # Create an empty set to place numbers in
-    s = set()
-    s_add = s.add
-    # Sample m random numbers and put them in the correct ranges:
-    # First index should be sampled between 0 and size-m (inclusive)
-    # Second index should be sampled between 0 and size-m+1 and so on
-    # We cast to uint64 to floor the sampling.
-    randints = (random_state.random_sample(m) 
-               * (np.arange(size - m + 1, size + 1))).astype(np.uint64)
-    for j in range(m):
-        t = randints[j]
-        if t in s:
-            t = size - m + j
-        s_add(t)
-    assert len(s) == m
-
-    # Turn set into numpy array. This is an array of randomly chosen indices
-    # from 0 (inclusive) to n (exclusive)
-    ret = np.fromiter(s, np.long, m)
-    # If the input was an int, return these indices
-    if isinstance(n, int):
-      return ret
-    # Otherwise, return the elements of n at these indices
-    return n[ret]
 
 class SetGeneratorBase(object):
   """Base object for generating test sets."""
@@ -159,7 +105,7 @@ class IndependentSetGenerator(SetGeneratorBase):
 
   def __iter__(self):
     for set_size in self.set_sizes:
-      set_ids = _choice_fast(self.universe_size, set_size, self.random_state)
+      set_ids = choice_fast(self.universe_size, set_size, self.random_state)
       self.union_ids = self.union_ids.union(set_ids)
       yield set_ids
     return self
@@ -247,7 +193,7 @@ class ExponentialBowSetGenerator(SetGeneratorBase):
       candidate_ids = np.arange(lb, ub)
       if size >= ub - lb:
         return candidate_ids
-      return _choice_fast(candidate_ids, size, self.random_state)
+      return choice_fast(candidate_ids, size, self.random_state)
 
     # The actual set size generated from Exponential bow could be smaller
     # than the input set size. The following codes extract the difference
@@ -303,7 +249,7 @@ class FullyOverlapSetGenerator(SetGeneratorBase):
     self.random_state = random_state
 
   def __iter__(self):
-    self.union_ids.update(_choice_fast(
+    self.union_ids.update(choice_fast(
         self.universe_size, self.set_size, self.random_state))
     for _ in range(self.num_sets):
       yield list(self.union_ids)
@@ -374,9 +320,9 @@ class SubSetGenerator(SetGeneratorBase):
     self.random_state = random_state
 
   def __iter__(self):
-    large_set = _choice_fast(
+    large_set = choice_fast(
         self.universe_size, self.large_set_size, self.random_state)
-    small_set = _choice_fast(
+    small_set = choice_fast(
         large_set, self.small_set_size, self.random_state)
     self.union_ids.update(set(large_set))
     set_ids_list = ([large_set] * self.num_large_sets
@@ -403,12 +349,12 @@ class _SequentiallyCorrelatedAllPreviousSetGenerator(SetGeneratorBase):
     # self.overlap_size_list[i] is the overlap of set.set_size_list[i]
     # with the previous union, so in particular, self.overlap_size_list[0] = 0
     total_ids_size = int(sum(self.set_size_list) - sum(self.overlap_size_list))
-    self.ids_pool = _choice_fast(universe_size, total_ids_size, self.random_state)
+    self.ids_pool = choice_fast(universe_size, total_ids_size, self.random_state)
 
   def __iter__(self):
     for i in range(len(self.set_size_list)):
       overlap_size = min(self.overlap_size_list[i], len(self.union_ids))
-      set_ids_overlapped = _choice_fast(
+      set_ids_overlapped = choice_fast(
           self.union_ids,
           overlap_size,
           self.random_state)
@@ -439,7 +385,7 @@ class _SequentiallyCorrelatedThePreviousSetGenerator(SetGeneratorBase):
     # self.overlap_size_list[i] is the overlap of set.set_size_list[i]
     # with the previous set, so in particular, self.overlap_size_list[0] = 0
     total_ids_size = int(sum(self.set_size_list) - sum(self.overlap_size_list))
-    self.ids_pool = _choice_fast(
+    self.ids_pool = choice_fast(
         universe_size, total_ids_size, self.random_state)
 
   def __iter__(self):

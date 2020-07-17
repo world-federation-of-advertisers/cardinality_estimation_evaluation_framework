@@ -414,34 +414,6 @@ class SetGeneratorTest(parameterized.TestCase):
           order='random', correlated_sets='not_implemented', universe_size=30,
           shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
 
-  def test_choice_fast_same_random_state_same_output(self):
-    rs1 = np.random.RandomState(1)
-    rs2 = np.random.RandomState(1)
-    a = set_generator._choice_fast(10000, 5000, rs1)
-    b = set_generator._choice_fast(10000, 5000, rs2)
-    self.assertSameElements(a, b)
-
-  def test_choice_fast_len_is_m(self):
-    for i in range(1000):
-      a = set_generator._choice_fast(10000, i)
-      self.assertLen(a, i)
-
-  def test_choice_fast_choose_elements_from_list(self):
-    for i in range(50, 500):
-      # Get a random list of numbers from 0 to 5000 size i
-      elements = np.random.randint(0, 5000, i)
-      # Choose up to i elements from that list
-      chosen = set_generator._choice_fast(elements, np.random.randint(1, i))
-      # Make sure chosen elements are actually from our original elements.
-      for element in chosen:
-        self.assertTrue(element in elements)
-
-  def test_choice_fast_is_unique(self):
-    for i in range(50, 500):
-      chosen = set_generator._choice_fast(500, i)
-      no_repeats = set(chosen)
-      self.assertTrue(len(chosen) == len(no_repeats))
-
 
 if __name__ == '__main__':
   absltest.main()
