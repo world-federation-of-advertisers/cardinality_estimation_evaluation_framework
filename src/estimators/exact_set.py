@@ -81,7 +81,7 @@ class LessOneEstimator(EstimatorBase):
     EstimatorBase.__init__(self)
 
   def __call__(self, sketch_list):
-    """Return len(sketch)."""
+    """Return len(sketch) - 1."""
     e = LosslessEstimator()
     histogram = e(sketch_list)
     return [histogram[0]-1] + [histogram[1:]]

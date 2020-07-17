@@ -57,7 +57,7 @@ class EstimatorBase(object):
   the cardinality estimate of items having a frequency of i+1.  h[-1] is the
   cardinality estimate of items having a frequency of len(h) or greater.
 
-  Note that there is no requirement that on the number of frequencies that
+  Note that there is no requirement on the number of frequencies that
   an estimator should produce.  Thus, an estimator that provides estimates
   only of cardinality may output an array of length 1.
 
