@@ -436,5 +436,12 @@ class SetGeneratorTest(parameterized.TestCase):
       for element in chosen:
         self.assertTrue(element in elements)
 
+  def test_choice_fast_is_unique(self):
+    for i in range(50, 500):
+      chosen = set_generator._choice_fast(500, i)
+      no_repeats = set(chosen)
+      self.assertTrue(len(chosen) == len(no_repeats))
+
+
 if __name__ == '__main__':
   absltest.main()

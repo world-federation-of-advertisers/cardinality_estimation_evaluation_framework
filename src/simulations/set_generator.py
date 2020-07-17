@@ -105,7 +105,6 @@ def _choice_fast(n, m, random_state=np.random.RandomState()):
     # Otherwise, return the elements of n at these indices
     return n[ret]
 
-
 class SetGeneratorBase(object):
   """Base object for generating test sets."""
 
