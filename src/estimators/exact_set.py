@@ -107,12 +107,7 @@ class LessOneEstimator(EstimatorBase):
     histogram = e(sketch_list).copy()
     if sum(histogram) == 0:
       raise ValueError("Attempt to create a histogram with a negative value!")
-    if histogram[0] > 0:
-      histogram[0] -= 1
-    else:
-      i = min([i for i in range(len(histograme)) if histogram[i] > 0])
-      histogram[i-1] = 1
-      histogram[i] -= 1
+    histogram[0] -= 1
     return histogram
 
 

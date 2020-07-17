@@ -60,59 +60,5 @@ class ExactMultiSetTest(absltest.TestCase):
     self.assertLen(s, 2)
     self.assertLen(s_copy, 5)
 
-  def test_multi_frequency_sketch_for_exact_set(self):
-    s = ExactSet()
-    s.add_ids([1,2,3,4,5,6,1,2,3,4,1,2,3,1,2,1,1])
-    self.assertEqual(s.frequency(1), 1)
-    self.assertEqual(s.frequency(2), 1)
-    self.assertEqual(s.frequency(3), 1)
-    self.assertEqual(s.frequency(4), 1)
-    self.assertEqual(s.frequency(5), 1)
-    self.assertEqual(s.frequency(6), 1)
-    self.assertEqual(LosslessEstimator()([s]), [6])
-    self.assertEqual(LessOneEstimator()([s]), [5])
-
-  def test_sketch_for_exact_multi_set(self):
-    s = ExactMultiSet()
-    s.add_ids([1, 2])
-    self.assertLen(s, 2)
-    self.assertIn(2, s)
-    self.assertNotIn(3, s)
-
-  def test_lossless_estimator_for_exact_multi_set(self):
-    s = ExactMultiSet()
-    s.add_ids([1, 2])
-    e = LosslessEstimator()
-    self.assertEqual(e([s])[0], 2)
-
-  def test_less_one_estimator_multiple_for_exact_multi_set(self):
-    s1 = ExactMultiSet()
-    s1.add_ids([1, 2])
-    s2 = ExactMultiSet()
-    s2.add_ids([1, 3, 4])
-    e = LessOneEstimator()
-    self.assertEqual(e([s1, s2])[0], 2)
-
-  def test_noiser_for_exact_multi_set(self):
-    s = ExactMultiSet()
-    s.add_ids([1, 2])
-    n = AddRandomElementsNoiser(
-        num_random_elements=3, random_state=np.random.RandomState(1))
-    s_copy = n(s)
-    self.assertLen(s, 2)
-    self.assertLen(s_copy, 5)
-    
-  def test_multi_frequency_sketch_for_exact_multi_set(self):
-    s = ExactMultiSet()
-    s.add_ids([1,2,3,4,5,6,1,2,3,4,1,2,3,1,2,1,1])
-    self.assertEqual(s.frequency(1), 6)
-    self.assertEqual(s.frequency(2), 4)
-    self.assertEqual(s.frequency(3), 3)
-    self.assertEqual(s.frequency(4), 2)
-    self.assertEqual(s.frequency(5), 1)
-    self.assertEqual(s.frequency(6), 1)
-    self.assertEqual(LosslessEstimator()([s]), [2, 1, 1, 1, 0, 1])
-    self.assertEqual(LessOneEstimator()([s]), [1, 1, 1, 1, 0, 1])
-
 if __name__ == '__main__':
   absltest.main()
