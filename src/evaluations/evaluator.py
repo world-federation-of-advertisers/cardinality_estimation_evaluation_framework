@@ -18,6 +18,9 @@ import os
 import pickle
 import shutil
 import time
+import itertools
+from tqdm import tqdm
+from pathos import ProcessPool
 
 from absl import logging
 
@@ -293,6 +296,7 @@ class Evaluator(object):
       _ = sim()
 
   def evaluate_all_parallel(self):
+    """Evaluate all estimators under all scenarios using multiple cores."""
     # Spawnable process to evaluate a sketch estimator on a certain scenario.
     def run_scenario(args):
       """
