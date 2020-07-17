@@ -21,11 +21,12 @@ We have implemented the following simulation data:
 * Sequentially correlated sets with all the previously generated ones.
 * Sequentially correlated sets with the previously generated one.
 """
-
-from absl import logging
-import numpy as np
-from wfa_cardinality_estimation_evaluation_framework.common.analysis import relative_error
 import collections
+
+import numpy as np
+from absl import logging
+
+from wfa_cardinality_estimation_evaluation_framework.common.analysis import relative_error
 
 ORDER_ORIGINAL = 'original'
 ORDER_REVERSED = 'reversed'
@@ -53,14 +54,16 @@ class _SetSizeGenerator(object):
       yield self.set_size
 
 def _choice_fast(n, m, random_state=np.random.RandomState()):
-    """O(m) space-optimal algorithm for generating m random indices for list 
+    """Chooses m numbers or objects from population n.
+
+    O(m) space-optimal algorithm for generating m random indices for list 
     of size n without replacement. NumPy's built-in choice function is slow when
     replace=False because it allocates n-sized arrays. This method is around 
     1000x faster for the sizes of n and m we are dealing with.
     
     Args:
       n: list or integer to choose from. If n is a list, this method will return
-      values in n. If n is an integer, this method will return indices.
+        values in n. If n is an integer, this method will return indices.
       m: Number of elements to choose.
       random_state: RandomState object to control randomness.
     
