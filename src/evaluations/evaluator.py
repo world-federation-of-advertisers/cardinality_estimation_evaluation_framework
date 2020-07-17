@@ -20,7 +20,7 @@ import shutil
 import time
 import itertools
 
-from pathos import ProcessPool
+from pathos.multiprocessing import ProcessPool, cpu_count
 from tqdm import tqdm
 
 from absl import logging
@@ -190,9 +190,9 @@ class Evaluator(object):
       overwrite: a boolean variable. If set to True, will allow to overwrite the
         results even if the run exists. Otherwise, will raise error. By default,
         set to False.
-      parallel_cores: (integer) number of cores to use in parallel. If this is set to 0, 
-        the evaluations will run serially. If this is set to -1 (or any number below 0), 
-        the evaluations will run in parallel utilizing as many cores as possible.
+      parallel_cores: (integer) number of cores to use in parallel. If this is set to 1, 
+        the evaluations will run serially. If this is set to 0 or less, the scenarios 
+        will run in parallel utilizing as many cores as possible.
 
     Raises:
       AssertionError: if the evaluation_config is not an EvaluationConfig,
@@ -207,7 +207,7 @@ class Evaluator(object):
           'SketchEstimatorConfig objects')
     assert isinstance(parallel_cores, int), (
         'parallel_cores must be an int')
-    self.parallel_cores = parallel_cores if parallel_cores >= 0 else cpu_count()
+    self.parallel_cores = parallel_cores if parallel_cores >= 1 else cpu_count()
     self.evaluation_config = evaluation_config
     self.sketch_estimator_config_list = sketch_estimator_config_list
 
@@ -233,7 +233,7 @@ class Evaluator(object):
     self.scenario_random_states = scenario_random_states
 
   def __call__(self):
-    if self.parallel_cores:
+    if self.parallel_cores >= 1:
       self.evaluate_all_parallel()
     else:
       self.evaluate_all()
