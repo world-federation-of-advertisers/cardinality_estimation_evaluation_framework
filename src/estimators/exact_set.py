@@ -14,7 +14,6 @@
 
 """Simple example of creating a cardinality estimator."""
 
-import collections
 import copy
 import sys
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimatorBase
@@ -22,7 +21,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.base import Sket
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchBase
 
 
-class ExactMultiSet(SketchBase):
+class ExactSet(SketchBase):
   """A sketch that exactly counts the frequency of each item."""
 
   @classmethod
@@ -42,7 +41,7 @@ class ExactMultiSet(SketchBase):
     """
     SketchBase.__init__(self)
     _ = random_seed
-    self._ids = {}
+    self._ids = set()
 
   def __len__(self):
     """Return the number of elements in the sketch."""
@@ -54,22 +53,11 @@ class ExactMultiSet(SketchBase):
 
   def add(self, x):
     """Adds an id x to the sketch."""
-    self._ids[x] = self._ids.get(x, 0) + 1
+    self._ids.add(x)
 
   def ids(self):
     """Return the internal ID set."""
     return self._ids
-
-  def frequency(self, x):
-    """Returns the frequency of occurrence of x."""
-    return self._ids.get(x, 0)
-
-class ExactSet(ExactMultiSet):
-  """A sketch that exactly counts the number of unique items."""
-
-  def frequency(self, x):
-    """Returns the frequency of occurrence of x."""
-    return int(x in self._ids)
 
 
 class LosslessEstimator(EstimatorBase):
@@ -82,17 +70,10 @@ class LosslessEstimator(EstimatorBase):
     """Return len(sketch)."""
     if len(sketch_list) == 0:
       return [0]
-    if isinstance(sketch_list[0], ExactSet):
-      union = ExactSet()
-    else:
-      union = ExactMultiSet()
+    union = ExactSet()
     for s in sketch_list:
-      for id in s.ids():
-        union.add_ids([id] * s.frequency(id))
-    histogram = collections.defaultdict(int)
-    for x in union.ids():
-      histogram[union.frequency(x)] += 1
-    return [histogram[i] for i in range(1, max(histogram)+1)]
+      union.add_ids(s.ids())
+    return len(union)
 
 
 class LessOneEstimator(EstimatorBase):
