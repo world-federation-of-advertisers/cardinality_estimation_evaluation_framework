@@ -30,41 +30,29 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import
 
 class ExactMultiSetTest(absltest.TestCase):
 
-  def test_sketch_for_exact_multi_set(self):
-    s = ExactMultiSet()
+  def test_sketch_for_exact_set(self):
+    s = ExactSet()
     s.add_ids([1, 2])
     self.assertLen(s, 2)
     self.assertIn(2, s)
     self.assertNotIn(3, s)
 
-  def test_lossless_estimator_for_exact_multi_set(self):
-    s = ExactMultiSet()
+  def test_lossless_estimator_for_exact_set(self):
+    s = ExactSet()
     s.add_ids([1, 2, 3, 1, 2, 1])
     e = LosslessEstimator()
     self.assertEqual(e([s]), [3, 2, 1])
 
-  def test_less_one_estimator_multiple_for_exact_multi_set(self):
-    s1 = ExactMultiSet()
+  def test_less_one_estimator_multiple_for_exact_set(self):
+    s1 = ExactSet()
     s1.add_ids([1, 2])
-    s2 = ExactMultiSet()
+    s2 = ExactSet()
     s2.add_ids([1, 3, 4])
     e = LessOneEstimator()
     self.assertEqual(e([s1, s2]), [3, 1])
 
-  def test_less_one_estimator_no_freq1(self):
-    s = ExactMultiSet()
-    s.add_ids([1,1,2,2,3,3,3])
-    e = LessOneEstimator()
-    self.assertEqual(e([s]), [2, 2, 1])
-
-  def test_less_one_estimator_no_freq1or2(self):
-    s = ExactMultiSet()
-    s.add_ids([1,1,1,2,2,2,3,3,3])
-    e = LessOneEstimator()
-    self.assertEqual(e([s]), [2, 2, 2])
-    
-  def test_noiser_for_exact_multi_set(self):
-    s = ExactMultiSet()
+  def test_noiser_for_exact_set(self):
+    s = ExactSet()
     s.add_ids([1, 2])
     n = AddRandomElementsNoiser(
         num_random_elements=3, random_state=np.random.RandomState(1))
