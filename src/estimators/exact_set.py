@@ -110,7 +110,7 @@ class LessOneEstimator(EstimatorBase):
     if histogram[0]:
       histogram[0] -= 1
     else:
-      i = min([i for i in range(len(histograme)) if histogram[i] > 0])
+      i = min([i for i in range(len(histogram)) if histogram[i] > 0])
       histogram[i-1] = 1
       histogram[i] -= 1
     return histogram

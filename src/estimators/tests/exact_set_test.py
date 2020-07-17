@@ -93,6 +93,18 @@ class ExactMultiSetTest(absltest.TestCase):
     e = LessOneEstimator()
     self.assertEqual(e([s1, s2])[0], 2)
 
+  def test_less_one_estimator_no_freq1(self):
+    s = ExactMultiSet()
+    s.add_ids([1,1,2,2,3,3,3])
+    e = LessOneEstimator()
+    self.assertEqual(e([s]), [1, 1, 1])
+
+  def test_less_one_estimator_no_freq1or2(self):
+    s = ExactMultiSet()
+    s.add_ids([1,1,1,2,2,2,3,3,3])
+    e = LessOneEstimator()
+    self.assertEqual(e([s]), [0, 1, 2])
+    
   def test_noiser_for_exact_multi_set(self):
     s = ExactMultiSet()
     s.add_ids([1, 2])
