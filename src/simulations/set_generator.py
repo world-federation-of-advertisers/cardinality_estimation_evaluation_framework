@@ -21,11 +21,11 @@ We have implemented the following simulation data:
 * Sequentially correlated sets with all the previously generated ones.
 * Sequentially correlated sets with the previously generated one.
 """
-
 from absl import logging
 import numpy as np
-from wfa_cardinality_estimation_evaluation_framework.common.analysis import relative_error
 
+from wfa_cardinality_estimation_evaluation_framework.common.analysis import relative_error
+from wfa_cardinality_estimation_evaluation_framework.common.random import choice_fast
 ORDER_ORIGINAL = 'original'
 ORDER_REVERSED = 'reversed'
 ORDER_RANDOM = 'random'
@@ -50,7 +50,6 @@ class _SetSizeGenerator(object):
   def __iter__(self):
     for _ in range(self.num_sets):
       yield self.set_size
-
 
 class SetGeneratorBase(object):
   """Base object for generating test sets."""
@@ -106,8 +105,7 @@ class IndependentSetGenerator(SetGeneratorBase):
 
   def __iter__(self):
     for set_size in self.set_sizes:
-      set_ids = self.random_state.choice(
-          self.universe_size, set_size, replace=False)
+      set_ids = choice_fast(self.universe_size, set_size, self.random_state)
       self.union_ids = self.union_ids.union(set_ids)
       yield set_ids
     return self
@@ -195,7 +193,7 @@ class ExponentialBowSetGenerator(SetGeneratorBase):
       candidate_ids = np.arange(lb, ub)
       if size >= ub - lb:
         return candidate_ids
-      return self.random_state.choice(candidate_ids, size, replace=False)
+      return choice_fast(candidate_ids, size, self.random_state)
 
     # The actual set size generated from Exponential bow could be smaller
     # than the input set size. The following codes extract the difference
@@ -251,8 +249,8 @@ class FullyOverlapSetGenerator(SetGeneratorBase):
     self.random_state = random_state
 
   def __iter__(self):
-    self.union_ids.update(self.random_state.choice(
-        self.universe_size, self.set_size, replace=False))
+    self.union_ids.update(choice_fast(
+        self.universe_size, self.set_size, self.random_state))
     for _ in range(self.num_sets):
       yield list(self.union_ids)
     return self
@@ -322,17 +320,16 @@ class SubSetGenerator(SetGeneratorBase):
     self.random_state = random_state
 
   def __iter__(self):
-    large_set = self.random_state.choice(
-        self.universe_size, self.large_set_size, replace=False)
-    small_set = self.random_state.choice(
-        large_set, self.small_set_size, replace=False)
+    large_set = choice_fast(
+        self.universe_size, self.large_set_size, self.random_state)
+    small_set = choice_fast(
+        large_set, self.small_set_size, self.random_state)
     self.union_ids.update(set(large_set))
     set_ids_list = ([large_set] * self.num_large_sets
                     + [small_set] * self.num_small_sets)
     for i in self.set_indices:
       yield set_ids_list[i]
     return self
-
 
 class _SequentiallyCorrelatedAllPreviousSetGenerator(SetGeneratorBase):
   """Generator for sequentailly correlated sets.
@@ -352,16 +349,15 @@ class _SequentiallyCorrelatedAllPreviousSetGenerator(SetGeneratorBase):
     # self.overlap_size_list[i] is the overlap of set.set_size_list[i]
     # with the previous union, so in particular, self.overlap_size_list[0] = 0
     total_ids_size = int(sum(self.set_size_list) - sum(self.overlap_size_list))
-    self.ids_pool = self.random_state.choice(
-        universe_size, total_ids_size, replace=False)
+    self.ids_pool = choice_fast(universe_size, total_ids_size, self.random_state)
 
   def __iter__(self):
     for i in range(len(self.set_size_list)):
       overlap_size = min(self.overlap_size_list[i], len(self.union_ids))
-      set_ids_overlapped = self.random_state.choice(
+      set_ids_overlapped = choice_fast(
           self.union_ids,
           overlap_size,
-          replace=False)
+          self.random_state)
       set_size = self.set_size_list[i]
       set_ids_non_overlapped = self.ids_pool[:(set_size - overlap_size)]
       self.ids_pool = self.ids_pool[len(set_ids_non_overlapped):]
@@ -389,8 +385,8 @@ class _SequentiallyCorrelatedThePreviousSetGenerator(SetGeneratorBase):
     # self.overlap_size_list[i] is the overlap of set.set_size_list[i]
     # with the previous set, so in particular, self.overlap_size_list[0] = 0
     total_ids_size = int(sum(self.set_size_list) - sum(self.overlap_size_list))
-    self.ids_pool = self.random_state.choice(
-        universe_size, total_ids_size, replace=False)
+    self.ids_pool = choice_fast(
+        universe_size, total_ids_size, self.random_state)
 
   def __iter__(self):
     start = 0
