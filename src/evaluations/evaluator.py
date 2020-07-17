@@ -233,7 +233,7 @@ class Evaluator(object):
     self.scenario_random_states = scenario_random_states
 
   def __call__(self):
-    if self.parallel_cores >= 1:
+    if self.parallel_cores > 1:
       self.evaluate_all_parallel()
     else:
       self.evaluate_all()
@@ -326,6 +326,9 @@ class Evaluator(object):
     total_length = len(self.evaluation_config.scenario_config_list) * \
                 len(self.sketch_estimator_config_list)
 
+    # Progress visualization
+    pbar = tqdm(total=total_length)
+
     # Start scenarios, returns the elapsed time for each.
     with ProcessPool(self.parallel_cores) as pool:
       times = pool.uimap(run_scenario, work_items)
@@ -337,9 +340,12 @@ class Evaluator(object):
     # Aggregate time spent on each scenario by file 
     # (which aggregates them by estimator)
     performance_stats = dict()
-    # Progress visualization
-    pbar = tqdm(total=total_length)
+
     # The 'times' uimap will return items which finish first
+    # We are summing up the time each evaluator spends on all
+    # threads. This should provide similar runtime numbers as
+    # the serial version because it calculates CPU time, not
+    # wall time.
     for elapsed_time, sketch_estimator_name, scenario_name in times:
       time_file = os.path.join(
         self.description_to_file_dir[KEY_ESTIMATOR_DIRS][
@@ -350,10 +356,11 @@ class Evaluator(object):
       performance_stats[time_file] += elapsed_time
       # Update progress
       pbar.update()
-      pbar.set_description(f'Finished {sketch_estimator_name}: {scenario_name}')
-
+      pbar.set_description(f'Finished {sketch_estimator_name}-{scenario_name}')
     # Write performance stats
     for time_file, elapsed_time in performance_stats.items():
       with open(time_file, 'w') as f:
         f.write(str(elapsed_time))
+    pbar.close()
+    
     
