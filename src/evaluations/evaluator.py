@@ -19,8 +19,9 @@ import pickle
 import shutil
 import time
 import itertools
-from tqdm import tqdm
+
 from pathos import ProcessPool
+from tqdm import tqdm
 
 from absl import logging
 
