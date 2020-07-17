@@ -14,18 +14,16 @@
 """Evaluator for cardinality estimators."""
 
 import copy
+import itertools
 import os
 import pickle
 import shutil
 import time
-import itertools
-
-from pathos.multiprocessing import ProcessPool, cpu_count
-from tqdm import tqdm
 
 from absl import logging
-
 import numpy as np
+from pathos.multiprocessing import ProcessPool, cpu_count
+from tqdm import tqdm
 
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import EvaluationConfig
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
@@ -301,8 +299,7 @@ class Evaluator(object):
     # Spawnable process to evaluate a sketch estimator on a certain scenario.
     def run_scenario(args):
       """
-      Tests each scenario on the given estimator. Writes output to folder
-      specified on instantiation of this object.
+      Tests each scenario on the given estimator.
 
       Returns:
         tuple: (elapsed time, estimator name, scenario name)
@@ -357,6 +354,7 @@ class Evaluator(object):
       # Update progress
       pbar.update()
       pbar.set_description(f'Finished {sketch_estimator_name}-{scenario_name}')
+
     # Write performance stats
     for time_file, elapsed_time in performance_stats.items():
       with open(time_file, 'w') as f:
