@@ -205,12 +205,11 @@ class Evaluator(object):
           'SketchEstimatorConfig objects')
     assert isinstance(parallel_cores, int), (
         'parallel_cores must be an int')
-    if parallel_cores > cpu_count():
+    if parallel_cores < 1:
       self.parallel_cores = cpu_count()
-    elif parallel_cores >= 1:
-      self.parallel_cores = parallel_cores
     else:
-      self.parallel_cores = cpu_count()
+      self.parallel_cores = min(parallel_cores, cpu_count())
+      
     logging.info(f'Number of cores to be used: {self.parallel_cores}')
     
     self.evaluation_config = evaluation_config
