@@ -211,6 +211,8 @@ class Evaluator(object):
       self.parallel_cores = parallel_cores
     else:
       self.parallel_cores = cpu_count()
+    logging.info(f'Number of cores to be used: {self.parallel_cores}')
+    
     self.evaluation_config = evaluation_config
     self.sketch_estimator_config_list = sketch_estimator_config_list
 
