@@ -205,7 +205,12 @@ class Evaluator(object):
           'SketchEstimatorConfig objects')
     assert isinstance(parallel_cores, int), (
         'parallel_cores must be an int')
-    self.parallel_cores = parallel_cores if parallel_cores >= 1 else cpu_count()
+    if parallel_cores > cpu_count():
+      self.parallel_cores = cpu_count()
+    elif parallel_cores >= 1:
+      self.parallel_cores = parallel_cores
+    else:
+      self.parallel_cores = cpu_count()
     self.evaluation_config = evaluation_config
     self.sketch_estimator_config_list = sketch_estimator_config_list
 
@@ -231,71 +236,10 @@ class Evaluator(object):
     self.scenario_random_states = scenario_random_states
 
   def __call__(self):
-    if self.parallel_cores > 1:
-      self.evaluate_all_parallel()
-    else:
-      self.evaluate_all()
-
-  def evaluate_all(self):
-    """Evaluate all estimators under all scenarios."""
-    for sketch_estimator_config in self.sketch_estimator_config_list:
-      start_time = time.perf_counter()
-      self.evaluate_estimator(sketch_estimator_config)
-      elapsed_time = str(time.perf_counter() - start_time)
-      time_file = os.path.join(
-          self.description_to_file_dir[KEY_ESTIMATOR_DIRS][
-              sketch_estimator_config.name],
-          EVALUATION_RUN_TIME_FILE)
-      with open(time_file, 'w') as f:
-        f.write(elapsed_time)
-
-  def evaluate_estimator(self, sketch_estimator_config):
-    """Evaluate one estimator under all the scenarios."""
-    logging.info('====Estimator: %s', sketch_estimator_config.name)
-
-    # Save an example of the sketch_estimator_config.
-    self.save_estimator(sketch_estimator_config)
-
-    for scenario_config in self.evaluation_config.scenario_config_list:
-      self.run_one_scenario(scenario_config, sketch_estimator_config)
-
-  def save_estimator(self, sketch_estimator_config):
-    estimator_dir = self.description_to_file_dir[KEY_ESTIMATOR_DIRS][
-        sketch_estimator_config.name]
-    estimator = sketch_estimator_config.sketch_factory(0)
-    sketch_estimator_config_file = os.path.join(
-        estimator_dir, ESTIMATOR_CONFIG_FILE)
-    with open(sketch_estimator_config_file, 'wb') as f:
-      pickle.dump(estimator, f)
-
-  def run_one_scenario(self, scenario_config, sketch_estimator_config):
-    """Run evaluation for an estimator under a scenario."""
-    logging.info('Scenario: %s', scenario_config.name)
-
-    scenario_dir = self.description_to_file_dir[
-        sketch_estimator_config.name][scenario_config.name]
-    # Save an example of the scenario_config.
-    gen = scenario_config.set_generator_factory(np.random.RandomState())
-    scenario_config_file = os.path.join(scenario_dir, SCENARIO_CONFIG_FILE)
-    with open(scenario_config_file, 'wb') as f:
-      pickle.dump(gen, f)
-
-    # Run simulations.
-    df_raw_file = os.path.join(scenario_dir, RAW_RESULT_DF_FILENAME)
-    df_agg_file = os.path.join(scenario_dir, AGG_RESULT_DF_FILENAME)
-    with open(df_raw_file, 'w') as f1, open(df_agg_file, 'w') as f2:
-      sim = Simulator(
-          num_runs=self.evaluation_config.num_runs,
-          set_generator_factory=scenario_config.set_generator_factory,
-          sketch_estimator_config=sketch_estimator_config,
-          set_random_state=copy.deepcopy(
-              self.scenario_random_states[scenario_config.name]),
-          file_handle_raw=f1,
-          file_handle_agg=f2)
-      _ = sim()
+    self.evaluate_all_parallel()
 
   def evaluate_all_parallel(self):
-    """Evaluate all estimators under all scenarios using multiple cores."""
+    """Evaluate all estimators under all scenarios using one or more cores."""
     # Spawnable process to evaluate a sketch estimator on a certain scenario.
     def run_scenario(args):
       """
@@ -360,5 +304,52 @@ class Evaluator(object):
       with open(time_file, 'w') as f:
         f.write(str(elapsed_time))
     pbar.close()
+
+  def evaluate_estimator(self, sketch_estimator_config):
+    """Evaluate one estimator under all the scenarios."""
+    logging.info('====Estimator: %s', sketch_estimator_config.name)
+
+    # Save an example of the sketch_estimator_config.
+    self.save_estimator(sketch_estimator_config)
+
+    for scenario_config in self.evaluation_config.scenario_config_list:
+      self.run_one_scenario(scenario_config, sketch_estimator_config)
+
+  def save_estimator(self, sketch_estimator_config):
+    estimator_dir = self.description_to_file_dir[KEY_ESTIMATOR_DIRS][
+        sketch_estimator_config.name]
+    estimator = sketch_estimator_config.sketch_factory(0)
+    sketch_estimator_config_file = os.path.join(
+        estimator_dir, ESTIMATOR_CONFIG_FILE)
+    with open(sketch_estimator_config_file, 'wb') as f:
+      pickle.dump(estimator, f)
+
+  def run_one_scenario(self, scenario_config, sketch_estimator_config):
+    """Run evaluation for an estimator under a scenario."""
+    logging.info('Scenario: %s', scenario_config.name)
+
+    scenario_dir = self.description_to_file_dir[
+        sketch_estimator_config.name][scenario_config.name]
+    # Save an example of the scenario_config.
+    gen = scenario_config.set_generator_factory(np.random.RandomState())
+    scenario_config_file = os.path.join(scenario_dir, SCENARIO_CONFIG_FILE)
+    with open(scenario_config_file, 'wb') as f:
+      pickle.dump(gen, f)
+
+    # Run simulations.
+    df_raw_file = os.path.join(scenario_dir, RAW_RESULT_DF_FILENAME)
+    df_agg_file = os.path.join(scenario_dir, AGG_RESULT_DF_FILENAME)
+    with open(df_raw_file, 'w') as f1, open(df_agg_file, 'w') as f2:
+      sim = Simulator(
+          num_runs=self.evaluation_config.num_runs,
+          set_generator_factory=scenario_config.set_generator_factory,
+          sketch_estimator_config=sketch_estimator_config,
+          set_random_state=copy.deepcopy(
+              self.scenario_random_states[scenario_config.name]),
+          file_handle_raw=f1,
+          file_handle_agg=f2)
+      _ = sim()
+
+
     
     
