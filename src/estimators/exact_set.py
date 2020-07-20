@@ -17,6 +17,7 @@
 import collections
 import copy
 import sys
+import numpy as np
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimatorBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchNoiserBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchBase
@@ -64,12 +65,9 @@ class ExactMultiSet(SketchBase):
     """Returns the frequency of occurrence of x."""
     return self._ids.get(x, 0)
 
+
 class ExactSet(ExactMultiSet):
   """A sketch that exactly counts the number of unique items."""
-
-  def frequency(self, x):
-    """Returns the frequency of occurrence of x."""
-    return int(x in self._ids)
 
 
 class LosslessEstimator(EstimatorBase):
@@ -82,17 +80,15 @@ class LosslessEstimator(EstimatorBase):
     """Return len(sketch)."""
     if len(sketch_list) == 0:
       return [0]
-    if isinstance(sketch_list[0], ExactSet):
-      union = ExactSet()
-    else:
-      union = ExactMultiSet()
+    union = ExactMultiSet()
     for s in sketch_list:
       for id in s.ids():
         union.add_ids([id] * s.frequency(id))
-    histogram = collections.defaultdict(int)
+    frequency_counts = collections.defaultdict(int)
     for x in union.ids():
-      histogram[union.frequency(x)] += 1
-    return [histogram[i] for i in range(1, max(histogram)+1)]
+      frequency_counts[union.frequency(x)] += 1
+    histogram = list(reversed(np.cumsum([frequency_counts[i] for i in range(max(frequency_counts), 0, -1)])))
+    return histogram
 
 
 class LessOneEstimator(EstimatorBase):
@@ -104,15 +100,10 @@ class LessOneEstimator(EstimatorBase):
   def __call__(self, sketch_list):
     """Return len(sketch) - 1."""
     e = LosslessEstimator()
-    histogram = e(sketch_list).copy()
+    histogram = e(sketch_list)
     if sum(histogram) == 0:
       raise ValueError("Attempt to create a histogram with a negative value!")
-    if histogram[0]:
-      histogram[0] -= 1
-    else:
-      i = min([i for i in range(len(histogram)) if histogram[i] > 0])
-      histogram[i-1] = 1
-      histogram[i] -= 1
+    histogram = [min(h, histogram[0]-1) for h in histogram]
     return histogram
 
 
