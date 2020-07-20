@@ -54,8 +54,7 @@ class EstimatorBase(object):
   """An estimator takes a sketch and produces a frequency histogram.
 
   If the array of values produced by an estimator is h[], then h[i] represents
-  the cardinality estimate of items having a frequency of i+1.  h[-1] is the
-  cardinality estimate of items having a frequency of len(h) or greater.
+  the cardinality estimate of items having a frequency of i+1 or higher.
 
   Note that there is no requirement on the number of frequencies that
   an estimator should produce.  Thus, an estimator that provides estimates
