@@ -166,6 +166,12 @@ class UnionEstimatorTest(absltest.TestCase):
     b1.add(1)
     self.assertEqual(UnionEstimator.estimate_cardinality(b1), 1)
 
+  def test_raise_error_with_full_bloom_filter(self):
+    b1 = BloomFilter(length=2, random_seed=3)
+    b1.add_ids(range(10))
+    with self.assertRaises(ValueError):
+      _ = UnionEstimator.estimate_cardinality(b1)
+
   def test_multi_insertion_two_hash(self):
     # Due to hash collisions, the estimate could be 1 or 2.
     # We test the distribution.

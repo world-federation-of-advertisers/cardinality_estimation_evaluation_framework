@@ -259,6 +259,13 @@ class UnionEstimator(EstimatorBase):
     x = np.sum(sketch.sketch != 0)
     k = float(sketch.num_hashes())
     m = float(sketch.max_size())
+    if x >= m:
+    # When the BF is almost full, the estimate may have large bias or variance.
+    # So, later we might change this to x >= z * m where z < 1.
+    # We may determine the threshold z based on some theory.
+      raise ValueError(
+          "The BloomFilter is full. "
+          "Please increase the BloomFilter length or use exp/log-BloomFilter.")
     return int(math.fabs(m / k * math.log(1 - x / m)))
 
   def __call__(self, sketch_list):
@@ -278,7 +285,6 @@ class FirstMomentEstimator(EstimatorBase):
   METHOD_LOG = "log"
   METHOD_EXP = "exp"
   METHOD_ANY = "any"
-
 
   def __init__(self, method, denoiser=None, weights=None):
     EstimatorBase.__init__(self)
