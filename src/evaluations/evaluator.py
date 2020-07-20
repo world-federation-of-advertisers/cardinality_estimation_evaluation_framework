@@ -188,9 +188,9 @@ class Evaluator(object):
       overwrite: a boolean variable. If set to True, will allow to overwrite the
         results even if the run exists. Otherwise, will raise error. By default,
         set to False.
-      workers: (integer) number of cores to use in parallel. If this is set to 1, 
-        the evaluations will run serially. If this is set to 0 or less, the scenarios 
-        will run in parallel utilizing as many cores as possible.
+      workers: (integer) number of processes to spawn. If this is set to 1, 
+        the evaluations will run serially. If this is set to 0 or less, the 
+        evaluations will run on as many processes as there are CPUs.
 
     Raises:
       AssertionError: if the evaluation_config is not an EvaluationConfig,
