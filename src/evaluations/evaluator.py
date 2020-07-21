@@ -167,6 +167,45 @@ def load_directory_tree(out_dir, run_name, evaluation_name):
 
   return description_to_file_dir
 
+def aggregate_and_write_times(times, estimator_to_file, pbar=None):
+  """Aggregates time spent by each estimator and writes time to file.
+
+  Args:
+    times: list of (time (s), sketch estimator name, scenario name)
+    estimator_to_file: dictionary mapping estimator name to file
+    pbar: tqdm progress bar object. Can be None.
+  
+  Returns:
+    None
+  
+  Side Effects:
+    Writes to files given by estimator_to_file if estimator_name is in times
+  """
+  # Aggregate time spent on each scenario by estimator
+  performance_stats = dict()
+
+  # Sum up the time taken on each process, grouped by estimator. 
+  # This should provide similar runtime numbers serially or
+  # in parallel because it calculates CPU time, not wall time.
+  for elapsed_time, sketch_estimator_name, scenario_name in times:
+    time_file = os.path.join(
+      estimator_to_file[
+          sketch_estimator_name],
+      EVALUATION_RUN_TIME_FILE)
+
+    if time_file not in performance_stats.keys():
+      performance_stats[time_file] = 0
+    performance_stats[time_file] += elapsed_time
+
+    # Update progress
+    if pbar is not None:
+      pbar.update()
+      pbar.set_description(f'Finished {sketch_estimator_name}-{scenario_name}')
+
+  # Write performance stats
+  for time_file, elapsed_time in performance_stats.items():
+    with open(time_file, 'w') as f:
+      f.write(str(elapsed_time))
 
 class Evaluator(object):
   """Run evaluations for cardinality estinators."""
@@ -250,43 +289,19 @@ class Evaluator(object):
                 len(self.sketch_estimator_config_list)
 
     # Progress visualization
-    pbar = tqdm(total=total_length)
+    with tqdm(total=total_length) as pbar:
+      # Start scenarios; returns a list of (time, sketch name, scenario name)
+      # tuples for each process spawned.
+      with ProcessPool(self.workers) as pool:
+        times = pool.uimap(self._run_one_scenario_process, work_items)
+      
+      # While the scenarios are running, save estimator configs
+      for sketch_estimator_config in self.sketch_estimator_config_list:
+        self.save_estimator(sketch_estimator_config)
 
-    # Start scenarios; returns a list of (time, sketch name, scenario name)
-    # tuples for each process spawned.
-    with ProcessPool(self.workers) as pool:
-      times = pool.uimap(self._run_one_scenario_process, work_items)
-    
-    # While the scenarios are running, save estimator configs
-    for sketch_estimator_config in self.sketch_estimator_config_list:
-      self.save_estimator(sketch_estimator_config)
-
-    # Aggregate time spent on each scenario by file 
-    # (which aggregates them by estimator)
-    performance_stats = dict()
-
-    # Sum up the time taken on each process, grouped by estimator. 
-    # This should provide similar runtime numbers serially or
-    # in parallel because it calculates CPU time, not wall time.
-    for elapsed_time, sketch_estimator_name, scenario_name in times:
-      time_file = os.path.join(
-        self.description_to_file_dir[KEY_ESTIMATOR_DIRS][
-            sketch_estimator_name],
-        EVALUATION_RUN_TIME_FILE)
-
-      if time_file not in performance_stats.keys():
-        performance_stats[time_file] = 0
-      performance_stats[time_file] += elapsed_time
-
-      # Update progress
-      pbar.update()
-      pbar.set_description(f'Finished {sketch_estimator_name}-{scenario_name}')
-
-    # Write performance stats
-    for time_file, elapsed_time in performance_stats.items():
-      with open(time_file, 'w') as f:
-        f.write(str(elapsed_time))
-    pbar.close()
+      aggregate_and_write_times(times,
+                                self.description_to_file_dir[KEY_ESTIMATOR_DIRS],
+                                pbar)
 
   def evaluate_estimator(self, sketch_estimator_config):
     """Evaluate one estimator under all the scenarios."""
