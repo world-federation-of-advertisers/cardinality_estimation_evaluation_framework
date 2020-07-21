@@ -167,6 +167,7 @@ def load_directory_tree(out_dir, run_name, evaluation_name):
 
   return description_to_file_dir
 
+
 def aggregate_and_write_times(times, estimator_to_file, pbar=None):
   """Aggregates time spent by each estimator and writes time to file.
 
@@ -206,6 +207,7 @@ def aggregate_and_write_times(times, estimator_to_file, pbar=None):
   for time_file, elapsed_time in performance_stats.items():
     with open(time_file, 'w') as f:
       f.write(str(elapsed_time))
+
 
 class Evaluator(object):
   """Run evaluations for cardinality estinators."""
