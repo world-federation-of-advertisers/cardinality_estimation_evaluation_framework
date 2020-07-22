@@ -14,6 +14,7 @@
 
 """Simple example of creating a cardinality estimator."""
 
+import collections
 import copy
 import sys
 import numpy as np
@@ -22,7 +23,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.base import Sket
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchBase
 
 
-class ExactSet(SketchBase):
+class ExactMultiSet(SketchBase):
   """A sketch that exactly counts the frequency of each item."""
 
   @classmethod
@@ -42,7 +43,7 @@ class ExactSet(SketchBase):
     """
     SketchBase.__init__(self)
     _ = random_seed
-    self._ids = set()
+    self._ids = {}
 
   def __len__(self):
     """Return the number of elements in the sketch."""
@@ -54,7 +55,7 @@ class ExactSet(SketchBase):
 
   def add(self, x):
     """Adds an id x to the sketch."""
-    self._ids.add(x)
+    self._ids[x] = self._ids.get(x, 0) + 1
 
   def ids(self):
     """Return the internal ID set."""
