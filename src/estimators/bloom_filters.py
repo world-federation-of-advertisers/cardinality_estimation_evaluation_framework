@@ -274,7 +274,7 @@ class UnionEstimator(EstimatorBase):
       return 0
     assert isinstance(sketch_list[0], BloomFilter), "expected a BloomFilter"
     union = UnionEstimator.union_sketches(sketch_list)
-    return UnionEstimator.estimate_cardinality(union)
+    return [UnionEstimator.estimate_cardinality(union)]
 
 
 class FirstMomentEstimator(EstimatorBase):
@@ -388,13 +388,13 @@ class FirstMomentEstimator(EstimatorBase):
         "Expected an AnyDistributionBloomFilter.")
     union = self.union_sketches(sketch_list)
     if self._method == FirstMomentEstimator.METHOD_LOG:
-      return FirstMomentEstimator._estimate_cardinality_log(union)
+      return [FirstMomentEstimator._estimate_cardinality_log(union)]
     if self._method == FirstMomentEstimator.METHOD_EXP:
-      return FirstMomentEstimator._estimate_cardinality_exp(union)
+      return [FirstMomentEstimator._estimate_cardinality_exp(union)]
     if self._method == FirstMomentEstimator.METHOD_UNIFORM:
-      return FirstMomentEstimator._estimate_cardinality_uniform(union)
-    return FirstMomentEstimator._estimate_cardinality_any(
-        union, self._weights)
+      return [FirstMomentEstimator._estimate_cardinality_uniform(union)]
+    return [FirstMomentEstimator._estimate_cardinality_any(
+        union, self._weights)]
 
 
 class FixedProbabilityBitFlipNoiser(SketchNoiserBase):

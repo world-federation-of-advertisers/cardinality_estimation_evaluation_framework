@@ -22,7 +22,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.base import Sket
 
 
 class ExactSet(SketchBase):
-  """An sketch that just uses a set as its implementation."""
+  """A sketch that exactly counts the frequency of each item."""
 
   @classmethod
   def get_sketch_factory(cls):
@@ -68,6 +68,8 @@ class LosslessEstimator(EstimatorBase):
 
   def __call__(self, sketch_list):
     """Return len(sketch)."""
+    if len(sketch_list) == 0:
+      return [0]
     union = ExactSet()
     for s in sketch_list:
       union.add_ids(s.ids())
@@ -81,9 +83,13 @@ class LessOneEstimator(EstimatorBase):
     EstimatorBase.__init__(self)
 
   def __call__(self, sketch_list):
-    """Return len(sketch)."""
+    """Return len(sketch) - 1."""
     e = LosslessEstimator()
-    return e(sketch_list) - 1
+    histogram = e(sketch_list).copy()
+    if sum(histogram) == 0:
+      raise ValueError("Attempt to create a histogram with a negative value!")
+    histogram[0] -= 1
+    return histogram
 
 
 class AddRandomElementsNoiser(SketchNoiserBase):

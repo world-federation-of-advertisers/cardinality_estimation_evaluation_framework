@@ -166,7 +166,7 @@ class Simulator(object):
     true_union = set()
     metrics = []
     for i in range(len(sketches)):
-      estimated_cardinality = estimator(sketches[:i + 1])
+      estimated_cardinality = estimator(sketches[:i + 1])[0]
       if hasattr(self.sketch_estimator_config,
                  'estimate_noiser') and self.sketch_estimator_config.estimate_noiser:
         estimated_cardinality = self.sketch_estimator_config.estimate_noiser(

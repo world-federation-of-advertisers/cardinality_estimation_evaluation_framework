@@ -84,7 +84,6 @@ flags.DEFINE_integer('boxplot_size_height_inch', 6,
 required_flags = ('evaluation_config', 'sketch_estimator_configs',
                   'evaluation_run_name', 'num_runs', 'evaluation_out_dir')
 
-
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')

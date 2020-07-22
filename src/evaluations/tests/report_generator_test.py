@@ -121,9 +121,9 @@ class ReportGeneratorTest(absltest.TestCase):
 
   def test_widen_num_estimable_sets_df(self):
     out_dir = self.create_tempdir('test_widen_num_estimable_sets_df')
-    self.run_evaluation_and_simulation(out_dir)
+    self.run_evaluation_and_simulation(out_dir.full_path)
     analysis_results = analyzer.get_analysis_results(
-        analysis_out_dir=out_dir,
+        analysis_out_dir=out_dir.full_path,
         evaluation_run_name=self.evaluation_run_name,
         evaluation_name=self.evaluation_config.name)
     num_estimable_sets_stats_df = (
@@ -145,9 +145,9 @@ class ReportGeneratorTest(absltest.TestCase):
 
   def test_generate_boxplot_html(self):
     out_dir = self.create_tempdir('test_generate_boxplot_html')
-    self.run_evaluation_and_simulation(out_dir)
+    self.run_evaluation_and_simulation(out_dir.full_path)
     analysis_results = analyzer.get_analysis_results(
-        analysis_out_dir=out_dir,
+        analysis_out_dir=out_dir.full_path,
         evaluation_run_name=self.evaluation_run_name,
         evaluation_name=self.evaluation_config.name)
     # Generate boxplot html.
@@ -160,7 +160,7 @@ class ReportGeneratorTest(absltest.TestCase):
         description_to_file_dir=description_to_file_dir,
         sketch_estimator_list=sketch_estimator_list,
         scenario_list=scenario_list,
-        out_dir=out_dir)
+        out_dir=out_dir.full_path)
     # Read the table from html.
     plot_html = ' '.join(plot_html.split('\n'))
     regex = r'<table(.+?)</table>'
@@ -172,10 +172,10 @@ class ReportGeneratorTest(absltest.TestCase):
   def test_generate_and_save_html_report(self):
     analysis_out_dir = self.create_tempdir('analysis_dir')
     report_out_dir = self.create_tempdir('test_report_dir')
-    self.run_evaluation_and_simulation(analysis_out_dir)
+    self.run_evaluation_and_simulation(analysis_out_dir.full_path)
     new_report = report_generator.ReportGenerator(
-        out_dir=report_out_dir,
-        analysis_out_dir=analysis_out_dir,
+        out_dir=report_out_dir.full_path,
+        analysis_out_dir=analysis_out_dir.full_path,
         evaluation_run_name=self.evaluation_run_name,
         evaluation_name=self.evaluation_config.name)
     report_url = new_report('new_report')
