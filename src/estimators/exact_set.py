@@ -76,7 +76,7 @@ class LosslessEstimator(EstimatorBase):
     EstimatorBase.__init__(self)
 
   def __call__(self, sketch_list):
-    """Return len(sketch)."""
+    """Returns sketch frequency histogram."""
     if len(sketch_list) == 0:
       return [0]
     union = ExactMultiSet()
@@ -97,7 +97,7 @@ class LessOneEstimator(EstimatorBase):
     EstimatorBase.__init__(self)
 
   def __call__(self, sketch_list):
-    """Return len(sketch) - 1."""
+    """Returns frequency histogram of sketch with total cardinality reduced by one."""
     e = LosslessEstimator()
     histogram = e(sketch_list)
     if sum(histogram) == 0:
