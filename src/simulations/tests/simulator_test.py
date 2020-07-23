@@ -81,6 +81,26 @@ class FakeEstimateNoiser(EstimateNoiserBase):
     return 10
 
 
+class FakeSetGenerator(set_generator.SetGeneratorBase):
+  """Generator for a fixed collection of sets."""
+
+  @classmethod
+  def get_generator_factory(cls, set_list):
+
+    def f(random_state):
+      return cls(set_list)
+
+    return f
+
+  def __init__(self, set_list):
+    self.set_list = set_list
+
+  def __iter__(self):
+    for s in self.set_list:
+      yield s
+    return self
+  
+
 class SimulatorTest(absltest.TestCase):
 
   def test_simulator_run_one(self):
@@ -99,7 +119,7 @@ class SimulatorTest(absltest.TestCase):
     sim = get_simple_simulator(sketch_estimator_config)
     data_frame = sim.run_one()
     self.assertLen(data_frame, 1)
-    self.assertEqual(data_frame['estimated_cardinality'].iloc[0], 10)
+    self.assertEqual(data_frame['estimated_cardinality_1'].iloc[0], 10)
     self.assertEqual(fake_estimate_noiser._calls, 1)
 
   def test_simulator_run_all_and_aggregate(self):
@@ -123,9 +143,9 @@ class SimulatorTest(absltest.TestCase):
     self.assertLen(data_frames, 2)
     for pub in data_frames[0]['num_sets']:
       self.assertEqual(pub, 1)
-    self.assertEqual(data_frames[0]['estimated_cardinality'][0], 4)
-    self.assertEqual(data_frames[0]['true_cardinality'][0], 1)
-    self.assertEqual(data_frames[0]['relative_error'][0], 3)
+    self.assertEqual(data_frames[0]['estimated_cardinality_1'][0], 4)
+    self.assertEqual(data_frames[0]['true_cardinality_1'][0], 1)
+    self.assertEqual(data_frames[0]['relative_error_1'][0], 3)
 
   def test_simulator_run_all_and_aggregate_multiple_runs(self):
     sketch_estimator_config = SketchEstimatorConfig(
@@ -192,8 +212,8 @@ class SimulatorTest(absltest.TestCase):
         sketch_estimator_config=sketch_estimator_config)
     df, _ = sim()
     self.assertEqual(
-        df.loc[df['num_sets'] == 1, 'estimated_cardinality'].values,
-        df.loc[df['num_sets'] == 2, 'estimated_cardinality'].values)
+        df.loc[df['num_sets'] == 1, 'estimated_cardinality_1'].values,
+        df.loc[df['num_sets'] == 2, 'estimated_cardinality_1'].values)
 
   def test_get_sketch_different_runs_different_random_state(self):
     sketch_estimator_config = SketchEstimatorConfig(
@@ -210,8 +230,42 @@ class SimulatorTest(absltest.TestCase):
         sketch_estimator_config=sketch_estimator_config)
     df, _ = sim()
     self.assertNotEqual(
-        df.loc[df['run_index'] == 0, 'estimated_cardinality'].values,
-        df.loc[df['run_index'] == 1, 'estimated_cardinality'].values)
+        df.loc[df['run_index'] == 0, 'estimated_cardinality_1'].values,
+        df.loc[df['run_index'] == 1, 'estimated_cardinality_1'].values)
 
+  def test_extend_histogram(self):
+    self.assertEqual(Simulator._extend_histogram(None, [], 1), [0])
+    self.assertEqual(Simulator._extend_histogram(None, [3, 2, 1], 1), [3])
+    self.assertEqual(Simulator._extend_histogram(None, [3, 2, 1], 2), [3, 2])
+    self.assertEqual(Simulator._extend_histogram(None, [3, 2, 1], 3), [3, 2, 1])
+    self.assertEqual(Simulator._extend_histogram(None, [3, 2, 1], 5), [3, 2, 1, 0, 0])
+
+  def test_multiple_frequencies(self):
+    sketch_estimator_config = SketchEstimatorConfig(
+        name='exact-set-multiple-frequencies',
+        sketch_factory=ExactMultiSet,
+        estimator=LosslessEstimator(),
+        max_frequency=3)
+    set_generator_factory = (
+        FakeSetGenerator.get_generator_factory(
+          [[1, 1, 1, 2, 2, 3], [1, 1, 1, 3, 3, 4]]))
+    sim = Simulator(
+        num_runs=1,
+        set_generator_factory=set_generator_factory,
+        sketch_estimator_config=sketch_estimator_config)
+    df, _ = sim()
+    expected_columns = ['num_sets', 'estimated_cardinality_1', 'estimated_cardinality_2',
+                        'estimated_cardinality_3', 'true_cardinality_1',
+                        'true_cardinality_2', 'true_cardinality_3', 'run_index',
+                        'relative_error_1', 'relative_error_2', 'relative_error_3']
+    expected_data = [
+      [1, 3, 2, 1, 3, 2, 1, 0, 0., 0., 0.],
+      [2, 4, 3, 2, 4, 3, 2, 0, 0., 0., 0.]
+    ]
+    
+    expected_df = pd.DataFrame(expected_data, columns=expected_columns)
+    pd.testing.assert_frame_equal(df, expected_df)
+
+    
 if __name__ == '__main__':
   absltest.main()

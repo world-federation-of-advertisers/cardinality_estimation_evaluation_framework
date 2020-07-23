@@ -190,7 +190,7 @@ class EvaluatorTest(absltest.TestCase):
         with open(df_file, 'r') as f:
           df = pd.read_csv(f)
         true_cardinalities.append(
-            df[[simulator.RUN_INDEX, simulator.TRUE_CARDINALITY,
+            df[[simulator.RUN_INDEX, simulator.TRUE_CARDINALITY_BASENAME + '1',
                 simulator.NUM_SETS]])
 
       # The true union cardinality should be the same for different estimators
