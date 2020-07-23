@@ -83,5 +83,18 @@ class ExactMultiSetTest(absltest.TestCase):
     self.assertEqual(s.frequency(6), 1)
     self.assertEqual(LosslessEstimator()([s]), [6, 4, 3, 2, 1, 1])
 
+  def test_frequency_for_exactset(self):
+    s = ExactSet()
+    s.add_ids([1,2,3,1,2])
+    self.assertEqual(s.frequency(1), 1)
+    self.assertEqual(s.frequency(2), 1)
+    self.assertEqual(s.frequency(3), 1)
+    self.assertEqual(s.frequency(4), 0)
+
+  def test_ids_for_exactset(self):
+    s = ExactSet()
+    s.add_ids([1, 2, 3, 1])
+    self.assertCountEqual(s.ids(), [1, 2, 3])
+    
 if __name__ == '__main__':
   absltest.main()
