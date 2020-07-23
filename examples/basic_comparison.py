@@ -23,7 +23,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters im
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import UnionEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legions import CascadingLegions
 from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legions import Estimator
-from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactSet
+from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log import HllCardinality
 from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log import HyperLogLogPlusPlus
@@ -90,7 +90,7 @@ def main(argv):
 
   estimator_config_exact = SketchEstimatorConfig(
       name='exact_set-lossless',
-      sketch_factory=ExactSet.get_sketch_factory(),
+      sketch_factory=ExactMultiSet.get_sketch_factory(),
       estimator=LosslessEstimator())
 
   estimator_config_list = [

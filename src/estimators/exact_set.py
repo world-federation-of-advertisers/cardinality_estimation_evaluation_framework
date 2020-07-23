@@ -35,7 +35,7 @@ class ExactMultiSet(SketchBase):
     return f
 
   def __init__(self, random_seed=None):
-    """Construct an ExactSet sketch.
+    """Construct an ExactMultiSet sketch.
 
     Args:
       random_seed: This arg exists in order to conform to
@@ -66,20 +66,8 @@ class ExactMultiSet(SketchBase):
     return self._ids.get(x, 0)
 
 
-class ExactSet(ExactMultiSet):
-  """A sketch that exactly counts the number of unique items."""
-
-  def ids(self):
-    """Return the internal ID set."""
-    return self._ids.keys()
-
-  def frequency(self, x):
-    """Returns 1 if x is in the set, 0 otherwise."""
-    return int(x in self._ids)
-
-
 class LosslessEstimator(EstimatorBase):
-  """A lossless estimator for ExactSet."""
+  """A lossless estimator for ExactMultiSet."""
 
   def __init__(self):
     EstimatorBase.__init__(self)
@@ -98,34 +86,29 @@ class LosslessEstimator(EstimatorBase):
     # At this point, frequency_counts is a dictionary whose keys are frequencies
     # and whose values are the number of items with the corresponding frequency.
     # We now need to create a histogram, where histogram[i] consists of all
-    # items having frequency i or greater.  So, if frequency[i] is the number of
+    # items having frequency i or greater.  So, if frequency_list[i] is the number of
     # items having exactly frequency i, we want to compute:
-    #   histogram[i] = frequency[i] + frequency[i+1] + ...
+    #   histogram[i] = frequency_list[i] + frequency_list[i+1] + ...
     # To accomplish this, we convert the dictionary of frequency counts to a list,
     # and then compute the reversed cumulative sums.
-    histogram = list(reversed(np.cumsum([frequency_counts[i] for i in range(max(frequency_counts), 0, -1)])))
+    frequency_list = [frequency_counts[i] for i in range(max(frequency_counts), 0, -1)]
+    histogram = list(reversed(np.cumsum(frequency_list)))
     return histogram
 
 
 class LessOneEstimator(EstimatorBase):
-  """Reports a cardinality one smaller than the true cardinality."""
+  """Reports a cardinality smaller than the true cardinality.  Sometimes the cardinality will be one less."""
 
   def __init__(self):
     EstimatorBase.__init__(self)
 
   def __call__(self, sketch_list):
-    """Returns frequency histogram of sketch with total cardinality reduced by one."""
+    """Returns frequency histogram of sketch with total cardinality reduced."""
     e = LosslessEstimator()
     histogram = e(sketch_list)
     if sum(histogram) == 0:
       raise ValueError("Attempt to create a histogram with a negative value!")
-    # It seems pretty clear that if the original histogram is [3, 2, 1], then
-    # a reasonable output is [2, 2, 1].  This corresponds to removing (the) one item
-    # whose frequency is 1.  But what if the histogram is [2, 2, 1]?  This represents
-    # a set having 0 items of frequency 1, 1 of frequency 2, and 1 of frequency 3.
-    # What should be removed in this case, and what should the resulting histogram
-    # look like?  I have opted for removing an item of lowest positive frequency.
-    return [min(h, histogram[0]-1) for h in histogram]
+    return [max(h-1, 0) for h in histogram]
 
 
 class AddRandomElementsNoiser(SketchNoiserBase):
