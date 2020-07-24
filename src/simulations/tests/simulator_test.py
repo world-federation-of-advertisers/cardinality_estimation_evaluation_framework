@@ -26,13 +26,12 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
-from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
-from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
+from wfa_cardinality_estimation_evaluation_framework.simulations import simulator 
 
 
 def get_simple_simulator(sketch_estimator_config=None):
   if not sketch_estimator_config:
-    sketch_estimator_config = SketchEstimatorConfig(
+    sketch_estimator_config = simulator.SketchEstimatorConfig(
         name='exact_set-lossless', sketch_factory=ExactMultiSet,
         estimator=LosslessEstimator())
   set_generator_factory = (
@@ -40,7 +39,7 @@ def get_simple_simulator(sketch_estimator_config=None):
       get_generator_factory_with_num_and_size(
           universe_size=1, num_sets=1, set_size=1))
 
-  return Simulator(
+  return simulator.Simulator(
       num_runs=1,
       set_generator_factory=set_generator_factory,
       sketch_estimator_config=sketch_estimator_config,
@@ -112,14 +111,14 @@ class SimulatorTest(absltest.TestCase):
 
   def test_simulator_run_one_with_estimate_noiser(self):
     fake_estimate_noiser = FakeEstimateNoiser()
-    sketch_estimator_config = SketchEstimatorConfig(
+    sketch_estimator_config = simulator.SketchEstimatorConfig(
         name='exact_set-lossless',
         sketch_factory=ExactMultiSet, estimator=LosslessEstimator(),
         estimate_noiser=fake_estimate_noiser)
     sim = get_simple_simulator(sketch_estimator_config)
     data_frame = sim.run_one()
     self.assertLen(data_frame, 1)
-    self.assertEqual(data_frame['estimated_cardinality_1'].iloc[0], 10)
+    self.assertEqual(data_frame[simulator.ESTIMATED_CARDINALITY_BASENAME + '1'].iloc[0], 10)
     self.assertEqual(fake_estimate_noiser._calls, 1)
 
   def test_simulator_run_all_and_aggregate(self):
@@ -131,7 +130,7 @@ class SimulatorTest(absltest.TestCase):
 
   def test_simulator_run_all_and_aggregate_with_noise(self):
     rs = np.random.RandomState(3)
-    sketch_estimator_config = SketchEstimatorConfig(
+    sketch_estimator_config = simulator.SketchEstimatorConfig(
         name='exact_set-lossless',
         sketch_factory=ExactMultiSet,
         estimator=LosslessEstimator(),
@@ -143,12 +142,12 @@ class SimulatorTest(absltest.TestCase):
     self.assertLen(data_frames, 2)
     for pub in data_frames[0]['num_sets']:
       self.assertEqual(pub, 1)
-    self.assertEqual(data_frames[0]['estimated_cardinality_1'][0], 4)
-    self.assertEqual(data_frames[0]['true_cardinality_1'][0], 1)
-    self.assertEqual(data_frames[0]['relative_error_1'][0], 3)
+    self.assertEqual(data_frames[0][simulator.ESTIMATED_CARDINALITY_BASENAME + '1'][0], 4)
+    self.assertEqual(data_frames[0][simulator.TRUE_CARDINALITY_BASENAME + '1'][0], 1)
+    self.assertEqual(data_frames[0][simulator.RELATIVE_ERROR_BASENAME + '1'][0], 3)
 
   def test_simulator_run_all_and_aggregate_multiple_runs(self):
-    sketch_estimator_config = SketchEstimatorConfig(
+    sketch_estimator_config = simulator.SketchEstimatorConfig(
         name='exact_set-lossless',
         sketch_factory=ExactMultiSet, estimator=LosslessEstimator())
     set_generator_factory = (
@@ -156,7 +155,7 @@ class SimulatorTest(absltest.TestCase):
         get_generator_factory_with_num_and_size(
             universe_size=1, num_sets=1, set_size=1))
 
-    sim = Simulator(
+    sim = simulator.Simulator(
         num_runs=5,
         set_generator_factory=set_generator_factory,
         sketch_estimator_config=sketch_estimator_config)
@@ -168,7 +167,7 @@ class SimulatorTest(absltest.TestCase):
       self.assertEqual(pub, 1)
 
   def test_simulator_run_all_and_aggregate_write_file(self):
-    sketch_estimator_config = SketchEstimatorConfig(
+    sketch_estimator_config = simulator.SketchEstimatorConfig(
         name='exact_set-lossless',
         sketch_factory=ExactMultiSet, estimator=LosslessEstimator())
     set_generator_factory = (
@@ -178,7 +177,7 @@ class SimulatorTest(absltest.TestCase):
 
     file_df = io.StringIO()
     file_df_agg = io.StringIO()
-    sim = Simulator(
+    sim = simulator.Simulator(
         num_runs=5,
         set_generator_factory=set_generator_factory,
         sketch_estimator_config=sketch_estimator_config,
@@ -198,7 +197,7 @@ class SimulatorTest(absltest.TestCase):
     pd.testing.assert_frame_equal(df_agg, df_agg_from_csv)
 
   def test_get_sketch_same_run_same_random_state(self):
-    sketch_estimator_config = SketchEstimatorConfig(
+    sketch_estimator_config = simulator.SketchEstimatorConfig(
         name='exact_set-lossless',
         sketch_factory=RandomSketchForTestRandomSeed,
         estimator=EstimatorForTestRandomSeed())
@@ -206,17 +205,17 @@ class SimulatorTest(absltest.TestCase):
         set_generator.IndependentSetGenerator.
         get_generator_factory_with_num_and_size(
             universe_size=1, num_sets=2, set_size=1))
-    sim = Simulator(
+    sim = simulator.Simulator(
         num_runs=1,
         set_generator_factory=set_generator_factory,
         sketch_estimator_config=sketch_estimator_config)
     df, _ = sim()
     self.assertEqual(
-        df.loc[df['num_sets'] == 1, 'estimated_cardinality_1'].values,
-        df.loc[df['num_sets'] == 2, 'estimated_cardinality_1'].values)
+        df.loc[df['num_sets'] == 1, simulator.ESTIMATED_CARDINALITY_BASENAME + '1'].values,
+        df.loc[df['num_sets'] == 2, simulator.ESTIMATED_CARDINALITY_BASENAME + '1'].values)
 
   def test_get_sketch_different_runs_different_random_state(self):
-    sketch_estimator_config = SketchEstimatorConfig(
+    sketch_estimator_config = simulator.SketchEstimatorConfig(
         name='random_sketch-estimator_for_test_random_seed',
         sketch_factory=RandomSketchForTestRandomSeed,
         estimator=EstimatorForTestRandomSeed())
@@ -224,24 +223,24 @@ class SimulatorTest(absltest.TestCase):
         set_generator.IndependentSetGenerator.
         get_generator_factory_with_num_and_size(
             universe_size=1, num_sets=1, set_size=1))
-    sim = Simulator(
+    sim = simulator.Simulator(
         num_runs=2,
         set_generator_factory=set_generator_factory,
         sketch_estimator_config=sketch_estimator_config)
     df, _ = sim()
     self.assertNotEqual(
-        df.loc[df['run_index'] == 0, 'estimated_cardinality_1'].values,
-        df.loc[df['run_index'] == 1, 'estimated_cardinality_1'].values)
+        df.loc[df['run_index'] == 0, simulator.ESTIMATED_CARDINALITY_BASENAME + '1'].values,
+        df.loc[df['run_index'] == 1, simulator.ESTIMATED_CARDINALITY_BASENAME + '1'].values)
 
   def test_extend_histogram(self):
-    self.assertEqual(Simulator._extend_histogram(None, [], 1), [0])
-    self.assertEqual(Simulator._extend_histogram(None, [3, 2, 1], 1), [3])
-    self.assertEqual(Simulator._extend_histogram(None, [3, 2, 1], 2), [3, 2])
-    self.assertEqual(Simulator._extend_histogram(None, [3, 2, 1], 3), [3, 2, 1])
-    self.assertEqual(Simulator._extend_histogram(None, [3, 2, 1], 5), [3, 2, 1, 0, 0])
+    self.assertEqual(simulator.Simulator._extend_histogram(None, [], 1), [0])
+    self.assertEqual(simulator.Simulator._extend_histogram(None, [3, 2, 1], 1), [3])
+    self.assertEqual(simulator.Simulator._extend_histogram(None, [3, 2, 1], 2), [3, 2])
+    self.assertEqual(simulator.Simulator._extend_histogram(None, [3, 2, 1], 3), [3, 2, 1])
+    self.assertEqual(simulator.Simulator._extend_histogram(None, [3, 2, 1], 5), [3, 2, 1, 0, 0])
 
   def test_multiple_frequencies(self):
-    sketch_estimator_config = SketchEstimatorConfig(
+    sketch_estimator_config = simulator.SketchEstimatorConfig(
         name='exact-set-multiple-frequencies',
         sketch_factory=ExactMultiSet,
         estimator=LosslessEstimator(),
@@ -249,18 +248,25 @@ class SimulatorTest(absltest.TestCase):
     set_generator_factory = (
         FakeSetGenerator.get_generator_factory(
           [[1, 1, 1, 2, 2, 3], [1, 1, 1, 3, 3, 4]]))
-    sim = Simulator(
+    sim = simulator.Simulator(
         num_runs=1,
         set_generator_factory=set_generator_factory,
         sketch_estimator_config=sketch_estimator_config)
     df, _ = sim()
-    expected_columns = ['num_sets', 'estimated_cardinality_1', 'estimated_cardinality_2',
-                        'estimated_cardinality_3', 'true_cardinality_1',
-                        'true_cardinality_2', 'true_cardinality_3', 'run_index',
-                        'relative_error_1', 'relative_error_2', 'relative_error_3']
+    expected_columns = ['num_sets',
+                        simulator.ESTIMATED_CARDINALITY_BASENAME + '1',
+                        simulator.ESTIMATED_CARDINALITY_BASENAME + '2',
+                        simulator.ESTIMATED_CARDINALITY_BASENAME + '3',
+                        simulator.TRUE_CARDINALITY_BASENAME + '1',
+                        simulator.TRUE_CARDINALITY_BASENAME + '2',
+                        simulator.TRUE_CARDINALITY_BASENAME + '3',
+                        'run_index',
+                        simulator.RELATIVE_ERROR_BASENAME + '1',
+                        simulator.RELATIVE_ERROR_BASENAME + '2',
+                        simulator.RELATIVE_ERROR_BASENAME + '3']
     expected_data = [
-      [1, 3, 2, 1, 3, 2, 1, 0, 0., 0., 0.],
-      [2, 4, 3, 2, 4, 3, 2, 0, 0., 0., 0.]
+        [1, 3, 2, 1, 3, 2, 1, 0, 0., 0., 0.],
+        [2, 4, 3, 2, 4, 3, 2, 0, 0., 0., 0.]
     ]
     
     expected_df = pd.DataFrame(expected_data, columns=expected_columns)
