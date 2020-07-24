@@ -21,6 +21,7 @@ import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import AnySketch
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import BitwiseOrFunction
+from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import GeometricDistribution
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import IndexSpecification
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import LogBucketDistribution
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import SketchConfig
@@ -36,6 +37,23 @@ class DistributionTest(parameterized.TestCase):
     self.assertLen(u1, 10)
     self.assertEqual(u1, u2)
     self.assertEqual(u1.get_index(42), 2)
+
+  def test_geo_bucket_distribution_get_bounds(self):
+    bounds = GeometricDistribution(num_values=4, probability=0.08).register_bounds
+    expected = np.array([0.28208044, 0.54159445, 0.78034734, 1.])
+    np.testing.assert_allclose(bounds, expected, atol=1e-8)
+
+  @parameterized.parameters(
+      (0, 0),
+      (0.28208044, 0),
+      (0.28208045, 1),
+      (0.54159445, 1),
+      (0.5415946, 2),
+      (0.94, 3),
+      (1, 3))
+  def test_geo_bucket_distribution_get_index(self, hash_value, index):
+    exp_dist = GeometricDistribution(num_values=4, probability=0.08)
+    self.assertEqual(exp_dist.get_index(hash_value, max_hash_value=1), index)
 
   def test_log_bucket_distribution_get_bounds(self):
     bounds = LogBucketDistribution(num_values=4).register_bounds

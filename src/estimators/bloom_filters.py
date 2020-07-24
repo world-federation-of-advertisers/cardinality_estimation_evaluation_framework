@@ -143,6 +143,35 @@ class UniformBloomFilter(AnyDistributionBloomFilter):
         random_seed)
 
 
+class GeometricBloomFilter(AnyDistributionBloomFilter):
+  """Implement a Geometric Bloom Filter."""
+
+  @classmethod
+  def get_sketch_factory(cls, length, probability):
+    def f(random_seed):
+      return cls(length, probability, random_seed)
+
+    return f
+
+  def __init__(self, length, probability, random_seed=None):
+    """Creates a BloomFilter.
+
+    Args:
+       length: The length of bit vector for the bloom filter
+       probability: p of geometric distribution, p should be small enough
+       that geom.cdf(length, probability) won't be 1 in the middle of the
+       array so all bits can be used
+       random_seed: An optional integer specifying the random seed for
+         generating the random seeds for hash functions.
+    """
+    super().__init__(
+        any_sketch.SketchConfig([
+            any_sketch.IndexSpecification(
+                any_sketch.GeometricDistribution(length, probability), "geometric")
+        ], num_hashes=1, value_functions=[any_sketch.BitwiseOrFunction()]),
+        random_seed)
+
+
 class LogarithmicBloomFilter(AnyDistributionBloomFilter):
   """Implement an Logarithmic Bloom Filter."""
 
@@ -252,6 +281,7 @@ class FirstMomentEstimator(EstimatorBase):
   """First moment cardinality estimator for AnyDistributionBloomFilter."""
 
   METHOD_UNIFORM = "uniform"
+  METHOD_GEO = "geo"
   METHOD_LOG = "log"
   METHOD_EXP = "exp"
   METHOD_ANY = "any"
@@ -265,6 +295,7 @@ class FirstMomentEstimator(EstimatorBase):
     self._weights = weights
     assert method in (
         FirstMomentEstimator.METHOD_UNIFORM,
+        FirstMomentEstimator.METHOD_GEO,
         FirstMomentEstimator.METHOD_LOG,
         FirstMomentEstimator.METHOD_EXP,
         FirstMomentEstimator.METHOD_ANY), f"method={method} not supported."
