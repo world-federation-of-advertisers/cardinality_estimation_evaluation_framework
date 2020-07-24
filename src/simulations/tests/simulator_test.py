@@ -23,7 +23,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.base import Esti
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimatorBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import AddRandomElementsNoiser
-from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactSet
+from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
@@ -33,7 +33,7 @@ from wfa_cardinality_estimation_evaluation_framework.simulations.simulator impor
 def get_simple_simulator(sketch_estimator_config=None):
   if not sketch_estimator_config:
     sketch_estimator_config = SketchEstimatorConfig(
-        name='exact_set-lossless', sketch_factory=ExactSet,
+        name='exact_set-lossless', sketch_factory=ExactMultiSet,
         estimator=LosslessEstimator())
   set_generator_factory = (
       set_generator.IndependentSetGenerator.
@@ -94,7 +94,7 @@ class SimulatorTest(absltest.TestCase):
     fake_estimate_noiser = FakeEstimateNoiser()
     sketch_estimator_config = SketchEstimatorConfig(
         name='exact_set-lossless',
-        sketch_factory=ExactSet, estimator=LosslessEstimator(),
+        sketch_factory=ExactMultiSet, estimator=LosslessEstimator(),
         estimate_noiser=fake_estimate_noiser)
     sim = get_simple_simulator(sketch_estimator_config)
     data_frame = sim.run_one()
@@ -113,7 +113,7 @@ class SimulatorTest(absltest.TestCase):
     rs = np.random.RandomState(3)
     sketch_estimator_config = SketchEstimatorConfig(
         name='exact_set-lossless',
-        sketch_factory=ExactSet,
+        sketch_factory=ExactMultiSet,
         estimator=LosslessEstimator(),
         sketch_noiser=AddRandomElementsNoiser(num_random_elements=3,
                                               random_state=rs))
@@ -130,7 +130,7 @@ class SimulatorTest(absltest.TestCase):
   def test_simulator_run_all_and_aggregate_multiple_runs(self):
     sketch_estimator_config = SketchEstimatorConfig(
         name='exact_set-lossless',
-        sketch_factory=ExactSet, estimator=LosslessEstimator())
+        sketch_factory=ExactMultiSet, estimator=LosslessEstimator())
     set_generator_factory = (
         set_generator.IndependentSetGenerator.
         get_generator_factory_with_num_and_size(
@@ -150,7 +150,7 @@ class SimulatorTest(absltest.TestCase):
   def test_simulator_run_all_and_aggregate_write_file(self):
     sketch_estimator_config = SketchEstimatorConfig(
         name='exact_set-lossless',
-        sketch_factory=ExactSet, estimator=LosslessEstimator())
+        sketch_factory=ExactMultiSet, estimator=LosslessEstimator())
     set_generator_factory = (
         set_generator.IndependentSetGenerator.
         get_generator_factory_with_num_and_size(
