@@ -51,10 +51,17 @@ class SketchBase(object):
 
 
 class EstimatorBase(object):
-  """An estimator takes a sketch and produces a cardinality estimate.
+  """An estimator takes a sketch and produces a frequency histogram.
+
+  If the array of values produced by an estimator is h[], then h[i] represents
+  the cardinality estimate of items having a frequency of i+1 or higher.
+
+  Note that there is no requirement on the number of frequencies that
+  an estimator should produce.  Thus, an estimator that provides estimates
+  only of cardinality may output an array of length 1.
 
   Estimators exist apart from sketches because many types of sketches are
-  amenable to having multiple types of estimators operate on them
+  amenable to having multiple types of estimators operate on them.
   """
 
   def __call__(self, sketch_list):
@@ -103,10 +110,10 @@ class EstimateNoiserBase(object):
 
     Args:
       cardinality_estimate: A float, list or numpy vector of values to be
-      noised.
+        noised.
+
     Returns:
-      A noised float, list or numpy vector of the same type and dimenions as
+      A noised float, list or numpy vector of the same type and dimensions as
       cardinality_estimate.
     """
     raise NotImplementedError()
-

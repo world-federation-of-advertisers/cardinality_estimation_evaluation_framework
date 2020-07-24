@@ -12,6 +12,7 @@ This repo includes code for
     of relationships between the created sets
 *   Simulator to combine all of the above, calculate error statistics, and
     compare possible methods.
+*   Evaluators run an ensemble of simulators
 
 ### Quickstart
 It is recommended to use a virtual environment with this project. If you already

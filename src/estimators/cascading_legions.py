@@ -163,7 +163,7 @@ class Estimator(base.EstimatorBase):
   def __call__(self, sketch_list):
     """Estimating cardinality of the union."""
     if not sketch_list:
-      return 0  # That was easy!
+      return [0]  # That was easy!
 
     flip_probability = self.flip_probability or sketch_list[0].added_noise
 
@@ -174,7 +174,7 @@ class Estimator(base.EstimatorBase):
         f'should all be equal to {flip_probability}.')
     cardinality, unused_golden_legion_index = self.estimate_from_golden_legion(
         sketch_list, flip_probability)
-    return cardinality
+    return [cardinality]
 
   @classmethod
   def legion_as_vector(cls, sketch_list, legion_index):

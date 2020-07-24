@@ -24,10 +24,15 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations import evaluato
 from wfa_cardinality_estimation_evaluation_framework.simulations import simulator
 
 
+ERROR_MARGIN_NAME = 'error_margin'
+PROPORTION_OF_RUNS_NAME = 'proportion_of_runs'
+
 ERROR_MARGIN = 0.05
 PROPORTION_OF_RUNS = 0.95
 
-ESTIMATOR_NAME = 'estimator'
+RUNNING_TIME_SCALE = 3600  # Convert seconds to hour.
+
+SKETCH_ESTIMATOR_NAME = 'sketch_estimator'
 SCENARIO_NAME = 'scenario'
 NUM_ESTIMABLE_SETS = 'num_estimable_sets'
 RAW_RESULT_DF = 'df'
@@ -39,12 +44,21 @@ RAW_RESULT_DF = 'df'
 NUM_ESTIMABLE_SETS_FILENAME = 'num_estimable_sets.csv'
 BOXPLOT_FILENAME = 'boxplot.png'
 
+XLABEL_ROTATE = 'xlabel_rotate'
 BOXPLOT_SIZE_WIDTH_INCH = 'boxplot_size_width_inch'
 BOXPLOT_SIZE_HEIGHT_INCH = 'boxplot_size_width_inch'
 PLOT_PARAMS = {
+    XLABEL_ROTATE: 0,
     BOXPLOT_SIZE_WIDTH_INCH: 12,
     BOXPLOT_SIZE_HEIGHT_INCH: 6,
 }
+
+# Variables related with getting analysis results.
+SKETCH_ESTIMATOR_COLNAME = 'sketch_estimator'
+RUNNING_TIME_COLNAME = 'running_time'
+KEY_DESCRIPTION_TO_FILE_DIR = 'description_to_file_dir'
+KEY_NUM_ESTIMABLE_SETS_STATS_DF = 'num_estimable_sets_stats_df'
+KEY_RUNNING_TIME_DF = 'running_time_df'
 
 
 def get_num_estimable_sets(df, num_sets=simulator.NUM_SETS,
@@ -95,8 +109,7 @@ class CardinalityEstimatorEvaluationAnalyzer(object):
   """Analyze the cardinality estimator evaluation results."""
 
   def __init__(self, out_dir, evaluation_directory, evaluation_run_name,
-               evaluation_name, error_margin=ERROR_MARGIN,
-               proportion_of_runs=PROPORTION_OF_RUNS,
+               evaluation_name, estimable_criteria_list,
                plot_params=None):
     """Construct an analyzer.
 
@@ -107,16 +120,19 @@ class CardinalityEstimatorEvaluationAnalyzer(object):
         plots.
       evaluation_run_name: the run name of the evaluation.
       evaluation_name: the name of the evaluation config.
-      error_margin: a positive number setting the upper bound of the error. By
-        default, set to 0.05.
-      proportion_of_runs: a number between 0 and 1 that specifies the desired
-        proportion of runs within the error margin. By default, set to 0.95.
+      estimable_criteria_list: a list of tuples of error_margin and
+        proportion_of_runs. An error_margin is a positive number setting the
+        upper bound of the error, and the proportion_of_runs is a number
+        between 0 and 1 that specifies the desired proportion of runs within
+        the error margin.
       plot_params: a dictionary of the parameters of plot functions. If not
         given, will use PLOT_PARAMS. Also see PLOT_PARAMS for how it is defined.
     """
-    self.error_margin = error_margin
-    self.proportion_of_runs = proportion_of_runs
-    self.plot_params = plot_params or PLOT_PARAMS
+    self.estimable_criteria_list = estimable_criteria_list
+    if plot_params is None:
+      self.plot_params = PLOT_PARAMS
+    else:
+      self.plot_params = plot_params
 
     # Get all the raw results.
     self.evaluation_file_dirs = evaluator.load_directory_tree(
@@ -140,12 +156,13 @@ class CardinalityEstimatorEvaluationAnalyzer(object):
         evaluation_name=evaluation_name)
 
   def __call__(self):
-    num_estimable_sets_df = self.get_num_estimable_sets_df()
+    num_estimable_sets_stats_df = (
+        self.get_relative_error_stats_of_num_of_estimable_sets())
     df_filename = os.path.join(
         self.analysis_file_dirs[evaluator.KEY_EVALUATION_DIR],
         NUM_ESTIMABLE_SETS_FILENAME)
     with open(df_filename, 'w') as f:
-      num_estimable_sets_df.to_csv(f, index=False)
+      num_estimable_sets_stats_df.to_csv(f, index=False)
     self.save_plot_num_sets_vs_relative_error()
 
   @classmethod
@@ -168,47 +185,124 @@ class CardinalityEstimatorEvaluationAnalyzer(object):
             evaluator.RAW_RESULT_DF_FILENAME)
         with open(df_file, 'r') as f:
           df = pd.read_csv(f)
-        df_list.append((estimator_name, scenario_name, df))
+        df[SKETCH_ESTIMATOR_NAME] = estimator_name
+        df[SCENARIO_NAME] = scenario_name
+        df_list.append(df)
 
-    return pd.DataFrame(
-        df_list, columns=[ESTIMATOR_NAME, SCENARIO_NAME, RAW_RESULT_DF])
+    return pd.concat(df_list, ignore_index=True)
 
   def get_num_estimable_sets_df(self):
     """Summarize the number of estimable sets by estimators and scenarios."""
-
-    def f(x):
-      num_estimable_sets = get_num_estimable_sets(
-          x[RAW_RESULT_DF], num_sets=simulator.NUM_SETS,
-          relative_error=simulator.RELATIVE_ERROR,
-          error_margin=self.error_margin,
-          proportion_of_runs=self.proportion_of_runs)
+    def _get_num_estimable_sets_series(df, **kwargs):
       return pd.Series({
-          ESTIMATOR_NAME: x[ESTIMATOR_NAME],
-          SCENARIO_NAME: x[SCENARIO_NAME],
-          NUM_ESTIMABLE_SETS: num_estimable_sets})
+          NUM_ESTIMABLE_SETS: get_num_estimable_sets(df, **kwargs)})
 
-    return self.raw_df.apply(f, axis=1)
+    df_list = []
+    for criteria in self.estimable_criteria_list:
+      df = self.raw_df.groupby([SKETCH_ESTIMATOR_NAME, SCENARIO_NAME]).apply(
+          _get_num_estimable_sets_series,
+          num_sets=simulator.NUM_SETS,
+          relative_error=simulator.RELATIVE_ERROR,
+          error_margin=criteria[0],
+          proportion_of_runs=criteria[1]).reset_index()
+      df[ERROR_MARGIN_NAME] = criteria[0]
+      df[PROPORTION_OF_RUNS_NAME] = criteria[1]
+      df_list.append(df)
+
+    return pd.concat(df_list, ignore_index=True)
+
+  def get_relative_error_stats_of_num_of_estimable_sets(self):
+    """Get the mean and std of the relative error of the max estimable sets."""
+    num_estimable_sets_df = self.get_num_estimable_sets_df()
+    df = num_estimable_sets_df.merge(
+        right=self.raw_df,
+        how='left',
+        left_on=[SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, NUM_ESTIMABLE_SETS],
+        right_on=[SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, simulator.NUM_SETS])
+    result = (
+        df.groupby([
+            ERROR_MARGIN_NAME, PROPORTION_OF_RUNS_NAME, SKETCH_ESTIMATOR_NAME,
+            SCENARIO_NAME, NUM_ESTIMABLE_SETS])
+        .agg({simulator.RELATIVE_ERROR: ['mean', 'std']}))
+    result.columns = result.columns.map('_'.join)
+    result = result.reset_index()
+    return result
 
   def save_plot_num_sets_vs_relative_error(self):
     """Make and save plots for number of sets versus relative error."""
-    def f(x):
-      # Make a plot.
+    def plot_one_estimator_under_one_scenario(df):
       ax = plotting.boxplot_relative_error(
-          x[RAW_RESULT_DF],
+          df,
           num_sets=simulator.NUM_SETS,
           relative_error=simulator.RELATIVE_ERROR)
-      ax.set_title(f'{x[SCENARIO_NAME]}\n{x[ESTIMATOR_NAME]}')
+      scenario_name = df[SCENARIO_NAME].values[0]
+      estimator_name = df[SKETCH_ESTIMATOR_NAME].values[0]
+      ax.set_title(f'{scenario_name}\n{estimator_name}')
       ax.set_ylim(-0.1, 0.1)
       for tick in ax.get_xticklabels():
-        tick.set_rotation(90)
+        tick.set_rotation(self.plot_params[XLABEL_ROTATE])
       # Save the plot to file.
       fig = ax.get_figure()
       plot_file = os.path.join(
-          self.analysis_file_dirs[x[ESTIMATOR_NAME]][x[SCENARIO_NAME]],
+          self.analysis_file_dirs[estimator_name][scenario_name],
           BOXPLOT_FILENAME)
       fig.set_size_inches(
           w=self.plot_params[BOXPLOT_SIZE_WIDTH_INCH],
           h=self.plot_params[BOXPLOT_SIZE_HEIGHT_INCH])
       fig.savefig(plot_file)
 
-    self.raw_df.apply(f, axis=1)
+    self.raw_df.groupby([SKETCH_ESTIMATOR_NAME, SCENARIO_NAME]).apply(
+        plot_one_estimator_under_one_scenario)
+
+
+def get_analysis_results(analysis_out_dir, evaluation_run_name,
+                         evaluation_name):
+  """Get analysis results.
+
+  Args:
+    analysis_out_dir: the output folder of the analysis results.
+    evaluation_run_name: the run name of the evaluation.
+    evaluation_name: the name of the evaluation configuration. For example,
+      'smoke_test'.
+
+  Returns:
+    A dictionary of the analysis results, which include:
+      description_to_file_dir: a dictionary of the analysis results file tree.
+      num_estimable_sets_stats_df: a data frame containing the number
+        of estimable sets of estimators under different scenarios, and also
+        the relative error at the number of estimable sets.
+      running_time_df: a data frame containing the running time of each
+        sketch_estimator.
+  """
+  # Read analysis result file tree.
+  description_to_file_dir = evaluator.load_directory_tree(
+      out_dir=analysis_out_dir,
+      run_name=evaluation_run_name,
+      evaluation_name=evaluation_name)
+
+  # Read number of estimable sets analysis results.
+  filename = os.path.join(
+      description_to_file_dir[evaluator.KEY_EVALUATION_DIR],
+      NUM_ESTIMABLE_SETS_FILENAME)
+  with open(filename, 'r') as f:
+    num_estimable_sets_stats_df = pd.read_csv(f)
+
+  # Read running time.
+  running_time_df = pd.DataFrame(
+      [], columns=[SKETCH_ESTIMATOR_COLNAME, RUNNING_TIME_COLNAME])
+  for name, directory in description_to_file_dir[
+      evaluator.KEY_ESTIMATOR_DIRS].items():
+    filename = os.path.join(directory, evaluator.EVALUATION_RUN_TIME_FILE)
+    with open(filename, 'r') as f:
+      running_time = float(f.readline())
+    running_time_df = running_time_df.append(
+        {SKETCH_ESTIMATOR_COLNAME: name,
+         RUNNING_TIME_COLNAME: running_time / RUNNING_TIME_SCALE},
+        ignore_index=True)
+  running_time_df = running_time_df.sort_values(SKETCH_ESTIMATOR_COLNAME)
+
+  return {
+      KEY_DESCRIPTION_TO_FILE_DIR: description_to_file_dir,
+      KEY_NUM_ESTIMABLE_SETS_STATS_DF: num_estimable_sets_stats_df,
+      KEY_RUNNING_TIME_DF: running_time_df
+  }
