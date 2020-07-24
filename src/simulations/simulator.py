@@ -19,18 +19,20 @@ import collections
 import numpy as np
 import pandas as pd
 from wfa_cardinality_estimation_evaluation_framework.common.analysis import relative_error
+from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
+from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
 
 
 RUN_INDEX = 'run_index'
-ESTIMATED_CARDINALITY = 'estimated_cardinality'
-TRUE_CARDINALITY = 'true_cardinality'
-RELATIVE_ERROR = 'relative_error'
+ESTIMATED_CARDINALITY_BASENAME = 'estimated_cardinality_'
+TRUE_CARDINALITY_BASENAME = 'true_cardinality_'
+RELATIVE_ERROR_BASENAME = 'relative_error_'
 NUM_SETS = 'num_sets'
 
 
 _SketchEstimatorConfig = collections.namedtuple(
     'EstimatorConfig', ['name', 'sketch_factory', 'estimator', 'sketch_noiser',
-                        'estimate_noiser'])
+                        'estimate_noiser', 'max_frequency'])
 
 
 # This class exists as a placeholder for a docstring.
@@ -47,12 +49,13 @@ class SketchEstimatorConfig(_SketchEstimatorConfig):
       cardinality_estimator_base.SketchNoiser.
     estimate_noiser: A class that conforms to
       cardinality_estimator_base.EstimateNoiser.
+    max_frequency: The maximum frequency for which estimates should be produced.
   """
 
   def __new__(cls, name, sketch_factory, estimator, sketch_noiser=None,
-              estimate_noiser=None):
+              estimate_noiser=None, max_frequency=1):
     return super(cls, SketchEstimatorConfig).__new__(
-        cls, name, sketch_factory, estimator, sketch_noiser, estimate_noiser)
+        cls, name, sketch_factory, estimator, sketch_noiser, estimate_noiser, max_frequency)
 
 
 class Simulator(object):
@@ -99,12 +102,13 @@ class Simulator(object):
     return self.run_all_and_aggregate()
 
   def aggregate(self, df):
-    df_agg = (
-        df.groupby(NUM_SETS).agg({
-            ESTIMATED_CARDINALITY: ['mean', 'std'],
-            TRUE_CARDINALITY: ['mean', 'std'],
-            RELATIVE_ERROR: ['mean', 'std']
-        }))
+    agg_groups = {}
+    for i in range(self.sketch_estimator_config.max_frequency):
+      agg_groups[ESTIMATED_CARDINALITY_BASENAME + str(i+1)] = ['mean', 'std']
+      agg_groups[TRUE_CARDINALITY_BASENAME + str(i+1)] = ['mean', 'std']
+      agg_groups[RELATIVE_ERROR_BASENAME + str(i+1)] = ['mean', 'std']
+      
+    df_agg = df.groupby(NUM_SETS).agg(agg_groups)
     return df_agg
 
   def run_all_and_aggregate(self):
@@ -122,8 +126,10 @@ class Simulator(object):
       dfs.append(df)
     df = pd.concat(dfs, ignore_index=True)
 
-    df[RELATIVE_ERROR] = relative_error(df[ESTIMATED_CARDINALITY],
-                                        df[TRUE_CARDINALITY])
+    for i in range(self.sketch_estimator_config.max_frequency):
+      df[RELATIVE_ERROR_BASENAME + str(i+1)] = relative_error(
+        df[ESTIMATED_CARDINALITY_BASENAME + str(i+1)],
+        df[TRUE_CARDINALITY_BASENAME + str(i+1)])
     df_agg = self.aggregate(df)
 
     if self.file_handle_raw is not None:
@@ -134,12 +140,20 @@ class Simulator(object):
 
     return df, df_agg
 
+  def _extend_histogram(self, histogram, max_freq):
+    """Extends (or truncates) a frequency histogram to max_freq frequencies."""
+    if len(histogram) <= max_freq:
+      return histogram + [0] * (max_freq - len(histogram))
+    else:
+      return histogram[:max_freq] 
+      
   def run_one(self):
     """Run one iteration.
 
     Returns:
-      A pd.DataFrame that have columns of num_sets, estimated_cardinality and
-      true_cardinality.
+      A pd.DataFrame that has 2f+1 columns, where f is the maximum
+      frequency.  The column names are num_sets, estimated_cardinality_i 
+      and true_cardinality_i, for i = 1, ..., f.
     """
     set_generator = self.set_generator_factory(self.set_random_state)
     sketch_random_seed = self.sketch_random_state.randint(2**32-1)
@@ -163,17 +177,23 @@ class Simulator(object):
     # Estimate cardinality for 1, 2, ..., n pubs.
     estimator = self.sketch_estimator_config.estimator
     # A set that keeps the running union.
-    true_union = set()
+    true_union = ExactMultiSet()
     metrics = []
+    max_freq = self.sketch_estimator_config.max_frequency
     for i in range(len(sketches)):
-      estimated_cardinality = estimator(sketches[:i + 1])[0]
+      estimated_cardinality = self._extend_histogram(estimator(sketches[:i + 1]), max_freq)
       if hasattr(self.sketch_estimator_config,
                  'estimate_noiser') and self.sketch_estimator_config.estimate_noiser:
-        estimated_cardinality = self.sketch_estimator_config.estimate_noiser(
-            estimated_cardinality)
-      true_union.update(actual_ids[i])
-      metrics.append((i + 1, estimated_cardinality, len(true_union)))
+        estimated_cardinality = [self.sketch_estimator_config.estimate_noiser(e)
+            for e in estimated_cardinality]
+      for id in actual_ids[i]:
+        true_union.add(id)
+      true_cardinality = self._extend_histogram(LosslessEstimator()([true_union]), max_freq)
+      metrics.append([i + 1] + estimated_cardinality + true_cardinality)
 
-    df = pd.DataFrame(
-        metrics, columns=[NUM_SETS, ESTIMATED_CARDINALITY, TRUE_CARDINALITY])
+    df_columns = ([NUM_SETS] +
+                  [ESTIMATED_CARDINALITY_BASENAME + str(i+1) for i in range(max_freq)] +
+                  [TRUE_CARDINALITY_BASENAME + str(i+1) for i in range(max_freq)])
+    
+    df = pd.DataFrame(metrics, columns=df_columns)
     return df
