@@ -1,0 +1,412 @@
+
+    <html>
+      <head>
+        <title>
+        Reach Cardinality Estimators Evaluation
+        </title>
+      </head>
+      <body>
+        <h1>Reach Cardinality Estimators Evaluation Report</h1>
+          <h2>Summary</h2>
+            <h3>Maximum number of estimable sets and the corresponding relative
+            errors</h3>
+              <p>
+                The larger the number of estimable sets is, the better the
+                cardinality estimator is.
+              </p>
+              <h4>epsilon=infty</h4><p><table border="1" class="dataframe">
+  <thead>
+    <tr>
+      <th>estimable_criteria</th>
+      <th colspan="3" halign="left">80%/20%</th>
+      <th colspan="3" halign="left">95%/10%</th>
+      <th colspan="3" halign="left">95%/5%</th>
+    </tr>
+    <tr>
+      <th>sketch_estimator</th>
+      <th>exp_bloom_filter-1e5_10-infty-first_moment_exp</th>
+      <th>log_bloom_filter-1e5-infty-first_moment_log</th>
+      <th>vector_of_counts-4096-infty-sequential</th>
+      <th>exp_bloom_filter-1e5_10-infty-first_moment_exp</th>
+      <th>log_bloom_filter-1e5-infty-first_moment_log</th>
+      <th>vector_of_counts-4096-infty-sequential</th>
+      <th>exp_bloom_filter-1e5_10-infty-first_moment_exp</th>
+      <th>log_bloom_filter-1e5-infty-first_moment_log</th>
+      <th>vector_of_counts-4096-infty-sequential</th>
+    </tr>
+    <tr>
+      <th>scenario</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>fully_overlapping</th>
+      <td>20<br>relative_error: mean=0.0, std=0.0054</td>
+      <td>20<br>relative_error: mean=-0.0007, std=0.0035</td>
+      <td>20<br>relative_error: mean=0.0029, std=0.0251</td>
+      <td>20<br>relative_error: mean=0.0, std=0.0054</td>
+      <td>20<br>relative_error: mean=-0.0007, std=0.0035</td>
+      <td>20<br>relative_error: mean=0.0029, std=0.0251</td>
+      <td>20<br>relative_error: mean=0.0, std=0.0054</td>
+      <td>20<br>relative_error: mean=-0.0007, std=0.0035</td>
+      <td>20<br>relative_error: mean=0.0029, std=0.0251</td>
+    </tr>
+    <tr>
+      <th>independent</th>
+      <td>20<br>relative_error: mean=-0.0, std=0.0084</td>
+      <td>20<br>relative_error: mean=0.0007, std=0.0043</td>
+      <td>20<br>relative_error: mean=0.0019, std=0.0257</td>
+      <td>20<br>relative_error: mean=-0.0, std=0.0084</td>
+      <td>20<br>relative_error: mean=0.0007, std=0.0043</td>
+      <td>20<br>relative_error: mean=0.0019, std=0.0257</td>
+      <td>20<br>relative_error: mean=-0.0, std=0.0084</td>
+      <td>20<br>relative_error: mean=0.0007, std=0.0043</td>
+      <td>20<br>relative_error: mean=0.0019, std=0.0257</td>
+    </tr>
+    <tr>
+      <th>remarketing</th>
+      <td>20<br>relative_error: mean=0.0001, std=0.0064</td>
+      <td>20<br>relative_error: mean=0.0002, std=0.0035</td>
+      <td>20<br>relative_error: mean=0.0026, std=0.0257</td>
+      <td>20<br>relative_error: mean=0.0001, std=0.0064</td>
+      <td>20<br>relative_error: mean=0.0002, std=0.0035</td>
+      <td>20<br>relative_error: mean=0.0026, std=0.0257</td>
+      <td>20<br>relative_error: mean=0.0001, std=0.0064</td>
+      <td>20<br>relative_error: mean=0.0002, std=0.0035</td>
+      <td>14<br>relative_error: mean=-0.0006, std=0.0246</td>
+    </tr>
+    <tr>
+      <th>sequentially_correlated_all</th>
+      <td>20<br>relative_error: mean=-0.0004, std=0.0083</td>
+      <td>20<br>relative_error: mean=-0.0004, std=0.0042</td>
+      <td>20<br>relative_error: mean=-0.0013, std=0.0208</td>
+      <td>20<br>relative_error: mean=-0.0004, std=0.0083</td>
+      <td>20<br>relative_error: mean=-0.0004, std=0.0042</td>
+      <td>20<br>relative_error: mean=-0.0013, std=0.0208</td>
+      <td>20<br>relative_error: mean=-0.0004, std=0.0083</td>
+      <td>20<br>relative_error: mean=-0.0004, std=0.0042</td>
+      <td>20<br>relative_error: mean=-0.0013, std=0.0208</td>
+    </tr>
+    <tr>
+      <th>sequentially_correlated_one</th>
+      <td>20<br>relative_error: mean=0.0003, std=0.0092</td>
+      <td>20<br>relative_error: mean=-0.0005, std=0.0041</td>
+      <td>20<br>relative_error: mean=0.0723, std=0.0218</td>
+      <td>20<br>relative_error: mean=0.0003, std=0.0092</td>
+      <td>20<br>relative_error: mean=-0.0005, std=0.0041</td>
+      <td>3<br>relative_error: mean=0.0614, std=0.0142</td>
+      <td>20<br>relative_error: mean=0.0003, std=0.0092</td>
+      <td>20<br>relative_error: mean=-0.0005, std=0.0041</td>
+      <td>2<br>relative_error: mean=-0.0008, std=0.0106</td>
+    </tr>
+  </tbody>
+</table></p>
+<h4>epsilon=ln3</h4><p><table border="1" class="dataframe">
+  <thead>
+    <tr>
+      <th>estimable_criteria</th>
+      <th colspan="3" halign="left">80%/20%</th>
+      <th colspan="3" halign="left">95%/10%</th>
+      <th colspan="3" halign="left">95%/5%</th>
+    </tr>
+    <tr>
+      <th>sketch_estimator</th>
+      <th>exp_bloom_filter-1e5_10-ln3-first_moment_exp</th>
+      <th>log_bloom_filter-1e5-ln3-first_moment_log</th>
+      <th>vector_of_counts-4096-ln3-sequential</th>
+      <th>exp_bloom_filter-1e5_10-ln3-first_moment_exp</th>
+      <th>log_bloom_filter-1e5-ln3-first_moment_log</th>
+      <th>vector_of_counts-4096-ln3-sequential</th>
+      <th>exp_bloom_filter-1e5_10-ln3-first_moment_exp</th>
+      <th>log_bloom_filter-1e5-ln3-first_moment_log</th>
+      <th>vector_of_counts-4096-ln3-sequential</th>
+    </tr>
+    <tr>
+      <th>scenario</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>fully_overlapping</th>
+      <td>5<br>relative_error: mean=-0.0003, std=0.1428</td>
+      <td>7<br>relative_error: mean=-0.0154, std=0.1454</td>
+      <td>20<br>relative_error: mean=-0.0043, std=0.0241</td>
+      <td>1<br>relative_error: mean=0.0033, std=0.0292</td>
+      <td>3<br>relative_error: mean=-0.0006, std=0.039</td>
+      <td>20<br>relative_error: mean=-0.0043, std=0.0241</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+      <td>1<br>relative_error: mean=-0.0006, std=0.0189</td>
+      <td>5<br>relative_error: mean=-0.0031, std=0.0232</td>
+    </tr>
+    <tr>
+      <th>independent</th>
+      <td>5<br>relative_error: mean=0.0116, std=0.1124</td>
+      <td>10<br>relative_error: mean=0.0115, std=0.1633</td>
+      <td>20<br>relative_error: mean=0.0014, std=0.0265</td>
+      <td>2<br>relative_error: mean=-0.0014, std=0.0395</td>
+      <td>5<br>relative_error: mean=0.0078, std=0.0392</td>
+      <td>20<br>relative_error: mean=0.0014, std=0.0265</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+      <td>3<br>relative_error: mean=0.0023, std=0.0217</td>
+      <td>13<br>relative_error: mean=0.0035, std=0.0232</td>
+    </tr>
+    <tr>
+      <th>remarketing</th>
+      <td>6<br>relative_error: mean=0.0097, std=0.1593</td>
+      <td>9<br>relative_error: mean=-0.0077, std=0.1526</td>
+      <td>20<br>relative_error: mean=0.002, std=0.0264</td>
+      <td>2<br>relative_error: mean=-0.001, std=0.0448</td>
+      <td>5<br>relative_error: mean=-0.0034, std=0.048</td>
+      <td>20<br>relative_error: mean=0.002, std=0.0264</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+      <td>1<br>relative_error: mean=0.0007, std=0.0208</td>
+      <td>10<br>relative_error: mean=-0.0003, std=0.0253</td>
+    </tr>
+    <tr>
+      <th>sequentially_correlated_all</th>
+      <td>5<br>relative_error: mean=0.007, std=0.1226</td>
+      <td>9<br>relative_error: mean=-0.0164, std=0.148</td>
+      <td>20<br>relative_error: mean=0.0032, std=0.0255</td>
+      <td>1<br>relative_error: mean=-0.0016, std=0.0497</td>
+      <td>3<br>relative_error: mean=-0.0007, std=0.0406</td>
+      <td>20<br>relative_error: mean=0.0032, std=0.0255</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+      <td>7<br>relative_error: mean=0.0003, std=0.0233</td>
+    </tr>
+    <tr>
+      <th>sequentially_correlated_one</th>
+      <td>6<br>relative_error: mean=0.0331, std=0.1424</td>
+      <td>9<br>relative_error: mean=0.0011, std=0.149</td>
+      <td>20<br>relative_error: mean=0.0703, std=0.0316</td>
+      <td>1<br>relative_error: mean=0.0003, std=0.0415</td>
+      <td>2<br>relative_error: mean=-0.0045, std=0.0391</td>
+      <td>2<br>relative_error: mean=-0.0035, std=0.0203</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+      <td>2<br>relative_error: mean=-0.0035, std=0.0203</td>
+    </tr>
+  </tbody>
+</table></p>
+            <h3>Running time</h3>
+              <p>
+                The nunning time of a cardinality estimator over all the
+                scenarios in hours. The smaller the better.<br>
+                <table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>sketch_estimator</th>
+      <th>running_time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>5</th>
+      <td>exp_bloom_filter-1e5_10-infty-first_moment_exp</td>
+      <td>3.556221</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>exp_bloom_filter-1e5_10-ln3-first_moment_exp</td>
+      <td>3.805518</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>log_bloom_filter-1e5-infty-first_moment_log</td>
+      <td>3.671941</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>log_bloom_filter-1e5-ln3-first_moment_log</td>
+      <td>3.448887</td>
+    </tr>
+    <tr>
+      <th>0</th>
+      <td>vector_of_counts-4096-infty-sequential</td>
+      <td>2.227277</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>vector_of_counts-4096-ln3-sequential</td>
+      <td>2.221941</td>
+    </tr>
+  </tbody>
+</table>
+              </p>
+          <h2>Scenarios<h2>
+            <h3>sequentially_correlated_one</h3>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>sketch</th>
+      <th>exp_bloom_filter</th>
+      <th>log_bloom_filter</th>
+      <th>vector_of_counts</th>
+    </tr>
+    <tr>
+      <th>epsilon</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>infty</th>
+      <td><figure><figcaption>exp_bloom_filter, first_moment_exp<br>sketch_config: 1e5_10<br>epsilon: infty</figcaption><img src="results/smoke_test/exp_bloom_filter-1e5_10-infty-first_moment_exp/sequentially_correlated_one/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>log_bloom_filter, first_moment_log<br>sketch_config: 1e5<br>epsilon: infty</figcaption><img src="results/smoke_test/log_bloom_filter-1e5-infty-first_moment_log/sequentially_correlated_one/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>vector_of_counts, sequential<br>sketch_config: 4096<br>epsilon: infty</figcaption><img src="results/smoke_test/vector_of_counts-4096-infty-sequential/sequentially_correlated_one/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+    <tr>
+      <th>ln3</th>
+      <td><figure><figcaption>exp_bloom_filter, first_moment_exp<br>sketch_config: 1e5_10<br>epsilon: ln3</figcaption><img src="results/smoke_test/exp_bloom_filter-1e5_10-ln3-first_moment_exp/sequentially_correlated_one/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>log_bloom_filter, first_moment_log<br>sketch_config: 1e5<br>epsilon: ln3</figcaption><img src="results/smoke_test/log_bloom_filter-1e5-ln3-first_moment_log/sequentially_correlated_one/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>vector_of_counts, sequential<br>sketch_config: 4096<br>epsilon: ln3</figcaption><img src="results/smoke_test/vector_of_counts-4096-ln3-sequential/sequentially_correlated_one/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+  </tbody>
+</table>
+<h3>independent</h3>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>sketch</th>
+      <th>exp_bloom_filter</th>
+      <th>log_bloom_filter</th>
+      <th>vector_of_counts</th>
+    </tr>
+    <tr>
+      <th>epsilon</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>infty</th>
+      <td><figure><figcaption>exp_bloom_filter, first_moment_exp<br>sketch_config: 1e5_10<br>epsilon: infty</figcaption><img src="results/smoke_test/exp_bloom_filter-1e5_10-infty-first_moment_exp/independent/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>log_bloom_filter, first_moment_log<br>sketch_config: 1e5<br>epsilon: infty</figcaption><img src="results/smoke_test/log_bloom_filter-1e5-infty-first_moment_log/independent/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>vector_of_counts, sequential<br>sketch_config: 4096<br>epsilon: infty</figcaption><img src="results/smoke_test/vector_of_counts-4096-infty-sequential/independent/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+    <tr>
+      <th>ln3</th>
+      <td><figure><figcaption>exp_bloom_filter, first_moment_exp<br>sketch_config: 1e5_10<br>epsilon: ln3</figcaption><img src="results/smoke_test/exp_bloom_filter-1e5_10-ln3-first_moment_exp/independent/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>log_bloom_filter, first_moment_log<br>sketch_config: 1e5<br>epsilon: ln3</figcaption><img src="results/smoke_test/log_bloom_filter-1e5-ln3-first_moment_log/independent/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>vector_of_counts, sequential<br>sketch_config: 4096<br>epsilon: ln3</figcaption><img src="results/smoke_test/vector_of_counts-4096-ln3-sequential/independent/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+  </tbody>
+</table>
+<h3>fully_overlapping</h3>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>sketch</th>
+      <th>exp_bloom_filter</th>
+      <th>log_bloom_filter</th>
+      <th>vector_of_counts</th>
+    </tr>
+    <tr>
+      <th>epsilon</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>infty</th>
+      <td><figure><figcaption>exp_bloom_filter, first_moment_exp<br>sketch_config: 1e5_10<br>epsilon: infty</figcaption><img src="results/smoke_test/exp_bloom_filter-1e5_10-infty-first_moment_exp/fully_overlapping/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>log_bloom_filter, first_moment_log<br>sketch_config: 1e5<br>epsilon: infty</figcaption><img src="results/smoke_test/log_bloom_filter-1e5-infty-first_moment_log/fully_overlapping/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>vector_of_counts, sequential<br>sketch_config: 4096<br>epsilon: infty</figcaption><img src="results/smoke_test/vector_of_counts-4096-infty-sequential/fully_overlapping/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+    <tr>
+      <th>ln3</th>
+      <td><figure><figcaption>exp_bloom_filter, first_moment_exp<br>sketch_config: 1e5_10<br>epsilon: ln3</figcaption><img src="results/smoke_test/exp_bloom_filter-1e5_10-ln3-first_moment_exp/fully_overlapping/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>log_bloom_filter, first_moment_log<br>sketch_config: 1e5<br>epsilon: ln3</figcaption><img src="results/smoke_test/log_bloom_filter-1e5-ln3-first_moment_log/fully_overlapping/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>vector_of_counts, sequential<br>sketch_config: 4096<br>epsilon: ln3</figcaption><img src="results/smoke_test/vector_of_counts-4096-ln3-sequential/fully_overlapping/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+  </tbody>
+</table>
+<h3>sequentially_correlated_all</h3>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>sketch</th>
+      <th>exp_bloom_filter</th>
+      <th>log_bloom_filter</th>
+      <th>vector_of_counts</th>
+    </tr>
+    <tr>
+      <th>epsilon</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>infty</th>
+      <td><figure><figcaption>exp_bloom_filter, first_moment_exp<br>sketch_config: 1e5_10<br>epsilon: infty</figcaption><img src="results/smoke_test/exp_bloom_filter-1e5_10-infty-first_moment_exp/sequentially_correlated_all/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>log_bloom_filter, first_moment_log<br>sketch_config: 1e5<br>epsilon: infty</figcaption><img src="results/smoke_test/log_bloom_filter-1e5-infty-first_moment_log/sequentially_correlated_all/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>vector_of_counts, sequential<br>sketch_config: 4096<br>epsilon: infty</figcaption><img src="results/smoke_test/vector_of_counts-4096-infty-sequential/sequentially_correlated_all/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+    <tr>
+      <th>ln3</th>
+      <td><figure><figcaption>exp_bloom_filter, first_moment_exp<br>sketch_config: 1e5_10<br>epsilon: ln3</figcaption><img src="results/smoke_test/exp_bloom_filter-1e5_10-ln3-first_moment_exp/sequentially_correlated_all/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>log_bloom_filter, first_moment_log<br>sketch_config: 1e5<br>epsilon: ln3</figcaption><img src="results/smoke_test/log_bloom_filter-1e5-ln3-first_moment_log/sequentially_correlated_all/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>vector_of_counts, sequential<br>sketch_config: 4096<br>epsilon: ln3</figcaption><img src="results/smoke_test/vector_of_counts-4096-ln3-sequential/sequentially_correlated_all/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+  </tbody>
+</table>
+<h3>remarketing</h3>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>sketch</th>
+      <th>exp_bloom_filter</th>
+      <th>log_bloom_filter</th>
+      <th>vector_of_counts</th>
+    </tr>
+    <tr>
+      <th>epsilon</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>infty</th>
+      <td><figure><figcaption>exp_bloom_filter, first_moment_exp<br>sketch_config: 1e5_10<br>epsilon: infty</figcaption><img src="results/smoke_test/exp_bloom_filter-1e5_10-infty-first_moment_exp/remarketing/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>log_bloom_filter, first_moment_log<br>sketch_config: 1e5<br>epsilon: infty</figcaption><img src="results/smoke_test/log_bloom_filter-1e5-infty-first_moment_log/remarketing/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>vector_of_counts, sequential<br>sketch_config: 4096<br>epsilon: infty</figcaption><img src="results/smoke_test/vector_of_counts-4096-infty-sequential/remarketing/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+    <tr>
+      <th>ln3</th>
+      <td><figure><figcaption>exp_bloom_filter, first_moment_exp<br>sketch_config: 1e5_10<br>epsilon: ln3</figcaption><img src="results/smoke_test/exp_bloom_filter-1e5_10-ln3-first_moment_exp/remarketing/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>log_bloom_filter, first_moment_log<br>sketch_config: 1e5<br>epsilon: ln3</figcaption><img src="results/smoke_test/log_bloom_filter-1e5-ln3-first_moment_log/remarketing/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>vector_of_counts, sequential<br>sketch_config: 4096<br>epsilon: ln3</figcaption><img src="results/smoke_test/vector_of_counts-4096-ln3-sequential/remarketing/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+  </tbody>
+</table>
+      </body>
+    </html>
