@@ -24,6 +24,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters im
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import ExponentialBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentEstimator
+from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import GeometricBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import LogarithmicBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import SurrealDenoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import UnionEstimator
@@ -63,6 +64,7 @@ class InteroperabilityTest(absltest.TestCase):
     self.shared_prop = 0.2
     self.num_bloom_filter_hashes = 2
     self.exponential_bloom_filter_decay_rate = 10
+    self.geometic_bloom_filter_probability = 0.08
     self.noiser_epsilon = np.log(3)
     self.noiser_flip_probability = .25
 
@@ -82,6 +84,12 @@ class InteroperabilityTest(absltest.TestCase):
         sketch_factory=BloomFilter.get_sketch_factory(
             self.sketch_size, self.num_bloom_filter_hashes),
         estimator=UnionEstimator())
+
+    estimator_config_geometric_bloom_filter = SketchEstimatorConfig(
+        name='geo_bloom_filter-first_moment_geo',
+        sketch_factory=GeometricBloomFilter.get_sketch_factory(
+            self.sketch_size, self.geometic_bloom_filter_probability),
+        estimator=FirstMomentEstimator(method='geo'))
 
     estimator_config_logarithmic_bloom_filter = SketchEstimatorConfig(
         name='log_bloom_filter-first_moment_log',
@@ -116,6 +124,7 @@ class InteroperabilityTest(absltest.TestCase):
         estimator_config_bloom_filter,
         estimator_config_logarithmic_bloom_filter,
         estimator_config_exponential_bloom_filter,
+        estimator_config_geometric_bloom_filter,
         estimator_config_voc,
         estimator_config_hll,
     ]
@@ -137,6 +146,16 @@ class InteroperabilityTest(absltest.TestCase):
         sketch_factory=BloomFilter.get_sketch_factory(
             self.sketch_size, self.num_bloom_filter_hashes),
         estimator=UnionEstimator(),
+        sketch_noiser=BlipNoiser(self.noiser_epsilon, self.noise_random_state))
+
+    noised_estimator_config_geometric_bloom_filter = SketchEstimatorConfig(
+        name='geo_bloom_filter-first_moment_geo',
+        sketch_factory=GeometricBloomFilter.get_sketch_factory(
+            self.sketch_size, self.geometic_bloom_filter_probability),
+        estimator=FirstMomentEstimator(
+            method='geo',
+            denoiser=SurrealDenoiser(
+                probability=self.noiser_flip_probability)),
         sketch_noiser=BlipNoiser(self.noiser_epsilon, self.noise_random_state))
 
     noised_estimator_config_logarithmic_bloom_filter = SketchEstimatorConfig(
@@ -177,6 +196,7 @@ class InteroperabilityTest(absltest.TestCase):
         noised_estimator_config_bloom_filter,
         noised_estimator_config_logarithmic_bloom_filter,
         noised_estimator_config_exponential_bloom_filter,
+        noised_estimator_config_geometric_bloom_filter,
         noised_estimator_config_voc,
     ]
 
