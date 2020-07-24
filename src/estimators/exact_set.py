@@ -83,6 +83,8 @@ class LosslessEstimator(EstimatorBase):
     frequency_counts = collections.defaultdict(int)
     for x in union.ids():
       frequency_counts[union.frequency(x)] += 1
+    if not frequency_counts:
+      return [0]
     # At this point, frequency_counts is a dictionary whose keys are frequencies
     # and whose values are the number of items with the corresponding frequency.
     # We now need to create a histogram, where histogram[i] consists of all

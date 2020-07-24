@@ -32,15 +32,20 @@ class ExactMultiSetTest(absltest.TestCase):
   def test_sketch_for_exact_multi_set(self):
     s = ExactMultiSet()
     s.add_ids([1, 2])
-    self.assertLen(s, 2)
-    self.assertIn(2, s)
-    self.assertNotIn(3, s)
+    self.assertLen(s, 2, "ID set has wrong length.")
+    self.assertIn(2, s, "ID set is missing an ID.")
+    self.assertNotIn(3, s, "ID set contains an unexpected ID.")
 
   def test_lossless_estimator_for_exact_multi_set(self):
     s = ExactMultiSet()
     s.add_ids([1, 2, 3, 1, 2, 1])
     e = LosslessEstimator()
     self.assertEqual(e([s]), [3, 2, 1])
+
+  def test_lossless_estimator_for_empty_set(self):
+    s = ExactMultiSet()
+    e = LosslessEstimator()
+    self.assertEqual(e([s]), [0])
 
   def test_less_one_estimator_multiple_for_exact_multi_set(self):
     s1 = ExactMultiSet()
@@ -61,6 +66,11 @@ class ExactMultiSetTest(absltest.TestCase):
     s.add_ids([1,1,1,2,2,2,3,3,3])
     e = LessOneEstimator()
     self.assertEqual(e([s]), [2, 2, 2])
+
+  def test_less_one_estimator_for_empty_set(self):
+    s = ExactMultiSet()
+    e = LessOneEstimator()
+    self.assertRaises(ValueError, lambda: e([s]))
     
   def test_noiser_for_exact_multi_set(self):
     s = ExactMultiSet()
