@@ -121,6 +121,35 @@ LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(
     estimator=bloom_filters.FirstMomentEstimator(
         method=bloom_filters.FirstMomentEstimator.METHOD_LOG))
 
+GEO_BLOOM_FILTER_1E4_INFTY_FIRST_MOMENT_GEO = SketchEstimatorConfig(
+    name='geo_bloom_filter-1e4-infty-first_moment_geo',
+    sketch_factory=bloom_filters.GeometricBloomFilter.get_sketch_factory(10000, 0.0012),
+    estimator=bloom_filters.FirstMomentEstimator(
+        method=bloom_filters.FirstMomentEstimator.METHOD_GEO))
+
+GEO_BLOOM_FILTER_1E4_LN3_FIRST_MOMENT_GEO = SketchEstimatorConfig(
+    name='geo_bloom_filter-1e4-ln3-first_moment_geo',
+    sketch_factory=bloom_filters.GeometricBloomFilter.get_sketch_factory(10000, 0.0012),
+    estimator=bloom_filters.FirstMomentEstimator(
+        method=bloom_filters.FirstMomentEstimator.METHOD_GEO,
+        denoiser=bloom_filters.SurrealDenoiser(probability=0.25)),
+    sketch_noiser=bloom_filters.BlipNoiser(epsilon=np.log(3)))
+
+BLOOM_FILTER_3E6_INFTY_UNION_ESTIMATOR = SketchEstimatorConfig(
+    name='bloom_filter-3e6-infty-union_estimator',
+    sketch_factory=bloom_filters.BloomFilter.get_sketch_factory(
+        3*10**6, 8),
+    estimator=bloom_filters.UnionEstimator())
+
+BLOOM_FILTER_3E6_LN3_UNION_ESTIMATOR = SketchEstimatorConfig(
+    name='bloom_filter-3e6-ln3-union_estimator',
+    sketch_factory=bloom_filters.BloomFilter.get_sketch_factory(
+        3*10**6, 8),
+    estimator=bloom_filters.UnionEstimator(
+        denoiser=bloom_filters.SurrealDenoiser(probability=0.25)
+    ),
+    sketch_noiser=bloom_filters.BlipNoiser(epsilon=8*np.log(3)))
+
 EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG = SketchEstimatorConfig(
     name='exp_bloom_filter-1e5_10-ln3-first_moment_exp',
     sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
@@ -168,6 +197,10 @@ SKETCH_ESTIMATOR_CONFIGS_TUPLE = (
     LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG,
     EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG,
     EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG,
+    GEO_BLOOM_FILTER_1E4_INFTY_FIRST_MOMENT_GEO,
+    GEO_BLOOM_FILTER_1E4_LN3_FIRST_MOMENT_GEO,
+    BLOOM_FILTER_3E6_INFTY_UNION_ESTIMATOR,
+    BLOOM_FILTER_3E6_LN3_UNION_ESTIMATOR,
     LIQUID_LEGIONS_1E5_10_LN3_SEQUENTIAL,
     LIQUID_LEGIONS_1E5_10_INFTY_SEQUENTIAL,
     VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL,

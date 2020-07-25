@@ -234,8 +234,12 @@ class ExponentialBloomFilter(AnyDistributionBloomFilter):
 class UnionEstimator(EstimatorBase):
   """A class that unions BloomFilters and estimates the combined cardinality."""
 
-  def __init__(self):
+  def __init__(self, denoiser=None):
     EstimatorBase.__init__(self)
+    if denoiser is None:
+      self._denoiser = copy.deepcopy
+    else:
+      self._denoiser = denoiser
 
   @classmethod
   def _check_compatibility(cls, sketch_list):
@@ -244,19 +248,19 @@ class UnionEstimator(EstimatorBase):
     for cur_sketch in sketch_list[1:]:
       first_sketch.assert_compatible(cur_sketch)
 
-  @classmethod
-  def union_sketches(cls, sketch_list):
+  def union_sketches(self, sketch_list):
     """Exposed for testing."""
     UnionEstimator._check_compatibility(sketch_list)
-    union = copy.deepcopy(sketch_list[0])
+    sketch_list = self._denoiser(sketch_list)
+    union = sketch_list[0]
     for cur_sketch in sketch_list[1:]:
-      union.sketch = union.sketch + cur_sketch.sketch
+      union.sketch = 1 - (1 - union.sketch) * (1 - cur_sketch.sketch)
     return union
 
   @classmethod
   def estimate_cardinality(cls, sketch):
     """Estimate the number of elements contained in the BloomFilter."""
-    x = np.sum(sketch.sketch != 0)
+    x = np.sum(sketch.sketch)
     k = float(sketch.num_hashes())
     m = float(sketch.max_size())
     if x >= m:
@@ -273,7 +277,7 @@ class UnionEstimator(EstimatorBase):
     if not sketch_list:
       return 0
     assert isinstance(sketch_list[0], BloomFilter), "expected a BloomFilter"
-    union = UnionEstimator.union_sketches(sketch_list)
+    union = self.union_sketches(sketch_list)
     return UnionEstimator.estimate_cardinality(union)
 
 
