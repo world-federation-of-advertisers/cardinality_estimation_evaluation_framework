@@ -141,7 +141,7 @@ The
 [Simulator](https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/src/simulations/simulator.py)
 currently produces a DataFrame containing four columns: `num_sets`,
 `estimated_cardinality, true_cardinality, relative_error`. The simulator will be
-modified to produce a DataFrame with 3_f_+2 columns, where _f_ is the number of
+modified to produce a DataFrame with `3 * f + 2` columns, where _f_ is the number of
 frequencies being evaluated. The columns `estimated_cardinality,
 true_cardinality`and`relative_error`will be respectively renamed to
 <code>estimated_cardinality_<em>i</em>, true_cardinality_<em>i</em>,</code>
