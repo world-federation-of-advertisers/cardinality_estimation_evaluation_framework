@@ -176,7 +176,7 @@ estimation sketch per frequency. Let's call this a stratified sketch.
 Stratification is of interest because it provides a generic mechanism by which
 any cardinality estimator can be converted into a frequency estimator. To
 calculate the number of elements of frequency _f_ in the union of 2 stratified
-sketches requires considering every pair $$i, j$$ such that $$i+j=f$$. In other
+sketches requires considering every pair <img src="https://render.githubusercontent.com/render/math?math=i, j"> such that <img src="https://render.githubusercontent.com/render/math?math=i+j=f">. In other
 words, if if $$X_{(i)}$$ represents the elements in $$X$$ having frequency
 $$i$$, then we have $$(A \cup B)_{f}=(A_{(f)} \cap B_{(0)})\cup(A_{(f-1)} \cap
 B_{(1)}) \cup (A_{(0)} \cap B_{(f)}).$$
