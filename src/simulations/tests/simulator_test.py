@@ -240,10 +240,10 @@ class SimulatorTest(absltest.TestCase):
     self.assertEqual(simulator.Simulator._extend_histogram(None, [3, 2, 1], 5), [3, 2, 1, 0, 0])
 
   def test_shuffle_distance(self):
-    self.assertEqual(simulator.Simulator(0,0,0)._shuffle_distance(
-      [], []), 0.0)
-    self.assertEqual(simulator.Simulator(0,0,0)._shuffle_distance(
-      [1], []), 0.0)
+    with self.assertRaises(AssertionError):
+      simulator.Simulator(0,0,0)._shuffle_distance([], [])
+    with self.assertRaises(AssertionError):
+      simulator.Simulator(0,0,0)._shuffle_distance([1], [])
     self.assertEqual(simulator.Simulator(0,0,0)._shuffle_distance(
       [1], [1]), 0.0)
     self.assertEqual(simulator.Simulator(0,0,0)._shuffle_distance(

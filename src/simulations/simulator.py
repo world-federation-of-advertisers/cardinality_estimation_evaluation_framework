@@ -35,7 +35,6 @@ _SketchEstimatorConfig = collections.namedtuple(
                         'estimate_noiser', 'max_frequency'])
 
 
-
 # This class exists as a placeholder for a docstring.
 class SketchEstimatorConfig(_SketchEstimatorConfig):
   """A subclass of namedtuple for providing a estimator config to the simulator.
@@ -164,13 +163,13 @@ class Simulator(object):
     Returns:
       The shuffle distance between histogram1 and histogram2.
     """
-    if len(histogram1) == 0 or len(histogram2) == 0:
-      return 0.0
+    assert len(histogram1), "Attempt to call _shuffle_distance with empty histogram1"
+    assert len(histogram2), "Attempt to call _shuffle_distance with empty histogram2"
     counts1 = [histogram1[i] - histogram1[i+1] for i in range(len(histogram1)-1)] + [histogram1[-1]]
     counts2 = [histogram2[i] - histogram2[i+1] for i in range(len(histogram2)-1)] + [histogram2[-1]]
     max_freq = max(len(counts1), len(counts2))
-    freq1 = np.array(self._extend_histogram(counts1, max_freq)) / sum(counts1)
-    freq2 = np.array(self._extend_histogram(counts2, max_freq)) / sum(counts2)
+    freq1 = np.array(self._extend_histogram(counts1, max_freq)) / np.sum(counts1)
+    freq2 = np.array(self._extend_histogram(counts2, max_freq)) / np.sum(counts2)
     return 0.5 * sum(np.abs(freq1 - freq2))
     
   def run_one(self):
