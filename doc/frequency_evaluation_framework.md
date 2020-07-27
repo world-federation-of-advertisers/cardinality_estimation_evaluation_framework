@@ -370,4 +370,4 @@ While the project description has been given top-down, it would be better to imp
 
 #### Docs
 
-[[Draft for WFA] Cardinality and Frequency Estimation Evaluation Framework](https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md)
+[Cardinality and Frequency Estimation Evaluation Framework](https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md)
