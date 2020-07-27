@@ -22,7 +22,7 @@ Google and Facebook are developing a cross media open measurement system in acco
 *   Must support each of the scenarios for frequency evaluation envisioned in the [Cardinality and Frequency Estimation Evaluation Framework](https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md) document.
 *   Design should be as similar as possible to the current cardinality estimation framework.
 *   Output should be as similar as possible to the output of the current cardinality estimation framework.
-*   Should be designed in such a way that it can easily be parallelized to allow for running in Borg or Google Cloud.
+*   Should be designed in such a way that it can easily be parallelized to allow for running on various cloud platforms, including Google Cloud.
 *   Should support frequency evaluators which are represented as a collection of cardinality sketches, as well as evaluators whose sketches can report frequency directly.
 
 
@@ -176,10 +176,16 @@ estimation sketch per frequency. Let's call this a stratified sketch.
 Stratification is of interest because it provides a generic mechanism by which
 any cardinality estimator can be converted into a frequency estimator. To
 calculate the number of elements of frequency _f_ in the union of 2 stratified
-sketches requires considering every pair <img src="https://render.githubusercontent.com/render/math?math=i, j"> such that <img src="https://render.githubusercontent.com/render/math?math=i+j=f">. In other
-words, if if $$X_{(i)}$$ represents the elements in $$X$$ having frequency
-$$i$$, then we have $$(A \cup B)_{f}=(A_{(f)} \cap B_{(0)})\cup(A_{(f-1)} \cap
-B_{(1)}) \cup (A_{(0)} \cap B_{(f)}).$$
+sketches requires considering every pair
+  <img src="https://render.githubusercontent.com/render/math?math=i, j">
+such that
+  <img src="https://render.githubusercontent.com/render/math?math=i%2Bj=f">.
+In other words, if if
+  <img src="https://render.githubusercontent.com/render/math?math=X_{(i)}">.
+represents the elements in _X_ having frequency _i_,
+then we have
+  <img src="https://render.githubusercontent.com/render/math?math=(A \cup B)_{f}=(A_{(f)} \cap B_{(0)})\cup(A_{(f-1)} \cap
+B_{(1)}) \cup (A_{(0)} \cap B_{(f)}).">.
 
 If the sketch supports unions, intersections and set differences, then this
 relationship can be used to directly compute a stratified sketch of a union. For
