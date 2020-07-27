@@ -239,6 +239,22 @@ class SimulatorTest(absltest.TestCase):
     self.assertEqual(simulator.Simulator._extend_histogram(None, [3, 2, 1], 3), [3, 2, 1])
     self.assertEqual(simulator.Simulator._extend_histogram(None, [3, 2, 1], 5), [3, 2, 1, 0, 0])
 
+  def test_shuffle_distance(self):
+    self.assertEqual(simulator.Simulator(0,0,0)._shuffle_distance(
+      [], []), 0.0)
+    self.assertEqual(simulator.Simulator(0,0,0)._shuffle_distance(
+      [1], []), 0.0)
+    self.assertEqual(simulator.Simulator(0,0,0)._shuffle_distance(
+      [1], [1]), 0.0)
+    self.assertEqual(simulator.Simulator(0,0,0)._shuffle_distance(
+      [10], [10]), 0.0)
+    self.assertEqual(simulator.Simulator(0,0,0)._shuffle_distance(
+      [1, 1], [1]), 1.0)
+    self.assertEqual(simulator.Simulator(0,0,0)._shuffle_distance(
+      [1, 1], [1, 1]), 0.0)
+    self.assertEqual(simulator.Simulator(0,0,0)._shuffle_distance(
+      [2, 1, 0], [2, 2, 1]), 0.5)
+
   def test_multiple_frequencies(self):
     sketch_estimator_config = simulator.SketchEstimatorConfig(
         name='exact-set-multiple-frequencies',
@@ -260,13 +276,14 @@ class SimulatorTest(absltest.TestCase):
                         simulator.TRUE_CARDINALITY_BASENAME + '1',
                         simulator.TRUE_CARDINALITY_BASENAME + '2',
                         simulator.TRUE_CARDINALITY_BASENAME + '3',
+                        simulator.SHUFFLE_DISTANCE,
                         'run_index',
                         simulator.RELATIVE_ERROR_BASENAME + '1',
                         simulator.RELATIVE_ERROR_BASENAME + '2',
                         simulator.RELATIVE_ERROR_BASENAME + '3']
     expected_data = [
-        [1, 3, 2, 1, 3, 2, 1, 0, 0., 0., 0.],
-        [2, 4, 3, 2, 4, 3, 2, 0, 0., 0., 0.]
+        [1, 3, 2, 1, 3, 2, 1, 0., 0, 0., 0., 0.],
+        [2, 4, 3, 2, 4, 3, 2, 0., 0, 0., 0., 0.]
     ]
     
     expected_df = pd.DataFrame(expected_data, columns=expected_columns)
