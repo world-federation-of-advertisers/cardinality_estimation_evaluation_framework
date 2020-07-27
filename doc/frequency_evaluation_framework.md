@@ -181,10 +181,10 @@ sketches requires considering every pair
 such that
   <img src="https://render.githubusercontent.com/render/math?math=i%2Bj=f">.
 In other words, if if
-  <img src="https://render.githubusercontent.com/render/math?math=X_{(i)}">.
+  <img src="https://render.githubusercontent.com/render/math?math=X_%7B(i)%7D">.
 represents the elements in _X_ having frequency _i_,
 then we have
-<img src="https://render.githubusercontent.com/render/math?math=(A&space;\cup&space;B)_{f}=(A_{(f)}&space;\cap&space;B_{(0)})\cup(A_{(f-1)}&space;\cap&space;B_{(1)})&space;\cup&space;(A_{(0)}&space;\cap&space;B_{(f)}).">.
+<img src="https://render.githubusercontent.com/render/math?math=(A&space;\cup&space;B)_%7Bf%7D=(A_%7B(f)%7D&space;\cap&space;B_%7B(0)%7D)\cup(A_%7B(f-1)%7D&space;\cap&space;B_%7B(1)%7D)&space;\cup&space;(A_%7B(0)%7D&space;\cap&space;B_%7B(f)%7D).">.
 
 If the sketch supports unions, intersections and set differences, then this
 relationship can be used to directly compute a stratified sketch of a union. For
