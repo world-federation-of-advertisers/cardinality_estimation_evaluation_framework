@@ -35,6 +35,7 @@ _SketchEstimatorConfig = collections.namedtuple(
                         'estimate_noiser', 'max_frequency'])
 
 
+
 # This class exists as a placeholder for a docstring.
 class SketchEstimatorConfig(_SketchEstimatorConfig):
   """A subclass of namedtuple for providing a estimator config to the simulator.
