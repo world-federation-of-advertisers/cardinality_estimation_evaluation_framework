@@ -184,8 +184,7 @@ In other words, if if
   <img src="https://render.githubusercontent.com/render/math?math=X_{(i)}">.
 represents the elements in _X_ having frequency _i_,
 then we have
-  <img src="https://render.githubusercontent.com/render/math?math=(A \cup B)_{f}=(A_{(f)} \cap B_{(0)})\cup(A_{(f-1)} \cap
-B_{(1)}) \cup (A_{(0)} \cap B_{(f)}).">.
+<img src="https://render.githubusercontent.com/render/math?math=(A&space;\cup&space;B)_{f}=(A_{(f)}&space;\cap&space;B_{(0)})\cup(A_{(f-1)}&space;\cap&space;B_{(1)})&space;\cup&space;(A_{(0)}&space;\cap&space;B_{(f)}).">.
 
 If the sketch supports unions, intersections and set differences, then this
 relationship can be used to directly compute a stratified sketch of a union. For
