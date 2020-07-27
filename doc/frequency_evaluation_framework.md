@@ -184,8 +184,8 @@ B_{(1)}) \cup (A_{(0)} \cap B_{(f)}).$$
 If the sketch supports unions, intersections and set differences, then this
 relationship can be used to directly compute a stratified sketch of a union. For
 some sketch types, unions are supported but intersections are not. For such
-sketches, the cardinality of an intersection can be computed using the principle
-of inclusion-exclusion. This complicates the computation of the frequency
+sketches, the cardinality of an intersection can be computed using the [principle
+of inclusion-exclusion](https://en.wikipedia.org/wiki/Inclusion%E2%80%93exclusion_principle). This complicates the computation of the frequency
 histogram (details supplied on request). The frequency evaluation framework will
 provide support for both stratified and unstratified sketches.
 
