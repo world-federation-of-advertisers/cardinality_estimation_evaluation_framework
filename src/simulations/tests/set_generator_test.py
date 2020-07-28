@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Tests for wfa_cardinality_estimation_evaluation_framework.simulations.set_generator."""
-
+from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
@@ -25,6 +25,19 @@ TEST_UNIVERSE_SIZE = 200
 TEST_NUM_SETS = 3
 TEST_SET_SIZE = 50
 TEST_SET_SIZE_LIST = [TEST_SET_SIZE] * TEST_NUM_SETS
+
+
+def fake_choice_fast(n, m, random_state=None):
+  _ = random_state
+  if isinstance(n, int):
+    return np.arange(m)
+  return n[:m]
+
+
+class FakeRandomState:
+
+  def poisson(self, lam, size):
+    return lam * np.ones(size, dtype=int)
 
 
 class SetGeneratorTest(parameterized.TestCase):
@@ -47,6 +60,8 @@ class SetGeneratorTest(parameterized.TestCase):
        {'order': 'reversed', 'correlated_sets': 'one', 'shared_prop': 0.2}),
       (set_generator.SequentiallyCorrelatedSetGenerator,
        {'order': 'random', 'correlated_sets': 'one', 'shared_prop': 0.2}),
+      (set_generator.HomogeneousMultiSetGenerator,
+       {'freq_rate_list': np.ones_like(TEST_SET_SIZE_LIST), 'freq_cap': 2})
   )
   def test_set_generator_factory_with_num_and_size_corresponding_to_list(
       self, set_generator_class, kwargs):
@@ -59,7 +74,7 @@ class SetGeneratorTest(parameterized.TestCase):
     Args:
       set_generator_class: class name of different set_generators.
       kwargs: kwargs expect universe_size, set_size_list and random_state, in
-        each set_generator. In this test, universe_size and set_sizes are
+        each set_generator. In this test, universe_size and set_size_list are
         given by the global variables TEST_UNIVERSE_SIZE and TEST_SET_SIZE_LIST.
     """
     factory = set_generator_class.get_generator_factory_with_num_and_size(
@@ -67,7 +82,7 @@ class SetGeneratorTest(parameterized.TestCase):
         set_size=TEST_SET_SIZE, **kwargs)
     gen_from_factory = factory(np.random.RandomState(1))
     gen_from_class = set_generator_class(
-        universe_size=TEST_UNIVERSE_SIZE, set_sizes=TEST_SET_SIZE_LIST,
+        universe_size=TEST_UNIVERSE_SIZE, set_size_list=TEST_SET_SIZE_LIST,
         **kwargs, random_state=np.random.RandomState(1))
     set_list_gen_from_factory = []
     for ids in gen_from_factory:
@@ -136,7 +151,7 @@ class SetGeneratorTest(parameterized.TestCase):
         **kwargs)
     gen_from_factory = factory(np.random.RandomState(1))
     gen_from_class = set_generator_class(
-        universe_size=TEST_UNIVERSE_SIZE, set_sizes=TEST_SET_SIZE_LIST,
+        universe_size=TEST_UNIVERSE_SIZE, set_size_list=TEST_SET_SIZE_LIST,
         **kwargs, random_state=np.random.RandomState(1))
     set_list_gen_from_factory = []
     for ids in gen_from_factory:
@@ -149,14 +164,14 @@ class SetGeneratorTest(parameterized.TestCase):
   def test_independent_generator_constructor(self):
     rs = np.random.RandomState(1)
     ind_gen = set_generator.IndependentSetGenerator(
-        universe_size=10000, set_sizes=[100] * 5, random_state=rs)
+        universe_size=10000, set_size_list=[100] * 5, random_state=rs)
     for campaign_id in ind_gen:
       self.assertLen(campaign_id, 100)
 
   def test_independent_generator_constructor_different_sizes(self):
     rs = np.random.RandomState(1)
     ind_gen = set_generator.IndependentSetGenerator(
-        universe_size=10000, set_sizes=[10, 10, 10, 20, 20],
+        universe_size=10000, set_size_list=[10, 10, 10, 20, 20],
         random_state=rs)
     set_ids_list = []
     for set_ids in ind_gen:
@@ -169,7 +184,7 @@ class SetGeneratorTest(parameterized.TestCase):
   def test_independent_generator_single_universe(self):
     rs = np.random.RandomState(1)
     ind_gen = set_generator.IndependentSetGenerator(
-        universe_size=1, set_sizes=[1], random_state=rs)
+        universe_size=1, set_size_list=[1], random_state=rs)
     for campaign_id in ind_gen:
       self.assertLen(campaign_id, 1)
       self.assertEqual(campaign_id[0], 0)
@@ -179,7 +194,7 @@ class SetGeneratorTest(parameterized.TestCase):
     # Low reach case, actual set size should be close to input set size
     eb_gen = set_generator.ExponentialBowSetGenerator(
         user_activity_association='independent',
-        universe_size=10000, set_sizes=[1000] * 5, random_state=rs)
+        universe_size=10000, set_size_list=[1000] * 5, random_state=rs)
     for set_ids in eb_gen:
       re = relative_error(len(set_ids), 1000)
       self.assertLess(abs(re), 0.01,
@@ -187,7 +202,7 @@ class SetGeneratorTest(parameterized.TestCase):
     # High reach case, allow actual size to be more different from input size
     eb_gen = set_generator.ExponentialBowSetGenerator(
         user_activity_association='independent',
-        universe_size=10000, set_sizes=[5000] * 5, random_state=rs)
+        universe_size=10000, set_size_list=[5000] * 5, random_state=rs)
     for set_ids in eb_gen:
       re = relative_error(len(set_ids), 5000)
       self.assertLess(abs(re), 0.2,
@@ -199,7 +214,7 @@ class SetGeneratorTest(parameterized.TestCase):
     low_set_size_list = [600, 800, 1000]
     eb_gen = set_generator.ExponentialBowSetGenerator(
         user_activity_association='independent',
-        universe_size=10000, set_sizes=low_set_size_list, random_state=rs)
+        universe_size=10000, set_size_list=low_set_size_list, random_state=rs)
     actual_set_size = iter(low_set_size_list)
     for set_ids in eb_gen:
       re = relative_error(len(set_ids), next(actual_set_size))
@@ -209,7 +224,7 @@ class SetGeneratorTest(parameterized.TestCase):
     high_set_size_list = [4000, 5000, 6000]
     eb_gen = set_generator.ExponentialBowSetGenerator(
         user_activity_association='independent',
-        universe_size=10000, set_sizes=high_set_size_list, random_state=rs)
+        universe_size=10000, set_size_list=high_set_size_list, random_state=rs)
     actual_set_size = iter(high_set_size_list)
     for set_ids in eb_gen:
       re = relative_error(len(set_ids), next(actual_set_size))
@@ -222,12 +237,12 @@ class SetGeneratorTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       _ = set_generator.ExponentialBowSetGenerator(
           user_activity_association=0.5,
-          universe_size=10000, set_sizes=[1000] * 3, random_state=rs)
+          universe_size=10000, set_size_list=[1000] * 3, random_state=rs)
     # Two small set size
     with self.assertRaises(ValueError):
       _ = set_generator.ExponentialBowSetGenerator(
           user_activity_association='independent',
-          universe_size=10000, set_sizes=[10] * 3, random_state=rs)
+          universe_size=10000, set_size_list=[10] * 3, random_state=rs)
 
   def test_fully_overlap_generator_constructor(self):
     rs = np.random.RandomState(1)
@@ -342,7 +357,7 @@ class SetGeneratorTest(parameterized.TestCase):
     rs = np.random.RandomState(1)
     sc_gen = set_generator.SequentiallyCorrelatedSetGenerator(
         order='original', correlated_sets='all', universe_size=30,
-        shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
+        shared_prop=0.2, set_size_list=[10] * 3, random_state=rs)
     set_ids_list = [set_ids for set_ids in sc_gen]
     previous_set_ids = set(set_ids_list[0])
     for set_ids in set_ids_list[1:]:
@@ -354,7 +369,7 @@ class SetGeneratorTest(parameterized.TestCase):
     rs = np.random.RandomState(1)
     sc_gen = set_generator.SequentiallyCorrelatedSetGenerator(
         order='original', correlated_sets='all', universe_size=100,
-        shared_prop=0.2, set_sizes=[10, 15, 20, 20], random_state=rs)
+        shared_prop=0.2, set_size_list=[10, 15, 20, 20], random_state=rs)
     expected_overlap_size = iter([2, 3, 4])
     set_ids_list = [set_ids for set_ids in sc_gen]
     previous_set_ids = set(set_ids_list[0])
@@ -367,7 +382,7 @@ class SetGeneratorTest(parameterized.TestCase):
     rs = np.random.RandomState(1)
     sc_gen = set_generator.SequentiallyCorrelatedSetGenerator(
         order='reversed', correlated_sets='all', universe_size=30,
-        shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
+        shared_prop=0.2, set_size_list=[10] * 3, random_state=rs)
     set_ids_list = [set_ids for set_ids in sc_gen][::-1]
     previous_set_ids = set(set_ids_list[0])
     for set_ids in set_ids_list[1:]:
@@ -379,7 +394,7 @@ class SetGeneratorTest(parameterized.TestCase):
     rs = np.random.RandomState(1)
     sc_gen = set_generator.SequentiallyCorrelatedSetGenerator(
         order='original', correlated_sets='one', universe_size=30,
-        shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
+        shared_prop=0.2, set_size_list=[10] * 3, random_state=rs)
     set_ids_list = [set_ids for set_ids in sc_gen]
     previous_set_ids = set(set_ids_list[0])
     union_set_ids = set(set_ids_list[0])
@@ -393,7 +408,7 @@ class SetGeneratorTest(parameterized.TestCase):
     rs = np.random.RandomState(1)
     sc_gen = set_generator.SequentiallyCorrelatedSetGenerator(
         order='reversed', correlated_sets='one', universe_size=30,
-        shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
+        shared_prop=0.2, set_size_list=[10] * 3, random_state=rs)
     set_ids_list = [set_ids for set_ids in sc_gen][::-1]
     previous_set_ids = set(set_ids_list[0])
     union_set_ids = set(set_ids_list[0])
@@ -408,12 +423,68 @@ class SetGeneratorTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       _ = set_generator.SequentiallyCorrelatedSetGenerator(
           order='not_implemented', correlated_sets='all', universe_size=30,
-          shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
+          shared_prop=0.2, set_size_list=[10] * 3, random_state=rs)
     with self.assertRaises(ValueError):
       _ = set_generator.SequentiallyCorrelatedSetGenerator(
           order='random', correlated_sets='not_implemented', universe_size=30,
-          shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
+          shared_prop=0.2, set_size_list=[10] * 3, random_state=rs)
 
+  @parameterized.parameters(
+      (None, [[0, 0, 0, 0, 0, 0], [0, 0, 1, 1]]),
+      (3, [[0, 0, 0], [0, 0, 1, 1]]))
+  def test_homogeneous_multiset_generator_freq_cap(
+      self, freq_cap, expected_multiset_ids_list):
+    set_size_list = [1, 2]
+    freq_rate_list = [5, 1]
+    rs = FakeRandomState()
+    gen = set_generator.HomogeneousMultiSetGenerator(
+        universe_size=4,
+        set_size_list=set_size_list,
+        freq_rate_list=freq_rate_list,
+        freq_cap=3,
+        random_state=rs)
+    expected_multiset_ids_list = [[0, 0, 0], [0, 0, 1, 1]]
+    with mock.patch.object(gen, 'choice', autospec=True) as mock_choice:
+      mock_choice.side_effect = fake_choice_fast
+      output_multiset_ids_list = [multiset_ids for multiset_ids in gen]
+      self.assertCountEqual(
+          expected_multiset_ids_list,
+          output_multiset_ids_list,
+          'Multiset doesn\'t contain the correct IDs with freq cap:'
+          f'{freq_cap}.')
+
+  def test_homogeneous_multiset_generator_raise_unequal_length_input(self):
+    # Test if raise error when set_size_list and freq_rate_list do not have
+    # equal length.
+    with self.assertRaises(AssertionError):
+      _ = set_generator.HomogeneousMultiSetGenerator(
+          universe_size=4,
+          set_size_list=[1, 1],
+          freq_rate_list=[1],
+          freq_cap=3,
+          random_state=np.random.RandomState())
+
+  def test_homogeneous_multiset_generator_raise_invalid_freq_rate(self):
+    # Test if raise error when freq_rate is invalid.
+    with self.assertRaises(AssertionError):
+      _ = set_generator.HomogeneousMultiSetGenerator(
+          universe_size=4,
+          set_size_list=[1, 1],
+          freq_rate_list=[-1, 1],
+          freq_cap=3,
+          random_state=np.random.RandomState())
+
+  @parameterized.parameters(0, -1)
+  def test_homogeneous_multiset_generator_raise_invalid_freq_cap(self,
+                                                                 freq_cap):
+    # Test if raise error when freq_cap is invalid.
+    with self.assertRaises(AssertionError):
+      _ = set_generator.HomogeneousMultiSetGenerator(
+          universe_size=4,
+          set_size_list=[1, 1],
+          freq_rate_list=[1, 1],
+          freq_cap=freq_cap,
+          random_state=np.random.RandomState())
 
 if __name__ == '__main__':
   absltest.main()

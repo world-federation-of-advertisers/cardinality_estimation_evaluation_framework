@@ -51,6 +51,7 @@ class _SetSizeGenerator(object):
     for _ in range(self.num_sets):
       yield self.set_size
 
+
 class SetGeneratorBase(object):
   """Base object for generating test sets."""
 
@@ -58,7 +59,24 @@ class SetGeneratorBase(object):
     raise NotImplementedError()
 
   @classmethod
-  def get_generator_factory(cls):
+  def get_generator_factory_with_num_and_size(cls):
+    """Returns a function Handle which takes a np.random.RandomState as an arg.
+
+    This function handle, when called, will return a fully-formed SetGenerator
+    object, ready to generate sets.
+    """
+
+    def f(random_state):
+      _ = random_state
+      raise NotImplementedError()
+
+    _ = f
+    # In an implementation, you would return f here
+    # return f
+    raise NotImplementedError()
+
+  @classmethod
+  def get_generator_factory_with_set_size_list(cls):
     """Returns a function Handle which takes a np.random.RandomState as an arg.
 
     This function handle, when called, will return a fully-formed SetGenerator
@@ -97,14 +115,14 @@ class IndependentSetGenerator(SetGeneratorBase):
 
     return f
 
-  def __init__(self, universe_size, set_sizes, random_state):
+  def __init__(self, universe_size, set_size_list, random_state):
     self.universe_size = universe_size
     self.union_ids = set()
     self.random_state = random_state
-    self.set_sizes = set_sizes
+    self.set_size_list = set_size_list
 
   def __iter__(self):
-    for set_size in self.set_sizes:
+    for set_size in self.set_size_list:
       set_ids = choice_fast(self.universe_size, set_size, self.random_state)
       self.union_ids = self.union_ids.union(set_ids)
       yield set_ids
@@ -140,7 +158,7 @@ class ExponentialBowSetGenerator(SetGeneratorBase):
     return f
 
   def __init__(self, user_activity_association, universe_size,
-               set_sizes, random_state):
+               set_size_list, random_state):
     """Initialize an Exponential Bow set generator.
 
     Args:
@@ -155,7 +173,7 @@ class ExponentialBowSetGenerator(SetGeneratorBase):
         user_activity_association are not supported.
       universe_size: An integer value that specifies the size of the whole
         universe from which the ids will be sampled.
-      set_sizes: An iterator or a list containing the size of each set.
+      set_size_list: An iterator or a list containing the size of each set.
       random_state: A np.random.RandomState object.
 
     Raises:
@@ -176,7 +194,7 @@ class ExponentialBowSetGenerator(SetGeneratorBase):
           'is an invalid value.')
     self.universe_size = universe_size
     self.union_ids = set()
-    self.set_size_list = [set_size for set_size in set_sizes]
+    self.set_size_list = [set_size for set_size in set_size_list]
     self.random_state = random_state
     if min(self.set_size_list) < 50:
       raise ValueError('Too small size is not supported for Dirac bow.')
@@ -331,6 +349,7 @@ class SubSetGenerator(SetGeneratorBase):
       yield set_ids_list[i]
     return self
 
+
 class _SequentiallyCorrelatedAllPreviousSetGenerator(SetGeneratorBase):
   """Generator for sequentailly correlated sets.
 
@@ -349,7 +368,8 @@ class _SequentiallyCorrelatedAllPreviousSetGenerator(SetGeneratorBase):
     # self.overlap_size_list[i] is the overlap of set.set_size_list[i]
     # with the previous union, so in particular, self.overlap_size_list[0] = 0
     total_ids_size = int(sum(self.set_size_list) - sum(self.overlap_size_list))
-    self.ids_pool = choice_fast(universe_size, total_ids_size, self.random_state)
+    self.ids_pool = choice_fast(universe_size, total_ids_size,
+                                self.random_state)
 
   def __iter__(self):
     for i in range(len(self.set_size_list)):
@@ -440,7 +460,7 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
     return f
 
   def __init__(self, order, correlated_sets, universe_size, shared_prop,
-               set_sizes, random_state):
+               set_size_list, random_state):
     """Initialize a sequentially correlated sets generator.
 
     Args:
@@ -453,14 +473,14 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
         universe from which the ids will be sampled.
       shared_prop: A number between 0 and 1 that specifies the proportion of ids
         which has overlaps with all the previously generated campaigns.
-      set_sizes: A generator or a list containing the size of each set.
+      set_size_list: A generator or a list containing the size of each set.
       random_state: A np.random.RandomState object.
 
     Raises:
       ValueError: if the given order is not supported, or if the
       correlated_sets is not supported.
     """
-    self.set_size_list = [set_size for set_size in set_sizes]
+    self.set_size_list = [set_size for set_size in set_size_list]
     num_sets = len(self.set_size_list)
     if order == ORDER_ORIGINAL:
       self.set_indices = list(range(num_sets))
@@ -485,4 +505,88 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
     set_ids_list = [set_ids for set_ids in self.generator]
     for i in self.set_indices:
       yield set_ids_list[i]
+    return self
+
+
+class HomogeneousMultiSetGenerator(SetGeneratorBase):
+  """Homogeneous multiset generator.
+
+  Homogeneous means that all the reached ID's have the same frequency
+  distribution.
+
+  As a reached ID may appear one or more times in the returned set,
+  to differentiate with a normal set whose elements can only appear once, we
+  use the term multiset.
+
+  The frequency distribution is defined as a shifted-Poisson distribution.
+  I.e., freq ~ Poission(freq_rate) + 1.
+  """
+
+  @classmethod
+  def get_generator_factory_with_num_and_size(cls, universe_size, num_sets,
+                                              set_size, freq_rate_list,
+                                              freq_cap):
+
+    def f(random_state):
+      return cls(universe_size, list(_SetSizeGenerator(num_sets, set_size)),
+                 freq_rate_list, random_state, freq_cap)
+
+    return f
+
+  @classmethod
+  def get_generator_factory_with_set_size_list(cls, universe_size,
+                                               set_size_list, freq_rate_list,
+                                               freq_cap):
+
+    def f(random_state):
+      return cls(universe_size, set_size_list, freq_rate_list, random_state,
+                 freq_cap)
+
+    return f
+
+  def __init__(self, universe_size, set_size_list, freq_rate_list, random_state,
+               freq_cap=None):
+    """Create a homogeneous multiset generator.
+
+    Args:
+      universe_size: An integer value that specifies the size of the whole
+        universe from which the ids will be sampled.
+      set_size_list: A list containing the size of each set, aka, the number of
+        reached IDs.
+      freq_rate_list: A list of the same size as set_size_list, specifying the
+        non-negative freq_rate parameter of the shifted-Possion distribution.
+      random_state: a numpy random state.
+      freq_cap: An optional positive integer which represents the maximum number
+        of times an ID can be seen in the returned set. If not set, will not
+        apply this capping.
+
+    Raises: AssertionError when (1) set_size_list and freq_rate_list do not
+      have equal length, (2) elements of freq_rate_list are not all
+      non-negative, or (3) freq_cap is not None or positive.
+    """
+    assert len(set_size_list) == len(freq_rate_list), (
+        'set_size_list and freq_rate_list do not have equal length.')
+    assert all([freq_rate >= 0 for freq_rate in freq_rate_list]), (
+        'Elements of freq_rate_list should be non-negative.')
+    assert freq_cap is None or freq_cap > 0, (
+        'freq_cap should be None or positive.')
+    self.universe_size = universe_size
+    self.set_size_list = set_size_list
+    self.freq_rate_list = freq_rate_list
+    self.freq_cap = freq_cap
+    self.random_state = random_state
+    self.choice = choice_fast  # For simple mock in unit testing.
+
+  def __iter__(self):
+    for set_size, freq_rate in zip(self.set_size_list, self.freq_rate_list):
+      set_ids = self.choice(
+          self.universe_size, set_size, self.random_state)
+      freq_per_id = self.random_state.poisson(
+          lam=freq_rate, size=len(set_ids)) + 1
+      if self.freq_cap is not None:
+        freq_per_id = np.minimum(freq_per_id, self.freq_cap)
+      multiset_ids = []
+      for i, freq in zip(set_ids, freq_per_id):
+        multiset_ids += [i] * freq
+      yield multiset_ids
     return self
