@@ -155,9 +155,9 @@ class ReportGenerator(object):
       df['num_estimable_sets_cell'] = (
           df[analyzer.NUM_ESTIMABLE_SETS].astype('str')
           + '<br>relative_error: mean='
-          + df[simulator.RELATIVE_ERROR + '_mean'].round(4).astype('str')
+          + df[simulator.RELATIVE_ERROR_BASENAME + '1_mean'].round(4).astype('str')
           + ', std='
-          + df[simulator.RELATIVE_ERROR + '_std'].round(4).astype('str')
+          + df[simulator.RELATIVE_ERROR_BASENAME + '1_std'].round(4).astype('str')
       )
       df[ESTIMABLE_CRITERIA_COLNAME] = (
           df[analyzer.PROPORTION_OF_RUNS_NAME].apply('{0:.0%}'.format)
