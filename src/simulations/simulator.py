@@ -150,7 +150,7 @@ class Simulator(object):
   def _shuffle_distance(self, histogram1, histogram2):
     """Computes shuffle distance between two histograms.
 
-    Given two frequency distributions f_1 and f_2, then shuffle distance
+    Given two frequency distributions f_1 and f_2, the shuffle distance
     between them is defined as 
 
        1/2 * sum_{k=1}^f |f_1(k) - f_2(k)|
@@ -165,12 +165,16 @@ class Simulator(object):
     """
     assert len(histogram1), "Attempt to call _shuffle_distance with empty histogram1"
     assert len(histogram2), "Attempt to call _shuffle_distance with empty histogram2"
-    counts1 = [histogram1[i] - histogram1[i+1] for i in range(len(histogram1)-1)] + [histogram1[-1]]
-    counts2 = [histogram2[i] - histogram2[i+1] for i in range(len(histogram2)-1)] + [histogram2[-1]]
+    counts1 = [histogram1[i] - histogram1[i+1]
+               for i in range(len(histogram1)-1)] + [histogram1[-1]]
+    counts2 = [histogram2[i] - histogram2[i+1]
+               for i in range(len(histogram2)-1)] + [histogram2[-1]]
     max_freq = max(len(counts1), len(counts2))
-    freq1 = np.array(self._extend_histogram(counts1, max_freq)) / np.sum(counts1)
-    freq2 = np.array(self._extend_histogram(counts2, max_freq)) / np.sum(counts2)
-    return 0.5 * sum(np.abs(freq1 - freq2))
+    freq1 = (
+      np.array(self._extend_histogram(counts1, max_freq)) / np.sum(counts1))
+    freq2 = (
+      np.array(self._extend_histogram(counts2, max_freq)) / np.sum(counts2))
+    return 0.5 * np.sum(np.abs(freq1 - freq2))
     
   def run_one(self):
     """Run one iteration.
