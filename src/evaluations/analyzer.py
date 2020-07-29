@@ -200,7 +200,7 @@ class EstimatorEvaluationAnalyzer(object):
       df = self.raw_df.groupby([SKETCH_ESTIMATOR_NAME, SCENARIO_NAME]).apply(
           _get_num_estimable_sets_series,
           num_sets=simulator.NUM_SETS,
-          relative_error=simulator.RELATIVE_ERROR_BASENAME + '1',
+          relative_error=self.error_metric_column,
           error_margin=criteria[0],
           proportion_of_runs=criteria[1]).reset_index()
       df[ERROR_MARGIN_NAME] = criteria[0]
@@ -221,7 +221,7 @@ class EstimatorEvaluationAnalyzer(object):
         df.groupby([
             ERROR_MARGIN_NAME, PROPORTION_OF_RUNS_NAME, SKETCH_ESTIMATOR_NAME,
             SCENARIO_NAME, NUM_ESTIMABLE_SETS])
-        .agg({simulator.RELATIVE_ERROR_BASENAME + '1': ['mean', 'std']}))
+        .agg({self.error_metric_column: ['mean', 'std']}))
     result.columns = result.columns.map('_'.join)
     result = result.reset_index()
     return result
