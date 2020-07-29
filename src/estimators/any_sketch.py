@@ -16,6 +16,7 @@
 import collections
 import sys
 import numpy as np
+import scipy.stats
 
 from wfa_cardinality_estimation_evaluation_framework.common.hash_function import HashFunction
 from wfa_cardinality_estimation_evaluation_framework.common.hash_function import MAX_HASH_VALUE
@@ -88,6 +89,52 @@ class UniformDistribution(Distribution):
   @property
   def register_probs(self):
     return np.ones(self.num_values) / self.num_values
+
+
+class GeometricDistribution(Distribution):
+  """Distributes indexes in the range [0, num_values) according to geometric distribution."""
+
+  def __init__(self, num_values, probability):
+    """Create a truncated geometric distribution.
+    Args:
+      num_values: The number of values that the geometric distribuition can take
+        on. This is used to generate register_bounds according to geometric distribution.
+      probability: probablity of geometric distribution
+    """
+    self.num_values = num_values
+    self.probability = probability
+    self.register_bounds = GeometricDistribution._compute_register_bounds(num_values, probability)
+    self._register_probs = GeometricDistribution._compute_register_probs(num_values, probability)
+
+  def __len__(self):
+    return self.num_values
+
+  def __eq__(self, other):
+    return (isinstance(other, GeometricDistribution) and
+            self.num_values == other.num_values and
+            self.probability == other.probability)
+
+  @property
+  def register_probs(self):
+    return self._register_probs
+
+  @classmethod
+  def _compute_register_probs(cls, num_values, probability):
+    """Compute per register probability."""
+    bits = np.arange(1, num_values + 1)
+    probs = scipy.stats.geom.pmf(bits, probability)
+
+    return probs / sum(probs)
+
+  @classmethod
+  def _compute_register_bounds(cls, num_values, probability):
+    """Compute the right bound of the registers."""
+    bits = np.arange(1, num_values + 1)
+    probs = scipy.stats.geom.cdf(bits, probability)
+    return probs / probs[-1]
+
+  def get_index(self, hash_value, max_hash_value=MAX_HASH_VALUE):
+    return np.searchsorted(self.register_bounds, hash_value / max_hash_value)
 
 
 class LogBucketDistribution(Distribution):

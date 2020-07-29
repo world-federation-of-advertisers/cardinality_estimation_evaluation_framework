@@ -170,7 +170,7 @@ class PairwiseEstimator(EstimatorBase):
   def __call__(self, sketch_list):
     """Estimates the cardinality of the union of two VectorOfCounts."""
     assert len(sketch_list) == 2
-    return self._union(sketch_list[0], sketch_list[1])
+    return [self._union(sketch_list[0], sketch_list[1])]
 
   @classmethod
   def _intersection(cls, this, that, this_cardinality=None,
@@ -296,7 +296,7 @@ class SequentialEstimator(EstimatorBase):
 
   def __call__(self, sketch_list):
     """Estimates the cardinality of the union of a list of VectorOfCounts."""
-    return self._estimate_cardinality(sketch_list)
+    return [self._estimate_cardinality(sketch_list)]
 
   def _estimate_cardinality(self, sketch_list):
     """Merge a list of VectorOfCounts and estimate the cardinality.

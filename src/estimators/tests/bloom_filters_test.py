@@ -26,6 +26,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters im
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import ExponentialBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FixedProbabilityBitFlipNoiser
+from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import GeometricBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import invert_monotonic
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import LogarithmicBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import SurrealDenoiser
@@ -81,6 +82,7 @@ class AnyDistributionBloomFilterTest(parameterized.TestCase):
       (UniformBloomFilter, {}),
       (LogarithmicBloomFilter, {}),
       (ExponentialBloomFilter, {'decay_rate': 1}),
+      (GeometricBloomFilter, {'probability': 0.08}),
   )
   def test_insert(self, bloom_filter_class, kwargs):
     adbf = bloom_filter_class(length=2, random_seed=1, **kwargs)
@@ -88,10 +90,12 @@ class AnyDistributionBloomFilterTest(parameterized.TestCase):
     adbf.add([1, 1])
     self.assertEqual(np.sum(adbf.sketch), 1)
 
+
   @parameterized.parameters(
       (UniformBloomFilter, {}),
       (LogarithmicBloomFilter, {}),
       (ExponentialBloomFilter, {'decay_rate': 1}),
+      (GeometricBloomFilter, {'probability': 0.08}),
   )
   def test_factory(self, bloom_filter_class, kwargs):
     factory = bloom_filter_class.get_sketch_factory(length=4, **kwargs)
@@ -105,6 +109,48 @@ class AnyDistributionBloomFilterTest(parameterized.TestCase):
     self.assertAlmostEqual(log(1), 0)
     self.assertAlmostEqual(log(math.exp(2)), 2)
     self.assertAlmostEqual(log(math.exp(42.42)), 42.42)
+
+
+class GeometricBloomFilterTest(absltest.TestCase):
+
+  def test_insert_lookup_with_random_seed(self):
+    b = GeometricBloomFilter(length=15, probability=0.08, random_seed=2)
+
+    self.assertNotIn(1, b)
+    b.add(1)
+    self.assertIn(1, b)
+    self.assertNotIn(2, b)
+
+  def test_factory(self):
+    factory = GeometricBloomFilter.get_sketch_factory(length=15, probability=0.08)
+
+    b = factory(2)
+    b.add(1)
+
+    self.assertIn(1, b)
+    self.assertNotIn(2, b)
+
+  def test_not_compatible_different_seeds(self):
+    b1 = GeometricBloomFilter(length=15, probability=0.08, random_seed=1)
+    b2 = GeometricBloomFilter(length=15, probability=0.08, random_seed=2)
+    with self.assertRaises(AssertionError):
+      b1.assert_compatible(b2)
+    with self.assertRaises(AssertionError):
+      b2.assert_compatible(b1)
+
+  def test_not_compatible_different_lengths(self):
+    b1 = GeometricBloomFilter(length=10, probability=0.08, random_seed=2)
+    b2 = GeometricBloomFilter(length=15, probability=0.08, random_seed=2)
+    with self.assertRaises(AssertionError):
+      b1.assert_compatible(b2)
+    with self.assertRaises(AssertionError):
+      b2.assert_compatible(b1)
+
+  def test_compatible(self):
+    b1 = GeometricBloomFilter(length=15, probability=0.08, random_seed=2)
+    b2 = GeometricBloomFilter(length=15, probability=0.08, random_seed=2)
+    self.assertTrue(b1.assert_compatible(b2))
+    self.assertTrue(b2.assert_compatible(b1))
 
 
 class UnionEstimatorTest(absltest.TestCase):
@@ -157,7 +203,7 @@ class UnionEstimatorTest(absltest.TestCase):
     b2 = BloomFilter(length=10, random_seed=3)
     b2.sketch[1] = 1
 
-    cardinality = UnionEstimator()([b1, b2])
+    cardinality = UnionEstimator()([b1, b2])[0]
     self.assertEqual(cardinality, 2)
 
 
@@ -190,7 +236,7 @@ class FirstMomentEstimatorTest(parameterized.TestCase):
     adbf = bf(length=4, random_seed=0, **bf_kwargs)
     adbf.add_ids([1])
     estimator = FirstMomentEstimator(method=method)
-    estimate = estimator([adbf])
+    estimate = estimator([adbf])[0]
     self.assertAlmostEqual(estimate, truth, 3, msg=method)
 
   def test_denoise_and_union(self):
