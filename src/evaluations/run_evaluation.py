@@ -64,6 +64,10 @@ flags.DEFINE_string(
     'The name of this evaluation run.')
 flags.DEFINE_integer(
     'num_runs', None, 'The number of runs per scenario.', lower_bound=1)
+flags.DEFINE_integer(
+    'num_workers', 0, 
+    'The number of processes to use in parallel. If 1, runs serially.'
+    'If 0 or less, use as many processes as cores.')
 
 # Analysis parameters.
 flags.DEFINE_list(
@@ -105,7 +109,8 @@ def main(argv):
         evaluation_config=evaluation_config,
         sketch_estimator_config_list=sketch_estimator_config_list,
         run_name=FLAGS.evaluation_run_name,
-        out_dir=FLAGS.evaluation_out_dir)
+        out_dir=FLAGS.evaluation_out_dir,
+        workers=FLAGS.num_workers)
     generate_results()
 
   error_margin = [float(x) for x in FLAGS.error_margin]
