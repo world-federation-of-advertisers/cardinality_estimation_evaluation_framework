@@ -62,7 +62,7 @@ KEY_RUNNING_TIME_DF = 'running_time_df'
 
 
 def get_num_estimable_sets(df, num_sets=simulator.NUM_SETS,
-                           relative_error=simulator.RELATIVE_ERROR,
+                           relative_error=simulator.RELATIVE_ERROR_BASENAME,
                            error_margin=ERROR_MARGIN,
                            proportion_of_runs=PROPORTION_OF_RUNS):
   """Get the number of estimable sets.
