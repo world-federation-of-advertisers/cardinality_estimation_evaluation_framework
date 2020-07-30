@@ -30,9 +30,16 @@ ESTIMATOR = 'estimator'
 SKETCH_ESTIMATOR_CONFIG_NAMES_FORMAT = (
     SKETCH, SKETCH_CONFIG, EPSILON, ESTIMATOR)
 
+NUM_RUNS_VALUE = 100
+UNIVERSE_SIZE_VALUE = 100000
+NUM_SETS_VALUE = 20
+SMALL_REACH_RATE_VALUE = 0.01
+LARGE_REACH_RATE_VALUE = 0.2
+SHARED_PROP_LIST_VALUE = (0.25, 0.5, 0.75)
+
 
 # Document the evaluation configurations.
-def _smoke_test(num_runs=100):
+def _smoke_test(num_runs=NUM_RUNS_VALUE):
   """Smoke test evaluation configurations.
 
   We set the smoke test parameters according to Appendix 3: Example
@@ -89,108 +96,216 @@ def _smoke_test(num_runs=100):
       )
 
 
-def _test_with_selected_parameters_second_part(num_runs=100):
-  """Configurations with handy selected parameters for scenarios 3b - 5.
+def _generate_configs_scenario_3b(universe_size, num_sets, small_set_size,
+                                  large_set_size, user_activity_assciation):
+  """Generate configs of Scenario 3(b).
+
+  In this scenario,  publishers have heterogeneous users reach probability.
+  The reach probability of a user in a publisher is the same as that in other
+  publishers.
+
+  See section (b). [fully correlated user reach probabilities] for more details:
+  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#scenario-3-m-publishers-with-heterogeneous-users-reach-probability
 
   Args:
-    num_runs: the number of runs per scenario * parameter setting.
+    universe_size: the size of the pools from which the IDs will be selected.
+    num_sets: the number of sets.
+    small_set_size: the reach of the small reach sets.
+    large_set_size: the reach of the large reach sets.
+    user_activity_assciation: user activity association used in the Exponential
+      Bow model. Should be one of the defined user activity association defined
+      by the set_generator.USER_ACTIVITY_ASSOCIATION_XXX.
 
   Returns:
-    An EvaluationConfig.
+    A list of ScenarioConfigs of scenario 3(b) with selected parameters.
   """
-  scenario_config_list = []
-  # Common parameters
-  universe_size = 100000
-  # Now fix the universe size. Can vary it if necessary.
-  num_sets = 20
-  order = set_generator.ORDER_RANDOM
-  # Apply random order of sets here, assuming that we shuffle the publishers
-  # before the estimation.
-  small_reach_rate = 0.01
-  large_reach_rate = 0.2
-  small_reach = int(small_reach_rate * universe_size)
-  large_reach = int(large_reach_rate * universe_size)
+  name_to_choices_of_set_size_list = {
+      'all_small': [small_set_size] * num_sets,
+      'all_large': [large_set_size] * num_sets,
+      '1st_small_then_large': (
+          [small_set_size] + [large_set_size] * (num_sets - 1)),
+      '1st_half_small_2nd_half_large': (
+          [small_set_size] * int(num_sets / 2) +
+          [large_set_size] * (num_sets - int(num_sets / 2))),
+      'small_then_last_large': (
+          [small_set_size] * (num_sets - 1) + [large_set_size]),
+      'gradually_smaller': [
+          large_set_size / np.sqrt(i + 1) for i in range(num_sets)]
+  }
 
-  # Scenario 3 (b). Exponential bow, identical user behavior
-  user_activity_assciation = set_generator.USER_ACTIVITY_ASSOCIATION_IDENTICAL
-  choises_of_set_size_list = (
-      [small_reach] * num_sets,
-      [large_reach] * num_sets,
-      [small_reach] + [large_reach] * (num_sets - 1),
-      [small_reach] * int(num_sets / 2) +
-      [large_reach] * (num_sets - int(num_sets / 2)),
-      [small_reach] * (num_sets - 1) + [large_reach],
-      [large_reach / np.sqrt(i + 1) for i in range(num_sets)]
-  )
-  for set_size_list in choises_of_set_size_list:
+  scenario_config_list = []
+  for set_size_name, set_size_list in name_to_choices_of_set_size_list.items():
     scenario_config_list.append(
         ScenarioConfig(
-            name='exponential_bow',
+            name='-'.join([
+                'exponential_bow',
+                'user_activity_association:' + str(user_activity_assciation),
+                'universe_size:' + str(universe_size),
+                'small_set:' + str(small_set_size),
+                'large_set:' + str(large_set_size),
+                'set_sizes:' + set_size_name]),
             set_generator_factory=(
-                set_generator.ExponentialBowSetGenerator.
-                get_generator_factory_with_set_size_list(
+                set_generator.ExponentialBowSetGenerator
+                .get_generator_factory_with_set_size_list(
                     user_activity_association=user_activity_assciation,
                     universe_size=universe_size,
                     set_size_list=set_size_list)))
     )
+  return scenario_config_list
 
-  # Scenario 4(a). Fully overlapped
-  for set_size in [small_reach, large_reach]:
+
+def _generate_configs_scenario_4a(universe_size, num_sets, small_set_size,
+                                  large_set_size):
+  """Generate configs of Scenario 4(a).
+
+  In this setting, all the sets are identical.
+
+  See Scenario 4: Full overlap or disjoint for more details:
+  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#scenario-4-full-overlap-or-disjoint
+
+  Args:
+    universe_size: the size of the pools from which the IDs will be selected.
+    num_sets: the number of sets.
+    small_set_size: the reach of the small reach sets.
+    large_set_size: the reach of the large reach sets.
+
+  Returns:
+    A list of ScenarioConfigs of scenario 4(a) with either small or large
+    reach.
+  """
+  scenario_config_list = []
+  for set_size in [small_set_size, large_set_size]:
     scenario_config_list.append(
         ScenarioConfig(
-            name='fully_overlapped',
+            name='-'.join([
+                'fully_overlapped',
+                'universe_size:' + str(universe_size),
+                'num_sets:' + str(num_sets),
+                'set_sizes:' + str(set_size)
+            ]),
             set_generator_factory=(
-                set_generator.FullyOverlapSetGenerator.
-                get_generator_factory_with_num_and_size(
+                set_generator.FullyOverlapSetGenerator
+                .get_generator_factory_with_num_and_size(
                     universe_size=universe_size,
                     num_sets=num_sets,
                     set_size=set_size)))
     )
+  return scenario_config_list
 
-  # Scenario 4(b). Subset campaigns
-  # Currently only support a small set contained in a large set.
-  # Need to update set_generator.py to support more flexible set sizes.
-  for num_large_sets in [1, 10, 19]:
+
+def _generate_configs_scenario_4b(universe_size, num_sets, small_set_size,
+                                  large_set_size, order):
+  """Generate configs of Scenario 4(b).
+
+  In this scenario, sets are overlapped. That is, a small set is a subset of a
+  large set.
+  Currently only support a small set contained in a large set.
+  Need to update set_generator.py to support more flexible set sizes.
+
+  See Scenario 4: Full overlap or disjoint for more details:
+  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#scenario-4-full-overlap-or-disjoint
+
+
+  Args:
+    universe_size: the size of the pools from which the IDs will be selected.
+    num_sets: the number of sets.
+    small_set_size: the reach of the small reach sets.
+    large_set_size: the reach of the large reach sets.
+    order: the order of the sets. Should be one of set_generator.ORDER_XXX.
+
+  Returns:
+    A list of ScenarioConfigs of scenario 4(b) with subset sets.
+  """
+  scenario_config_list = []
+  for num_large_sets in [1, int(num_sets / 2), num_sets - 1]:
     scenario_config_list.append(
         ScenarioConfig(
-            name='subset',
+            name='-'.join([
+                'subset',
+                'universe_size:' + str(universe_size),
+                'order:' + str(order),
+                'num_large_sets:' + str(num_large_sets),
+                'num_small_sets:' + str(num_sets - num_large_sets),
+                'large_set_size:' + str(large_set_size),
+                'small_set_size:' + str(small_set_size),
+            ]),
             set_generator_factory=(
-                set_generator.SubSetGenerator.
-                get_generator_factory_with_num_and_size(
+                set_generator.SubSetGenerator
+                .get_generator_factory_with_num_and_size(
                     order=order,
                     universe_size=universe_size,
                     num_large_sets=num_large_sets,
                     num_small_sets=num_sets - num_large_sets,
-                    large_set_size=large_reach,
-                    small_set_size=small_reach)))
+                    large_set_size=large_set_size,
+                    small_set_size=small_set_size)))
     )
+  return scenario_config_list
 
-  # Scenario 5. Sequantially correlated campaigns
-  choices_of_set_size_list = [
-      [small_reach] + [large_reach] * (num_sets - 1),
-      [large_reach] * (num_sets - 1) + [small_reach],
-      [large_reach] * int(num_sets / 2) + [small_reach] +
-      [large_reach] * (num_sets - 1 - int(num_sets / 2)),
-      [large_reach] + [small_reach] * (num_sets - 1),
-      [small_reach] * (num_sets - 1) + [large_reach],
-      [small_reach] * int(num_sets / 2) + [large_reach] +
-      [small_reach] * (num_sets - 1 - int(num_sets / 2)),
-      [small_reach] * int(num_sets / 2) +
-      [large_reach] * (num_sets - int(num_sets / 2)),
-      [large_reach] * int(num_sets / 2) +
-      [small_reach] * (num_sets - int(num_sets / 2)),
-      [small_reach, large_reach] * int(num_sets / 2) +
-      ([] if num_sets % 2 == 0 else [small_reach])
-  ]
-  choices_of_shared_prop = [0.25, 0.5, 0.75]
 
+def _generate_configs_scenario_5(universe_size, num_sets, small_set_size,
+                                 large_set_size, order, shared_prop_list):
+  """Generate configs of Scenario 5.
+
+  In this scenario, the sets are sequentially correlated.
+
+  See Scenario 5: Sequentially correlated campaigns for more details:
+  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#scenario-5-sequentially-correlated-campaigns
+
+  Args:
+    universe_size: the size of the pools from which the IDs will be selected.
+    num_sets: the number of sets.
+    small_set_size: the reach of the small reach sets.
+    large_set_size: the reach of the large reach sets.
+    order: the order of the sets. Should be one of set_generator.ORDER_XXX.
+    shared_prop_list: a sequence of the shared proportion of sequentially
+      correlated sets.
+
+  Returns:
+    A list of ScenarioConfigs of scenario 5 Sequentiall correlated sets.
+  """
+  name_to_choices_of_set_size_list = {
+      '1st_small_then_large': [small_set_size] + [large_set_size] * (
+          num_sets - 1),
+      'large_then_last_small': [large_set_size] * (num_sets - 1) + [
+          small_set_size],
+      'all_large_except_middle_small': (
+          [large_set_size] * int(num_sets / 2) + [small_set_size]
+          + [large_set_size] * (num_sets - 1 - int(num_sets / 2))),
+      '1st_large_then_small': [large_set_size] + [small_set_size] * (
+          num_sets - 1),
+      'small_then_last_large': [small_set_size] * (num_sets - 1) + [
+          large_set_size],
+      'all_small_except_middle_large': (
+          [small_set_size] * int(num_sets / 2) + [large_set_size]
+          + [small_set_size] * (num_sets - 1 - int(num_sets / 2))),
+      '1st_half_small_2nd_half_large': (
+          [small_set_size] * int(num_sets / 2)
+          + [large_set_size] * (num_sets - int(num_sets / 2))),
+      '1st_half_large_2nd_half_small': (
+          [large_set_size] * int(num_sets / 2)
+          + [small_set_size] * (num_sets - int(num_sets / 2))),
+      'repeated_small_large': (
+          [small_set_size, large_set_size] * int(num_sets / 2)
+          + ([] if num_sets % 2 == 0 else [small_set_size]))
+  }
+
+  scenario_config_list = []
   for correlated_sets in (set_generator.CORRELATED_SETS_ONE,
                           set_generator.CORRELATED_SETS_ALL):
-    for shared_prop in choices_of_shared_prop:
-      for set_size_list in choices_of_set_size_list:
+    for shared_prop in shared_prop_list:
+      for set_name, set_size_list in name_to_choices_of_set_size_list.items():
         scenario_config_list.append(
             ScenarioConfig(
-                name='sequentially_correlated',
+                name='-'.join([
+                    'sequentially_correlated',
+                    'universe_size:' + str(universe_size),
+                    'order:' + str(order),
+                    'correlated_sets:' + str(correlated_sets),
+                    'shared_prop:' + str(shared_prop),
+                    'set_sizes:' + str(set_name),
+                    'large_set_size:' + str(large_set_size),
+                    'small_set_size:' + str(small_set_size)
+                ]),
                 set_generator_factory=(
                     set_generator.SequentiallyCorrelatedSetGenerator.
                     get_generator_factory_with_set_size_list(
@@ -200,16 +315,73 @@ def _test_with_selected_parameters_second_part(num_runs=100):
                         shared_prop=shared_prop,
                         set_size_list=set_size_list)))
         )
+  return scenario_config_list
+
+
+def _complete_test_with_selected_parameters(
+    num_runs=NUM_RUNS_VALUE,
+    universe_size=UNIVERSE_SIZE_VALUE,
+    num_sets=NUM_SETS_VALUE,
+    user_activity_assciation=set_generator.USER_ACTIVITY_ASSOCIATION_IDENTICAL,
+    order=set_generator.ORDER_RANDOM,
+    small_set_size_rate=SMALL_REACH_RATE_VALUE,
+    large_set_size_rate=LARGE_REACH_RATE_VALUE,
+    shared_prop_list=SHARED_PROP_LIST_VALUE):
+  """Generate configurations with handy selected parameters for scenarios.
+
+  This evaluation covers the reach simulation scenarios
+
+  Args:
+    num_runs: the number of runs per scenario * parameter setting.
+    universe_size: the size of the pools from which the IDs will be selected.
+    num_sets: the number of sets.
+    user_activity_assciation: user activity association used in the Exponential
+      Bow model. Should be one of the defined user activity association defined
+      by the set_generator.USER_ACTIVITY_ASSOCIATION_XXX.
+    order: the order of the sets. Should be one of set_generator.ORDER_XXX.
+    small_set_size_rate: the reach percentage of the small reach sets.
+    large_set_size_rate: the reach percentage of the large reach sets.
+    shared_prop_list: a sequence of the shared proportion of sequentially
+      correlated sets.
+
+  Returns:
+    An EvaluationConfig.
+  """
+  scenario_config_list = []
+  small_set_size = int(small_set_size_rate * universe_size)
+  large_set_size = int(large_set_size_rate * universe_size)
+
+  # Scenario 3 (b). Exponential bow, identical user behavior.
+  scenario_config_list.append(
+      _generate_configs_scenario_3b(
+          universe_size, num_sets, small_set_size, large_set_size,
+          user_activity_assciation))
+
+  # Scenario 4(a). Fully-overlapped.
+  scenario_config_list.append(
+      _generate_configs_scenario_4a(
+          universe_size, num_sets, small_set_size, large_set_size))
+
+  # Scenario 4(b). Subset campaigns.
+  scenario_config_list.append(
+      _generate_configs_scenario_4b(
+          universe_size, num_sets, small_set_size, large_set_size, order))
+
+  # Scenario 5. Sequantially correlated campaigns
+  scenario_config_list.append(
+      _generate_configs_scenario_5(
+          universe_size, num_sets, small_set_size, large_set_size, order,
+          shared_prop_list))
 
   return EvaluationConfig(
-      name='test_with_selected_parameters_second_part',
+      name='complete_test_with_selected_parameters',
       num_runs=num_runs,
       scenario_config_list=scenario_config_list)
 
 
 EVALUATION_CONFIGS_TUPLE = (
     _smoke_test,
-    _test_with_selected_parameters_second_part,
+    _complete_test_with_selected_parameters,
 )
 
 
