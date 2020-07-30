@@ -367,7 +367,7 @@ def _complete_test_with_selected_parameters(
       _generate_configs_scenario_4b(
           universe_size, num_sets, small_set_size, large_set_size, order))
 
-  # Scenario 5. Sequantially correlated campaigns
+  # Scenario 5. Sequentially correlated campaigns
   scenario_config_list.append(
       _generate_configs_scenario_5(
           universe_size, num_sets, small_set_size, large_set_size, order,
