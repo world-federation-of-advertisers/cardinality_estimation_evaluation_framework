@@ -39,6 +39,9 @@ class FakeRandomState:
   def poisson(self, lam, size):
     return lam * np.ones(size, dtype=int)
 
+  def shuffle(self, l):
+    l.reverse()
+
 
 class SetGeneratorTest(parameterized.TestCase):
 
@@ -443,7 +446,7 @@ class SetGeneratorTest(parameterized.TestCase):
         freq_rate_list=freq_rate_list,
         freq_cap=3,
         random_state=rs)
-    expected_multiset_ids_list = [[0, 0, 0], [0, 0, 1, 1]]
+    expected_multiset_ids_list = [[0, 0, 0], [1, 1, 0, 0]]
     with mock.patch.object(gen, 'choice', autospec=True) as mock_choice:
       mock_choice.side_effect = fake_choice_fast
       output_multiset_ids_list = [multiset_ids for multiset_ids in gen]

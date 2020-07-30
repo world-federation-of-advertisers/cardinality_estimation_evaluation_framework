@@ -26,6 +26,7 @@ import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.common.analysis import relative_error
 from wfa_cardinality_estimation_evaluation_framework.common.random import choice_fast
+
 ORDER_ORIGINAL = 'original'
 ORDER_REVERSED = 'reversed'
 ORDER_RANDOM = 'random'
@@ -593,5 +594,6 @@ class HomogeneousMultiSetGenerator(SetGeneratorBase):
       multiset_ids = []
       for i, freq in zip(set_ids, freq_per_id):
         multiset_ids += [i] * freq
+      self.random_state.shuffle(multiset_ids)
       yield multiset_ids
     return self
