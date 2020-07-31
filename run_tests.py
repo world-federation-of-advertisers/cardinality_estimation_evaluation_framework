@@ -66,21 +66,16 @@ def find_modules(folders):
         return '.'.join(split)
 
     test_modules = map(file_name_to_module_name, test_files)
+    # Filter out python modules from virtual environments
+    filter_func = lambda module_name: "lib.python" not in module_name \
+                                  and "lib64.python" not in module_name
+    test_modules = filter(filter_func, test_modules)
+
 
     modules = []
     # Import modules and filter out ones that cannot be imported.
     for module_name in test_modules:
-        try:
-            module = import_module(module_name)
-        except ModuleNotFoundError as e:
-            # The most common type of error we get is that the virtual 
-            # environment is in the top-level directory. We don't want 
-            # to run those tests. In the case that the ModuleNotFoundError 
-            # is not from attempting to import python libraries, we should
-            # fail this process and print the error message.
-            if "lib.python" not in module_name and "lib64.python" not in module_name:
-                exit(e)
-            continue
+        module = import_module(module_name)
         modules.append((module_name, module))
 
     return modules
