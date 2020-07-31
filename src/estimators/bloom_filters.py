@@ -143,6 +143,35 @@ class UniformBloomFilter(AnyDistributionBloomFilter):
         random_seed)
 
 
+class GeometricBloomFilter(AnyDistributionBloomFilter):
+  """Implement a Geometric Bloom Filter."""
+
+  @classmethod
+  def get_sketch_factory(cls, length, probability):
+    def f(random_seed):
+      return cls(length, probability, random_seed)
+
+    return f
+
+  def __init__(self, length, probability, random_seed=None):
+    """Creates a BloomFilter.
+
+    Args:
+       length: The length of bit vector for the bloom filter
+       probability: p of geometric distribution, p should be small enough
+       that geom.cdf(length, probability) won't be 1 in the middle of the
+       array so all bits can be used
+       random_seed: An optional integer specifying the random seed for
+         generating the random seeds for hash functions.
+    """
+    super().__init__(
+        any_sketch.SketchConfig([
+            any_sketch.IndexSpecification(
+                any_sketch.GeometricDistribution(length, probability), "geometric")
+        ], num_hashes=1, value_functions=[any_sketch.BitwiseOrFunction()]),
+        random_seed)
+
+
 class LogarithmicBloomFilter(AnyDistributionBloomFilter):
   """Implement an Logarithmic Bloom Filter."""
 
@@ -230,6 +259,13 @@ class UnionEstimator(EstimatorBase):
     x = np.sum(sketch.sketch != 0)
     k = float(sketch.num_hashes())
     m = float(sketch.max_size())
+    if x >= m:
+    # When the BF is almost full, the estimate may have large bias or variance.
+    # So, later we might change this to x >= z * m where z < 1.
+    # We may determine the threshold z based on some theory.
+      raise ValueError(
+          "The BloomFilter is full. "
+          "Please increase the BloomFilter length or use exp/log-BloomFilter.")
     return int(math.fabs(m / k * math.log(1 - x / m)))
 
   def __call__(self, sketch_list):
@@ -238,17 +274,17 @@ class UnionEstimator(EstimatorBase):
       return 0
     assert isinstance(sketch_list[0], BloomFilter), "expected a BloomFilter"
     union = UnionEstimator.union_sketches(sketch_list)
-    return UnionEstimator.estimate_cardinality(union)
+    return [UnionEstimator.estimate_cardinality(union)]
 
 
 class FirstMomentEstimator(EstimatorBase):
   """First moment cardinality estimator for AnyDistributionBloomFilter."""
 
   METHOD_UNIFORM = "uniform"
+  METHOD_GEO = "geo"
   METHOD_LOG = "log"
   METHOD_EXP = "exp"
   METHOD_ANY = "any"
-
 
   def __init__(self, method, denoiser=None, weights=None):
     EstimatorBase.__init__(self)
@@ -259,6 +295,7 @@ class FirstMomentEstimator(EstimatorBase):
     self._weights = weights
     assert method in (
         FirstMomentEstimator.METHOD_UNIFORM,
+        FirstMomentEstimator.METHOD_GEO,
         FirstMomentEstimator.METHOD_LOG,
         FirstMomentEstimator.METHOD_EXP,
         FirstMomentEstimator.METHOD_ANY), f"method={method} not supported."
@@ -351,13 +388,13 @@ class FirstMomentEstimator(EstimatorBase):
         "Expected an AnyDistributionBloomFilter.")
     union = self.union_sketches(sketch_list)
     if self._method == FirstMomentEstimator.METHOD_LOG:
-      return FirstMomentEstimator._estimate_cardinality_log(union)
+      return [FirstMomentEstimator._estimate_cardinality_log(union)]
     if self._method == FirstMomentEstimator.METHOD_EXP:
-      return FirstMomentEstimator._estimate_cardinality_exp(union)
+      return [FirstMomentEstimator._estimate_cardinality_exp(union)]
     if self._method == FirstMomentEstimator.METHOD_UNIFORM:
-      return FirstMomentEstimator._estimate_cardinality_uniform(union)
-    return FirstMomentEstimator._estimate_cardinality_any(
-        union, self._weights)
+      return [FirstMomentEstimator._estimate_cardinality_uniform(union)]
+    return [FirstMomentEstimator._estimate_cardinality_any(
+        union, self._weights)]
 
 
 class FixedProbabilityBitFlipNoiser(SketchNoiserBase):

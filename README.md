@@ -12,6 +12,23 @@ This repo includes code for
     of relationships between the created sets
 *   Simulator to combine all of the above, calculate error statistics, and
     compare possible methods.
+*   Evaluators run an ensemble of simulators
+
+### Quickstart
+It is recommended to use a virtual environment with this project. If you already
+have one, you can skip to the next step.
+The quickest way to set up a virtual environment is by running:
+```
+python3 -m venv env
+source env/bin/activate
+```
+To install the requirements as well as the evaluation framework, simply run:
+```
+pip install -r requirements.txt
+python setup.py install
+```
+After these steps, the code and its dependencies will be installed as Python packages.
+
 
 ### Example
 

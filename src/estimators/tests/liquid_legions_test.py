@@ -54,7 +54,7 @@ class LiquidTest(absltest.TestCase):
     chain = self.make_chain(num_sketches, 3, 100000, halfsize)
     noised_chain = list(map(noiser, chain))
     estimator = liquid_legions.Estimator(dp_p)
-    estimation = estimator(noised_chain)
+    estimation = estimator(noised_chain)[0]
     true_size = (num_sketches + 1) * halfsize
     logging.info('Estimate: %.3f, Truth: %.3f, RelError: %.3f.',
                  estimation, true_size, estimation / true_size - 1)
@@ -412,9 +412,9 @@ class LiquidTest(absltest.TestCase):
       noised_sketch = noiser(sketch)
       sketches.append(noised_sketch)
       logging.info('Step %d, cardinality %.3f, true_cardinality %d.',
-                   i, estimator(sketches), len(true_set))
+                   i, estimator(sketches)[0], len(true_set))
     self.assertAlmostEqual(len(true_set),
-                           estimator(sketches),
+                           estimator(sketches)[0],
                            delta=len(true_set) * 0.25)
 
   def test_set_difference_pure(self):

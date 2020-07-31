@@ -167,7 +167,7 @@ class HyperLogLogPlusPlusEstimatorTest(absltest.TestCase):
       hll.add(i)
       hll_list.append(hll)
 
-    error_ratio = estimator(hll_list) / number_of_hlls
+    error_ratio = estimator(hll_list)[0] / number_of_hlls
     self.assertAlmostEqual(error_ratio, 1.0, delta=acceptable_error)
 
   def test_estimator_small(self):

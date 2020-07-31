@@ -31,16 +31,15 @@ class EvaluatorTest(absltest.TestCase):
   def setUp(self):
     super(EvaluatorTest, self).setUp()
 
-    exact_set_lossless = configs.SketchEstimatorConfig(
+    exact_set_lossless = simulator.SketchEstimatorConfig(
         name='exact_set_lossless',
-        sketch_factory=exact_set.ExactSet.get_sketch_factory(),
-        estimator=exact_set.LosslessEstimator(),
-        noiser=None)
-    exact_set_less_one = configs.SketchEstimatorConfig(
+        sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
+        estimator=exact_set.LosslessEstimator())
+    exact_set_less_one = simulator.SketchEstimatorConfig(
         name='exact_set_less_one',
-        sketch_factory=exact_set.ExactSet.get_sketch_factory(),
+        sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LessOneEstimator(),
-        noiser=exact_set.AddRandomElementsNoiser(
+        sketch_noiser=exact_set.AddRandomElementsNoiser(
             num_random_elements=0, random_state=np.random.RandomState()))
     self.sketch_estimator_config_list = (exact_set_lossless, exact_set_less_one)
 
@@ -52,13 +51,13 @@ class EvaluatorTest(absltest.TestCase):
                 name='ind1',
                 set_generator_factory=(
                     set_generator.IndependentSetGenerator
-                    .get_generator_factory(
+                    .get_generator_factory_with_num_and_size(
                         universe_size=10, num_sets=2, set_size=5))),
             configs.ScenarioConfig(
                 name='ind2',
                 set_generator_factory=(
                     set_generator.IndependentSetGenerator
-                    .get_generator_factory(
+                    .get_generator_factory_with_num_and_size(
                         universe_size=10, num_sets=2, set_size=5))),
         ])
 
@@ -103,19 +102,19 @@ class EvaluatorTest(absltest.TestCase):
 
   def test_create_directory_prevents_overwrite(self):
     out_dir = self.create_tempdir(name='test_same_dir').full_path
-    e1 = self.get_test_evaluator(out_dir)
+    self.get_test_evaluator(out_dir)
     with self.assertRaises(FileExistsError):
-      e2 = self.get_test_evaluator(out_dir, overwrite=False)
+      self.get_test_evaluator(out_dir, overwrite=False)
 
   def test_create_directory_optionally_allow_overwrite(self):
     out_dir = self.create_tempdir(name='test_same_dir2').full_path
-    e1 = self.get_test_evaluator(out_dir)
+    self.get_test_evaluator(out_dir)
     # Add a random file to check if it is removed.
     test_file_overwrite = os.path.join(out_dir, self.run_name, 'test_file')
     self.create_tempfile(test_file_overwrite).full_path
 
     try:
-      e2 = self.get_test_evaluator(out_dir, overwrite=True)
+      self.get_test_evaluator(out_dir, overwrite=True)
     except FileExistsError:
       self.fail('Doesn\'t successfully overwrite the directory even if opt to.')
 
@@ -191,7 +190,7 @@ class EvaluatorTest(absltest.TestCase):
         with open(df_file, 'r') as f:
           df = pd.read_csv(f)
         true_cardinalities.append(
-            df[[simulator.RUN_INDEX, simulator.TRUE_CARDINALITY,
+            df[[simulator.RUN_INDEX, simulator.TRUE_CARDINALITY_BASENAME + '1',
                 simulator.NUM_SETS]])
 
       # The true union cardinality should be the same for different estimators
