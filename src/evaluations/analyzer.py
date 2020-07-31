@@ -62,7 +62,7 @@ KEY_RUNNING_TIME_DF = 'running_time_df'
 
 
 def get_num_estimable_sets(df, num_sets=simulator.NUM_SETS,
-                           relative_error=simulator.RELATIVE_ERROR_BASENAME,
+                           relative_error=simulator.RELATIVE_ERROR,
                            error_margin=ERROR_MARGIN,
                            proportion_of_runs=PROPORTION_OF_RUNS):
   """Get the number of estimable sets.
@@ -202,7 +202,7 @@ class CardinalityEstimatorEvaluationAnalyzer(object):
       df = self.raw_df.groupby([SKETCH_ESTIMATOR_NAME, SCENARIO_NAME]).apply(
           _get_num_estimable_sets_series,
           num_sets=simulator.NUM_SETS,
-          relative_error=simulator.RELATIVE_ERROR_BASENAME,
+          relative_error=simulator.RELATIVE_ERROR,
           error_margin=criteria[0],
           proportion_of_runs=criteria[1]).reset_index()
       df[ERROR_MARGIN_NAME] = criteria[0]
@@ -223,7 +223,7 @@ class CardinalityEstimatorEvaluationAnalyzer(object):
         df.groupby([
             ERROR_MARGIN_NAME, PROPORTION_OF_RUNS_NAME, SKETCH_ESTIMATOR_NAME,
             SCENARIO_NAME, NUM_ESTIMABLE_SETS])
-        .agg({simulator.RELATIVE_ERROR_BASENAME: ['mean', 'std']}))
+        .agg({simulator.RELATIVE_ERROR: ['mean', 'std']}))
     result.columns = result.columns.map('_'.join)
     result = result.reset_index()
     return result
@@ -234,7 +234,7 @@ class CardinalityEstimatorEvaluationAnalyzer(object):
       ax = plotting.boxplot_relative_error(
           df,
           num_sets=simulator.NUM_SETS,
-          relative_error=simulator.RELATIVE_ERROR_BASENAME)
+          relative_error=simulator.RELATIVE_ERROR)
       scenario_name = df[SCENARIO_NAME].values[0]
       estimator_name = df[SKETCH_ESTIMATOR_NAME].values[0]
       ax.set_title(f'{scenario_name}\n{estimator_name}')
