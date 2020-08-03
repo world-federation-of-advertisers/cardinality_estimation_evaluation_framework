@@ -433,8 +433,8 @@ class SetGeneratorTest(parameterized.TestCase):
           shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
 
   @parameterized.parameters(
-      (None, [[0, 0, 0, 0, 0, 0], [0, 0, 1, 1]]),
-      (3, [[0, 0, 0], [0, 0, 1, 1]]))
+      (None, [[0, 0, 0, 0, 0, 0], [1, 1, 0, 0]]),
+      (3, [[0, 0, 0], [1, 1, 0, 0]]))
   def test_homogeneous_multiset_generator_freq_cap(
       self, freq_cap, expected_multiset_ids_list):
     set_sizes = [1, 2]
@@ -444,9 +444,8 @@ class SetGeneratorTest(parameterized.TestCase):
         universe_size=4,
         set_sizes=set_sizes,
         freq_rate_list=freq_rate_list,
-        freq_cap=3,
+        freq_cap=freq_cap,
         random_state=rs)
-    expected_multiset_ids_list = [[0, 0, 0], [1, 1, 0, 0]]
     with mock.patch.object(gen, 'choice', autospec=True) as mock_choice:
       mock_choice.side_effect = fake_choice_fast
       output_multiset_ids_list = [multiset_ids for multiset_ids in gen]
