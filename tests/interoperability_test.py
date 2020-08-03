@@ -415,7 +415,15 @@ class InteroperabilityTest(absltest.TestCase):
     self.simulate_with_set_generator(set_generator_factory,
                                      self.name_to_noised_estimator_config)
 
-  def test_run_evaluation_works(self):
+  def test_run_evaluation_for_cardinality_estimator_workflow_compatible(self):
+    """Test the compatibility of evaluator, analyzer and report_generator.
+
+    This is a test to check if the evaluator, the analyzer and the
+    report_generator is compatible with the rest of the evaluation codebase,
+    eg, the estimators, the set generators, and the simulator. The test runs
+    the evaluation, analyzes results, and generates a report, which should not
+    run into any error.
+    """
     # Run evaluation.
     evaluator_out_dir = self.create_tempdir('evaluator').full_path
     evaluation_run_name = 'interoperability_test_for_evaluator'
