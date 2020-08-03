@@ -35,11 +35,11 @@ class AnalyzerTest(absltest.TestCase):
     super(AnalyzerTest, self).setUp()
     exact_set_lossless = simulator.SketchEstimatorConfig(
         name='exact_set-infty-infty-lossless',
-        sketch_factory=exact_set.ExactSet.get_sketch_factory(),
+        sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LosslessEstimator())
     exact_set_less_one = simulator.SketchEstimatorConfig(
         name='exact_set-infty-infty-less_one',
-        sketch_factory=exact_set.ExactSet.get_sketch_factory(),
+        sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LessOneEstimator(),
         sketch_noiser=exact_set.AddRandomElementsNoiser(
             num_random_elements=0, random_state=np.random.RandomState()))
@@ -163,13 +163,13 @@ class AnalyzerTest(absltest.TestCase):
         [analyzer.ERROR_MARGIN_NAME, analyzer.PROPORTION_OF_RUNS_NAME,
          analyzer.SKETCH_ESTIMATOR_NAME, analyzer.SCENARIO_NAME,
          analyzer.NUM_ESTIMABLE_SETS,
-         simulator.RELATIVE_ERROR + '_mean',
-         simulator.RELATIVE_ERROR + '_std'],
+         simulator.RELATIVE_ERROR_BASENAME + '1_mean',
+         simulator.RELATIVE_ERROR_BASENAME + '1_std'],
         'num_of_estimable_sets missing columns.')
     df_lossless = df.loc[
         df[analyzer.SKETCH_ESTIMATOR_NAME] == 'exact_set-infty-infty-lossless']
     self.assertTrue(
-        all(df_lossless[simulator.RELATIVE_ERROR + '_mean'] == 0),
+        all(df_lossless[simulator.RELATIVE_ERROR_BASENAME + '1_mean'] == 0),
         'Relative error is not correct.')
 
   def test_save_plot_num_sets_vs_relative_error(self):
@@ -181,7 +181,7 @@ class AnalyzerTest(absltest.TestCase):
     a = self.get_test_analyzer(
         out_dir=self.create_tempdir('analysis').full_path,
         evaluation_dir=evaluation_out_dir)
-    a.save_plot_num_sets_vs_relative_error()
+    a._save_plot_num_sets_vs_metric()
     print(a.analysis_file_dirs[evaluator.KEY_ESTIMATOR_DIRS])
     for estimator in a.analysis_file_dirs[evaluator.KEY_ESTIMATOR_DIRS].keys():
       for scenario, directory in a.analysis_file_dirs[estimator].items():

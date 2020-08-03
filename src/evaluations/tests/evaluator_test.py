@@ -33,11 +33,11 @@ class EvaluatorTest(absltest.TestCase):
 
     exact_set_lossless = simulator.SketchEstimatorConfig(
         name='exact_set_lossless',
-        sketch_factory=exact_set.ExactSet.get_sketch_factory(),
+        sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LosslessEstimator())
     exact_set_less_one = simulator.SketchEstimatorConfig(
         name='exact_set_less_one',
-        sketch_factory=exact_set.ExactSet.get_sketch_factory(),
+        sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LessOneEstimator(),
         sketch_noiser=exact_set.AddRandomElementsNoiser(
             num_random_elements=0, random_state=np.random.RandomState()))
@@ -190,7 +190,7 @@ class EvaluatorTest(absltest.TestCase):
         with open(df_file, 'r') as f:
           df = pd.read_csv(f)
         true_cardinalities.append(
-            df[[simulator.RUN_INDEX, simulator.TRUE_CARDINALITY,
+            df[[simulator.RUN_INDEX, simulator.TRUE_CARDINALITY_BASENAME + '1',
                 simulator.NUM_SETS]])
 
       # The true union cardinality should be the same for different estimators

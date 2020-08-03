@@ -220,7 +220,7 @@ class Estimator(base.EstimatorBase):
         f'Sketches have inconsistent noise. Actual: {sketch_noises}, but '
         f'should all be equal to {flip_probability}.')
     cardinality = self.estimate_from_all(sketch_list, flip_probability)
-    return cardinality
+    return [cardinality]
 
   @classmethod
   def sublegion_as_vector(cls, sketch_list, start, m):
@@ -588,6 +588,6 @@ class SequentialEstimator(base.EstimatorBase):
   def __call__(self, sketch_list):
     """Estimating cardinality of the union."""
     if not sketch_list:
-      return 0  # That was easy!
+      return [0]  # That was easy!
 
-    return self.sequential_merge(sketch_list).get_cardinality()
+    return [self.sequential_merge(sketch_list).get_cardinality()]

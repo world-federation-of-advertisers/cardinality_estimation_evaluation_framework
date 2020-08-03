@@ -22,43 +22,76 @@ from absl.testing import absltest
 import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import AddRandomElementsNoiser
-from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactSet
+from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LessOneEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
 
 
-class ExactSetTest(absltest.TestCase):
+class ExactMultiSetTest(absltest.TestCase):
 
-  def test_sketch(self):
-    s = ExactSet()
+  def test_sketch_for_exact_multi_set(self):
+    s = ExactMultiSet()
     s.add_ids([1, 2])
-    self.assertLen(s, 2)
-    self.assertIn(2, s)
-    self.assertNotIn(3, s)
+    self.assertLen(s, 2, "ID set has wrong length.")
+    self.assertIn(2, s, "ID set is missing an ID.")
+    self.assertNotIn(3, s, "ID set contains an unexpected ID.")
 
-  def test_lossless_estimator(self):
-    s = ExactSet()
-    s.add_ids([1, 2])
+  def test_lossless_estimator_for_exact_multi_set(self):
+    s = ExactMultiSet()
+    s.add_ids([1, 2, 3, 1, 2, 1])
     e = LosslessEstimator()
-    self.assertEqual(e([s]), 2)
+    self.assertEqual(e([s]), [3, 2, 1])
 
-  def test_less_one_estimator_multiple(self):
-    s1 = ExactSet()
+  def test_lossless_estimator_for_empty_set(self):
+    s = ExactMultiSet()
+    e = LosslessEstimator()
+    self.assertEqual(e([s]), [0])
+
+  def test_less_one_estimator_multiple_for_exact_multi_set(self):
+    s1 = ExactMultiSet()
     s1.add_ids([1, 2])
-    s2 = ExactSet()
+    s2 = ExactMultiSet()
     s2.add_ids([1, 3, 4])
     e = LessOneEstimator()
-    self.assertEqual(e([s1, s2]), 3)
+    self.assertEqual(e([s1, s2]), [3, 0])
 
-  def test_noiser(self):
-    s = ExactSet()
+  def test_less_one_estimator_no_freq1(self):
+    s = ExactMultiSet()
+    s.add_ids([1,1,2,2,3,3,3])
+    e = LessOneEstimator()
+    self.assertEqual(e([s]), [2, 2, 0])
+
+  def test_less_one_estimator_no_freq1or2(self):
+    s = ExactMultiSet()
+    s.add_ids([1,1,1,2,2,2,3,3,3])
+    e = LessOneEstimator()
+    self.assertEqual(e([s]), [2, 2, 2])
+
+  def test_less_one_estimator_for_empty_set(self):
+    s = ExactMultiSet()
+    e = LessOneEstimator()
+    self.assertRaises(ValueError, lambda: e([s]))
+    
+  def test_noiser_for_exact_multi_set(self):
+    s = ExactMultiSet()
     s.add_ids([1, 2])
     n = AddRandomElementsNoiser(
         num_random_elements=3, random_state=np.random.RandomState(1))
     s_copy = n(s)
     self.assertLen(s, 2)
     self.assertLen(s_copy, 5)
+    
+  def test_multi_frequency_sketch_for_exact_multi_set(self):
+    s = ExactMultiSet()
+    s.add_ids([1,2,3,4,5,6,1,2,3,4,1,2,3,1,2,1,1])
+    self.assertEqual(s.frequency(1), 6)
+    self.assertEqual(s.frequency(2), 4)
+    self.assertEqual(s.frequency(3), 3)
+    self.assertEqual(s.frequency(4), 2)
+    self.assertEqual(s.frequency(5), 1)
+    self.assertEqual(s.frequency(6), 1)
+    self.assertEqual(LosslessEstimator()([s]), [6, 4, 3, 2, 1, 1])
 
-
+    
 if __name__ == '__main__':
   absltest.main()

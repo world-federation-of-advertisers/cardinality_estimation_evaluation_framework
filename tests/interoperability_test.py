@@ -32,7 +32,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legion
 from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legions import Estimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legions import Noiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import AddRandomElementsNoiser
-from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactSet
+from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log import HllCardinality
 from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log import HyperLogLogPlusPlus
@@ -110,7 +110,7 @@ class InteroperabilityTest(absltest.TestCase):
 
     estimator_config_exact = SketchEstimatorConfig(
         name='exact_set-lossless',
-        sketch_factory=ExactSet.get_sketch_factory(),
+        sketch_factory=ExactMultiSet.get_sketch_factory(),
         estimator=LosslessEstimator())
 
     estimator_config_hll = SketchEstimatorConfig(
@@ -186,7 +186,7 @@ class InteroperabilityTest(absltest.TestCase):
 
     noised_estimator_config_exact = SketchEstimatorConfig(
         name='exact_set-lossless',
-        sketch_factory=ExactSet.get_sketch_factory(),
+        sketch_factory=ExactMultiSet.get_sketch_factory(),
         estimator=LosslessEstimator(),
         sketch_noiser=AddRandomElementsNoiser(1, self.noise_random_state))
 
