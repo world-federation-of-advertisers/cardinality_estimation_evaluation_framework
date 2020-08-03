@@ -134,7 +134,7 @@ def _generate_configs_scenario_3b(universe_size, num_sets, small_set_size,
   }
 
   scenario_config_list = []
-  for set_size_name, set_size_list in name_to_choices_of_set_size_list.items():
+  for set_type, set_size_list in name_to_choices_of_set_size_list.items():
     scenario_config_list.append(
         ScenarioConfig(
             name='-'.join([
@@ -143,7 +143,7 @@ def _generate_configs_scenario_3b(universe_size, num_sets, small_set_size,
                 'universe_size:' + str(universe_size),
                 'small_set:' + str(small_set_size),
                 'large_set:' + str(large_set_size),
-                'set_sizes:' + set_size_name]),
+                'set_type:' + set_type]),
             set_generator_factory=(
                 set_generator.ExponentialBowSetGenerator
                 .get_generator_factory_with_set_size_list(
@@ -293,7 +293,7 @@ def _generate_configs_scenario_5(universe_size, num_sets, small_set_size,
   for correlated_sets in (set_generator.CORRELATED_SETS_ONE,
                           set_generator.CORRELATED_SETS_ALL):
     for shared_prop in shared_prop_list:
-      for set_name, set_size_list in name_to_choices_of_set_size_list.items():
+      for set_type, set_size_list in name_to_choices_of_set_size_list.items():
         scenario_config_list.append(
             ScenarioConfig(
                 name='-'.join([
@@ -302,7 +302,7 @@ def _generate_configs_scenario_5(universe_size, num_sets, small_set_size,
                     'order:' + str(order),
                     'correlated_sets:' + str(correlated_sets),
                     'shared_prop:' + str(shared_prop),
-                    'set_sizes:' + str(set_name),
+                    'set_type:' + str(set_type),
                     'large_set_size:' + str(large_set_size),
                     'small_set_size:' + str(small_set_size)
                 ]),
