@@ -80,8 +80,8 @@ flags.DEFINE_integer('boxplot_size_width_inch', 12,
                      'The widths of the boxplot in inches.')
 flags.DEFINE_integer('boxplot_size_height_inch', 6,
                      'The widths of the boxplot in inches.')
-flags.DEFINE_bool('frequency_analysis', False,
-                  'If true, a frequency analysis will be performed.')
+flags.DEFINE_enum('analysis_type', 'cardinality', ['cardinality', 'frequency'],
+                  'Type of analysis that is to be performed.')
 
 required_flags = ('evaluation_config', 'sketch_estimator_configs',
                   'evaluation_run_name', 'num_runs', 'evaluation_out_dir')
@@ -114,7 +114,7 @@ def main(argv):
   proportion_of_runs = [float(x) for x in FLAGS.proportion_of_runs]
   estimable_criteria_list = zip(error_margin, proportion_of_runs)
 
-  if FLAGS.frequency_analysis:
+  if FLAGS.analysis_type == 'frequency':
     estimator_analyzer_func = analyzer.FrequencyEstimatorEvaluationAnalyzer
     report_generator_func = report_generator.FrequencyReportGenerator
   else:

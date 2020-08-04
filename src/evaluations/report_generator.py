@@ -26,7 +26,7 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations.analyzer import
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data import evaluation_configs
 from wfa_cardinality_estimation_evaluation_framework.simulations import simulator
 
-pd.set_option('display.max_colwidth', -1)
+pd.set_option('display.max_colwidth', None)
 
 HTML_REPORT_FILENAME = 'cardinality_estimator_evaluation_report.html'
 
