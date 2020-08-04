@@ -58,13 +58,13 @@ class ReportGeneratorTest(absltest.TestCase):
                 set_generator_factory=(
                     set_generator.IndependentSetGenerator
                     .get_generator_factory_with_num_and_size(
-                        universe_size=10, num_sets=5, set_size=1))),
+                        universe_size=10, num_sets=5, set_size=2))),
             configs.ScenarioConfig(
                 name='ind2',
                 set_generator_factory=(
                     set_generator.IndependentSetGenerator
                     .get_generator_factory_with_num_and_size(
-                        universe_size=10, num_sets=5, set_size=1))),
+                        universe_size=10, num_sets=5, set_size=2))),
         ])
 
     self.evaluation_run_name = 'test_run'
