@@ -18,7 +18,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def boxplot_relative_error(df, num_sets, relative_error):
+def boxplot_relative_error(df, num_sets, relative_error,
+                           metric_name='Relative error'):
   """Boxplot for relative error by number of sets.
 
   Args:
@@ -26,6 +27,7 @@ def boxplot_relative_error(df, num_sets, relative_error):
       error from one or more runs, specified by num_sets and relative_error.
     num_sets: a column name in df specifying the number of sets.
     relative_error: a column name in df specifying the relative_error.
+    metric_name: Name of metric to be displayed on y axis.
 
   Returns:
     A matplotlib.axes.Axes object of boxplot.
@@ -35,6 +37,6 @@ def boxplot_relative_error(df, num_sets, relative_error):
   _, ax = plt.subplots()
   sns.boxplot(x=num_sets, y=relative_error, data=df, ax=ax)
   ax.plot(ax.get_xlim(), (0, 0), '--m')
-  ax.set_ylabel('Relative error')
+  ax.set_ylabel(metric_name)
   ax.set_xlabel('Number of sets')
   return ax

@@ -61,10 +61,8 @@ KEY_NUM_ESTIMABLE_SETS_STATS_DF = 'num_estimable_sets_stats_df'
 KEY_RUNNING_TIME_DF = 'running_time_df'
 
 
-def get_num_estimable_sets(df, num_sets=simulator.NUM_SETS,
-                           relative_error=simulator.RELATIVE_ERROR,
-                           error_margin=ERROR_MARGIN,
-                           proportion_of_runs=PROPORTION_OF_RUNS):
+def get_num_estimable_sets(df, num_sets, relative_error, error_margin,
+                           proportion_of_runs):
   """Get the number of estimable sets.
 
   For example, set error_margin = 0.05 and proportion_of_runs = 0.95. Then
@@ -105,8 +103,8 @@ def get_num_estimable_sets(df, num_sets=simulator.NUM_SETS,
   return num_of_estimable
 
 
-class CardinalityEstimatorEvaluationAnalyzer(object):
-  """Analyze the cardinality estimator evaluation results."""
+class EstimatorEvaluationAnalyzer(object):
+  """Analyze the estimator evaluation results."""
 
   def __init__(self, out_dir, evaluation_directory, evaluation_run_name,
                evaluation_name, estimable_criteria_list,
@@ -163,7 +161,7 @@ class CardinalityEstimatorEvaluationAnalyzer(object):
         NUM_ESTIMABLE_SETS_FILENAME)
     with open(df_filename, 'w') as f:
       num_estimable_sets_stats_df.to_csv(f, index=False)
-    self.save_plot_num_sets_vs_relative_error()
+    self._save_plot_num_sets_vs_metric()
 
   @classmethod
   def read_evaluation_results(cls, file_dirs):
@@ -202,7 +200,7 @@ class CardinalityEstimatorEvaluationAnalyzer(object):
       df = self.raw_df.groupby([SKETCH_ESTIMATOR_NAME, SCENARIO_NAME]).apply(
           _get_num_estimable_sets_series,
           num_sets=simulator.NUM_SETS,
-          relative_error=simulator.RELATIVE_ERROR,
+          relative_error=self.error_metric_column,
           error_margin=criteria[0],
           proportion_of_runs=criteria[1]).reset_index()
       df[ERROR_MARGIN_NAME] = criteria[0]
@@ -223,18 +221,19 @@ class CardinalityEstimatorEvaluationAnalyzer(object):
         df.groupby([
             ERROR_MARGIN_NAME, PROPORTION_OF_RUNS_NAME, SKETCH_ESTIMATOR_NAME,
             SCENARIO_NAME, NUM_ESTIMABLE_SETS])
-        .agg({simulator.RELATIVE_ERROR: ['mean', 'std']}))
+        .agg({self.error_metric_column: ['mean', 'std']}))
     result.columns = result.columns.map('_'.join)
     result = result.reset_index()
     return result
 
-  def save_plot_num_sets_vs_relative_error(self):
-    """Make and save plots for number of sets versus relative error."""
+  def _save_plot_num_sets_vs_metric(self):
+    """Make and save plots for number of sets versus an arbitrary metric."""
     def plot_one_estimator_under_one_scenario(df):
       ax = plotting.boxplot_relative_error(
           df,
           num_sets=simulator.NUM_SETS,
-          relative_error=simulator.RELATIVE_ERROR)
+          relative_error=self.error_metric_column,
+          metric_name=self.error_metric_name)
       scenario_name = df[SCENARIO_NAME].values[0]
       estimator_name = df[SKETCH_ESTIMATOR_NAME].values[0]
       ax.set_title(f'{scenario_name}\n{estimator_name}')
@@ -253,6 +252,30 @@ class CardinalityEstimatorEvaluationAnalyzer(object):
 
     self.raw_df.groupby([SKETCH_ESTIMATOR_NAME, SCENARIO_NAME]).apply(
         plot_one_estimator_under_one_scenario)
+
+
+class CardinalityEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
+  """Analyze the cardinality estimator evaluation results."""
+
+  def __init__(self, out_dir, evaluation_directory, evaluation_run_name,
+               evaluation_name, estimable_criteria_list,
+               plot_params=None):
+    self.error_metric_column = simulator.RELATIVE_ERROR_BASENAME + '1'
+    self.error_metric_name = 'Relative error'
+    super().__init__(out_dir, evaluation_directory, evaluation_run_name,
+                     evaluation_name, estimable_criteria_list, plot_params)
+
+
+class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
+  """Analyze the frequency estimator evaluation results."""
+
+  def __init__(self, out_dir, evaluation_directory, evaluation_run_name,
+               evaluation_name, estimable_criteria_list,
+               plot_params=None):
+    self.error_metric_column = simulator.SHUFFLE_DISTANCE
+    self.error_metric_name = 'Shuffle distance'
+    super().__init__(out_dir, evaluation_directory, evaluation_run_name,
+                     evaluation_name, estimable_criteria_list, plot_params)
 
 
 def get_analysis_results(analysis_out_dir, evaluation_run_name,

@@ -28,7 +28,7 @@ ESTIMATED_CARDINALITY_BASENAME = 'estimated_cardinality_'
 TRUE_CARDINALITY_BASENAME = 'true_cardinality_'
 RELATIVE_ERROR_BASENAME = 'relative_error_'
 NUM_SETS = 'num_sets'
-
+SHUFFLE_DISTANCE = 'shuffle_distance'
 
 _SketchEstimatorConfig = collections.namedtuple(
     'EstimatorConfig', ['name', 'sketch_factory', 'estimator', 'sketch_noiser',
@@ -146,7 +146,36 @@ class Simulator(object):
       return histogram + [0] * (max_freq - len(histogram))
     else:
       return histogram[:max_freq] 
-      
+
+  def _shuffle_distance(self, histogram1, histogram2):
+    """Computes shuffle distance between two histograms.
+
+    Given two frequency distributions f_1 and f_2, the shuffle distance
+    between them is defined as 
+
+       1/2 * sum_{k=1}^f |f_1(k) - f_2(k)|
+
+    Args:
+      histogram1:  A frequency histogram.  histogram1[k] is the number
+        of id's having a frequency of k+1 or greater.
+      histogram2:  A frequency histogram.  histogram2[k] is the number
+        of id's having a frequency of k+1 or greater.
+    Returns:
+      The shuffle distance between histogram1 and histogram2.
+    """
+    assert len(histogram1), "Attempt to call _shuffle_distance with empty histogram1"
+    assert len(histogram2), "Attempt to call _shuffle_distance with empty histogram2"
+    counts1 = [histogram1[i] - histogram1[i+1]
+               for i in range(len(histogram1)-1)] + [histogram1[-1]]
+    counts2 = [histogram2[i] - histogram2[i+1]
+               for i in range(len(histogram2)-1)] + [histogram2[-1]]
+    max_freq = max(len(counts1), len(counts2))
+    freq1 = (
+      np.array(self._extend_histogram(counts1, max_freq)) / np.sum(counts1))
+    freq2 = (
+      np.array(self._extend_histogram(counts2, max_freq)) / np.sum(counts2))
+    return 0.5 * np.sum(np.abs(freq1 - freq2))
+    
   def run_one(self):
     """Run one iteration.
 
@@ -189,11 +218,13 @@ class Simulator(object):
       for id in actual_ids[i]:
         true_union.add(id)
       true_cardinality = self._extend_histogram(LosslessEstimator()([true_union]), max_freq)
-      metrics.append([i + 1] + estimated_cardinality + true_cardinality)
+      shuffle_distance = self._shuffle_distance(estimated_cardinality, true_cardinality)
+      metrics.append([i + 1] + estimated_cardinality + true_cardinality + [shuffle_distance])
 
     df_columns = ([NUM_SETS] +
                   [ESTIMATED_CARDINALITY_BASENAME + str(i+1) for i in range(max_freq)] +
-                  [TRUE_CARDINALITY_BASENAME + str(i+1) for i in range(max_freq)])
+                  [TRUE_CARDINALITY_BASENAME + str(i+1) for i in range(max_freq)] +
+                  [SHUFFLE_DISTANCE])
     
     df = pd.DataFrame(metrics, columns=df_columns)
     return df
