@@ -140,27 +140,29 @@ class ReportGenerator:
     return pd.concat([df, names_df], axis=1)
 
   @classmethod
-  def widen_num_estimable_sets_df(cls, df):
+  def widen_num_estimable_sets_df(cls, df, error_metric_column):
     """Widen the number of estimable sets with statistics df.
 
     Args:
       df: a data frame that contains the number of estimable sets by estimators
-        and scenarios, and the relative error stats at the number of estimable
+        and scenarios, and the error metric stats at the number of estimable
         sets.
+      error_metric_column: name of column containing the error metric to be
+        used for widening.
 
     Returns:
       A wide format of the number of estimable sets and the relative error
       stats.
     """
-    def _format_num_estimable_sets_df(df):
+    def _format_num_estimable_sets_df(df, error_metric_column):
       df = df.copy()
       df['num_estimable_sets_cell'] = (
           df[analyzer.NUM_ESTIMABLE_SETS].astype('str')
           + '<br>relative_error: mean='
-          + df[simulator.RELATIVE_ERROR_BASENAME + '1_mean'].round(
+          + df[error_metric_column + '_mean'].round(
             RELATIVE_ERROR_FORMAT_ACCURACY).astype('str')
           + ', std='
-          + df[simulator.RELATIVE_ERROR_BASENAME + '1_std'].round(
+          + df[error_metric_column + '_std'].round(
             RELATIVE_ERROR_FORMAT_ACCURACY).astype('str')
       )
       df[ESTIMABLE_CRITERIA_COLNAME] = (
@@ -169,7 +171,7 @@ class ReportGenerator:
           + df[analyzer.ERROR_MARGIN_NAME].apply('{0:.0%}'.format))
       return df
 
-    df = _format_num_estimable_sets_df(df)
+    df = _format_num_estimable_sets_df(df, error_metric_column)
     return df.pivot_table(
         values='num_estimable_sets_cell',
         index=analyzer.SCENARIO_NAME,
@@ -257,7 +259,7 @@ class ReportGenerator:
     df = self.analysis_results[KEY_NUM_ESTIMABLE_SETS_STATS_DF]
     for epsilon in epsilon_list:
       one_html = ReportGenerator.widen_num_estimable_sets_df(
-          df.loc[df['epsilon'] == epsilon]
+          df.loc[df['epsilon'] == epsilon], self.error_metric_column
       ).to_html(escape=False)
       one_html = f'<h4>epsilon={epsilon}</h4><p>' + one_html + '</p>'
       num_estimable_sets_stats_df_html_list.append(one_html)
@@ -293,7 +295,15 @@ class ReportGenerator:
 class CardinalityReportGenerator(ReportGenerator):
   """Generate HTML report for the cardinality estimator evaluation."""
 
+  def __init__(self, *args, **kwargs):
+    self.error_metric_column = simulator.RELATIVE_ERROR_BASENAME + '1'
+    super().__init__(*args, **kwargs)
+
 
 class FrequencyReportGenerator(ReportGenerator):
   """Generate HTML report for the frequency estimator evaluation."""
+
+  def __init__(self, *args, **kwargs):
+    self.error_metric_column = simulator.SHUFFLE_DISTANCE
+    super().__init__(*args, **kwargs)
 
