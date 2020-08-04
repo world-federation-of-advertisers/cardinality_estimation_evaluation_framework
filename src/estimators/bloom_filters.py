@@ -383,6 +383,21 @@ class FirstMomentEstimator(EstimatorBase):
 
     return invert_monotonic(first_moment, lower_bound)(0)
 
+  @classmethod
+  def _estimate_cardinality_geo(cls, sketch, weights):
+    """Estimate cardinality of a Bloom Filter with geometric distribution."""
+    register_probs = sketch.config.index_specs[0].distribution.register_probs
+    n = np.mean(sketch.sketch)
+
+    if(n >= 1):
+      return 0
+    def first_moment(u):
+      return np.sum(1 - np.power(1 - register_probs, u) - sketch.sketch)
+
+    lower_bound = (np.log(1 - n) / np.log(1 - np.mean(register_probs)))
+
+    return invert_monotonic(first_moment, lower_bound)(0)
+
   def __call__(self, sketch_list):
     """Merge all sketches and estimates the cardinality of their union."""
     if not sketch_list:
@@ -396,6 +411,9 @@ class FirstMomentEstimator(EstimatorBase):
       return [FirstMomentEstimator._estimate_cardinality_exp(union)]
     if self._method == FirstMomentEstimator.METHOD_UNIFORM:
       return [FirstMomentEstimator._estimate_cardinality_uniform(union)]
+    if self._method == FirstMomentEstimator.METHOD_GEO:
+      return [FirstMomentEstimator._estimate_cardinality_geo(
+        union, self._weights)]
     return [FirstMomentEstimator._estimate_cardinality_any(
         union, self._weights)]
 
