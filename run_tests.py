@@ -66,14 +66,16 @@ def find_modules(folders):
         return '.'.join(split)
 
     test_modules = map(file_name_to_module_name, test_files)
+    # Filter out python modules from virtual environments
+    filter_func = lambda module_name: "lib.python" not in module_name \
+                                  and "lib64.python" not in module_name
+    test_modules = filter(filter_func, test_modules)
+
 
     modules = []
     # Import modules and filter out ones that cannot be imported.
     for module_name in test_modules:
-        try:
-            module = import_module(module_name)
-        except:
-            continue
+        module = import_module(module_name)
         modules.append((module_name, module))
 
     return modules
