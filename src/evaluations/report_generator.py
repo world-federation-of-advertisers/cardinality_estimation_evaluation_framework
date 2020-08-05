@@ -253,8 +253,8 @@ class ReportGenerator:
     """Generate HTML report."""
     # Generate the number of estimable sets html tables by epsilon.
     epsilon_list = (
-        self.analysis_results[KEY_NUM_ESTIMABLE_SETS_STATS_DF]['epsilon']
-        .unique())
+        self.analysis_results[KEY_NUM_ESTIMABLE_SETS_STATS_DF][
+            evaluation_configs.EPSILON].unique())
     num_estimable_sets_stats_df_html_list = []
     df = self.analysis_results[KEY_NUM_ESTIMABLE_SETS_STATS_DF]
     for epsilon in epsilon_list:
