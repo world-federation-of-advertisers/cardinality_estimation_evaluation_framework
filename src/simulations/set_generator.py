@@ -51,6 +51,7 @@ class _SetSizeGenerator(object):
     for _ in range(self.num_sets):
       yield self.set_size
 
+
 class SetGeneratorBase(object):
   """Base object for generating test sets."""
 
@@ -331,29 +332,33 @@ class SubSetGenerator(SetGeneratorBase):
       yield set_ids_list[i]
     return self
 
+
 class _SequentiallyCorrelatedAllPreviousSetGenerator(SetGeneratorBase):
   """Generator for sequentailly correlated sets.
 
   Each set has some overlap with the union of previously generated campaigns.
   """
 
-  def __init__(self, universe_size, shared_prop, set_size_list, random_state):
-    self.universe_size = universe_size
+  def __init__(self, shared_prop, set_size_list, random_state):
     self.random_state = random_state
     self.union_ids = np.array([], dtype=int)
     self.set_size_list = set_size_list
-    self.overlap_size_list = ([0]
-                              + [int(set_size * shared_prop)
-                                 for set_size in self.set_size_list[:-1]]
-                              + [0])
-    # self.overlap_size_list[i] is the overlap of set.set_size_list[i]
-    # with the previous union, so in particular, self.overlap_size_list[0] = 0
-    total_ids_size = int(sum(self.set_size_list) - sum(self.overlap_size_list))
-    self.ids_pool = choice_fast(universe_size, total_ids_size, self.random_state)
+    self.num_sets = len(set_size_list)
+    self.overlap_size_list = [0]
+    total_ids_size = set_size_list[0]
+    for i in range(self.num_sets - 1):
+      overlap_size = min(
+          int(set_size_list[i] * shared_prop),
+          set_size_list[i + 1]
+      )
+      self.overlap_size_list.append(overlap_size)
+      total_ids_size += set_size_list[i + 1] - overlap_size
+    self.ids_pool = np.arange(total_ids_size)
+    self.random_state.shuffle(self.ids_pool)
 
   def __iter__(self):
     for i in range(len(self.set_size_list)):
-      overlap_size = min(self.overlap_size_list[i], len(self.union_ids))
+      overlap_size = self.overlap_size_list[i]
       set_ids_overlapped = choice_fast(
           self.union_ids,
           overlap_size,
@@ -373,27 +378,26 @@ class _SequentiallyCorrelatedThePreviousSetGenerator(SetGeneratorBase):
   Each set has some overlap with THE previously generated campaign.
   """
 
-  def __init__(self, universe_size, shared_prop, set_size_list, random_state):
-    self.universe_size = universe_size
+  def __init__(self, shared_prop, set_size_list, random_state):
     self.random_state = random_state
     self.union_ids = np.array([], dtype=int)
     self.set_size_list = set_size_list
-    self.overlap_size_list = ([0]
-                              + [int(set_size * shared_prop)
-                                 for set_size in self.set_size_list[:-1]]
-                              + [0])
-    # self.overlap_size_list[i] is the overlap of set.set_size_list[i]
-    # with the previous set, so in particular, self.overlap_size_list[0] = 0
+    self.num_sets = len(set_size_list)
+    # i-th element is the overlap size for the (i+1)-st set.
+    self.overlap_size_list = [
+        min(int(set_size_list[i] * shared_prop), set_size_list[i + 1])
+        for i in range(self.num_sets - 1)]
     total_ids_size = int(sum(self.set_size_list) - sum(self.overlap_size_list))
-    self.ids_pool = choice_fast(
-        universe_size, total_ids_size, self.random_state)
+    self.ids_pool = np.arange(total_ids_size)
+    self.random_state.shuffle(self.ids_pool)
 
   def __iter__(self):
     start = 0
-    for i in range(len(self.set_size_list)):
+    for i in range(self.num_sets):
       end = start + self.set_size_list[i]
       yield self.ids_pool[start:end]
-      start += self.set_size_list[i] - self.overlap_size_list[i + 1]
+      if i < self.num_sets - 1:
+        start += self.set_size_list[i] - self.overlap_size_list[i]
     return self
 
 
@@ -419,28 +423,26 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
 
   @classmethod
   def get_generator_factory_with_num_and_size(cls, order, correlated_sets,
-                                              universe_size, shared_prop,
-                                              num_sets, set_size):
+                                              shared_prop, num_sets, set_size):
 
     def f(random_state):
-      return cls(order, correlated_sets, universe_size, shared_prop,
+      return cls(order, correlated_sets, shared_prop,
                  _SetSizeGenerator(num_sets, set_size), random_state)
 
     return f
 
   @classmethod
   def get_generator_factory_with_set_size_list(cls, order, correlated_sets,
-                                               universe_size, shared_prop,
-                                               set_size_list):
+                                               shared_prop, set_size_list):
 
     def f(random_state):
-      return cls(order, correlated_sets, universe_size, shared_prop,
-                 set_size_list, random_state)
+      return cls(order, correlated_sets, shared_prop, set_size_list,
+                 random_state)
 
     return f
 
-  def __init__(self, order, correlated_sets, universe_size, shared_prop,
-               set_sizes, random_state):
+  def __init__(self, order, correlated_sets, shared_prop, set_sizes,
+               random_state):
     """Initialize a sequentially correlated sets generator.
 
     Args:
@@ -449,8 +451,6 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
       correlated_sets: One of 'all' and 'one', indicating how the current set
         is correlated with the previously generated sets when the order is
         'original'.
-      universe_size: An integer value that specifies the size of the whole
-        universe from which the ids will be sampled.
       shared_prop: A number between 0 and 1 that specifies the proportion of ids
         which has overlaps with all the previously generated campaigns.
       set_sizes: A generator or a list containing the size of each set.
@@ -473,10 +473,10 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
 
     if correlated_sets == CORRELATED_SETS_ALL:
       self.generator = _SequentiallyCorrelatedAllPreviousSetGenerator(
-          universe_size, shared_prop, self.set_size_list, random_state)
+          shared_prop, self.set_size_list, random_state)
     elif correlated_sets == CORRELATED_SETS_ONE:
       self.generator = _SequentiallyCorrelatedThePreviousSetGenerator(
-          universe_size, shared_prop, self.set_size_list, random_state)
+          shared_prop, self.set_size_list, random_state)
     else:
       raise ValueError(
           f'correlated_sets={correlated_sets} is not supported.')
