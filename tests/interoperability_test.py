@@ -447,7 +447,7 @@ class InteroperabilityTest(absltest.TestCase):
 
     # Generator report.
     report_out_dir = self.create_tempdir('report').full_path
-    generate_report = report_generator.ReportGenerator(
+    generate_report = report_generator.CardinalityReportGenerator(
         out_dir=report_out_dir,
         analysis_out_dir=analysis_out_dir,
         evaluation_run_name=evaluation_run_name,
