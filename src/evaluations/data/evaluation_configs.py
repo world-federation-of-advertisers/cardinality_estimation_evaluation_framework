@@ -352,26 +352,22 @@ def _complete_test_with_selected_parameters(
   large_set_size = int(large_set_size_rate * universe_size)
 
   # Scenario 3 (b). Exponential bow, identical user behavior.
-  scenario_config_list.append(
-      _generate_configs_scenario_3b(
-          universe_size, num_sets, small_set_size, large_set_size,
-          user_activity_assciation))
+  scenario_config_list += _generate_configs_scenario_3b(
+      universe_size, num_sets, small_set_size, large_set_size,
+      user_activity_assciation)
 
   # Scenario 4(a). Fully-overlapped.
-  scenario_config_list.append(
-      _generate_configs_scenario_4a(
-          universe_size, num_sets, small_set_size, large_set_size))
+  scenario_config_list += _generate_configs_scenario_4a(
+      universe_size, num_sets, small_set_size, large_set_size)
 
   # Scenario 4(b). Subset campaigns.
-  scenario_config_list.append(
-      _generate_configs_scenario_4b(
-          universe_size, num_sets, small_set_size, large_set_size, order))
+  scenario_config_list += _generate_configs_scenario_4b(
+      universe_size, num_sets, small_set_size, large_set_size, order)
 
   # Scenario 5. Sequentially correlated campaigns
-  scenario_config_list.append(
-      _generate_configs_scenario_5(
-          universe_size, num_sets, small_set_size, large_set_size, order,
-          shared_prop_list))
+  scenario_config_list += _generate_configs_scenario_5(
+      universe_size, num_sets, small_set_size, large_set_size, order,
+      shared_prop_list)
 
   return EvaluationConfig(
       name='complete_test_with_selected_parameters',
