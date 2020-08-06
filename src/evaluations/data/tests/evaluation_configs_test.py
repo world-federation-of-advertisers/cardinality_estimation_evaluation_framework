@@ -196,10 +196,10 @@ class EvaluationConfigTest(absltest.TestCase):
 
     self.assertEqual(result, expected)
 
-  @mock.patch('__main__.evaluation_configs._generate_configs_scenario_3b')
-  @mock.patch('__main__.evaluation_configs._generate_configs_scenario_4a')
-  @mock.patch('__main__.evaluation_configs._generate_configs_scenario_4b')
-  @mock.patch('__main__.evaluation_configs._generate_configs_scenario_5')
+  @mock.patch('wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs._generate_configs_scenario_3b')
+  @mock.patch('wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs._generate_configs_scenario_4a')
+  @mock.patch('wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs._generate_configs_scenario_4b')
+  @mock.patch('wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs._generate_configs_scenario_5')
   def test_complete_test_with_selected_parameters_all_scenario_used(
       self,
       scenario_config_3b,
