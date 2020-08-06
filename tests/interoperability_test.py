@@ -225,7 +225,7 @@ class InteroperabilityTest(absltest.TestCase):
 
     self.sketch_estimator_config_list = [
         SketchEstimatorConfig(
-            name='exact_set',
+            name='exact_set-0-infty-lossless',
             sketch_factory=ExactMultiSet.get_sketch_factory(),
             estimator=LosslessEstimator())
     ]

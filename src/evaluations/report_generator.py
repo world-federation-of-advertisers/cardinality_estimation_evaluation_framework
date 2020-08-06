@@ -63,9 +63,10 @@ MESSAGE_HTML_TEMPLATE = """
 # Number of digits that should be shown when reporting the relative error
 RELATIVE_ERROR_FORMAT_ACCURACY = 4
 
+
 class ReportGenerator:
   """Generate HTML report for an estimator evaluation."""
-  
+
   def __init__(self, out_dir, analysis_out_dir, evaluation_run_name,
                evaluation_name):
     """Read analysis results and generate HTML report.
@@ -158,10 +159,10 @@ class ReportGenerator:
           df[analyzer.NUM_ESTIMABLE_SETS].astype('str')
           + '<br>relative_error: mean='
           + df[simulator.RELATIVE_ERROR_BASENAME + '1_mean'].round(
-            RELATIVE_ERROR_FORMAT_ACCURACY).astype('str')
+              RELATIVE_ERROR_FORMAT_ACCURACY).astype('str')
           + ', std='
           + df[simulator.RELATIVE_ERROR_BASENAME + '1_std'].round(
-            RELATIVE_ERROR_FORMAT_ACCURACY).astype('str')
+              RELATIVE_ERROR_FORMAT_ACCURACY).astype('str')
       )
       df[ESTIMABLE_CRITERIA_COLNAME] = (
           df[analyzer.PROPORTION_OF_RUNS_NAME].apply('{0:.0%}'.format)
@@ -251,8 +252,8 @@ class ReportGenerator:
     """Generate HTML report."""
     # Generate the number of estimable sets html tables by epsilon.
     epsilon_list = (
-        self.analysis_results[KEY_NUM_ESTIMABLE_SETS_STATS_DF]['epsilon']
-        .unique())
+        self.analysis_results[KEY_NUM_ESTIMABLE_SETS_STATS_DF][
+            evaluation_configs.EPSILON].unique())
     num_estimable_sets_stats_df_html_list = []
     df = self.analysis_results[KEY_NUM_ESTIMABLE_SETS_STATS_DF]
     for epsilon in epsilon_list:
