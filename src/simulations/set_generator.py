@@ -340,16 +340,30 @@ class _SequentiallyCorrelatedAllPreviousSetGenerator(SetGeneratorBase):
   """
 
   def __init__(self, shared_prop, set_size_list, random_state):
+    """Construct a sequentially correlated set generator.
+
+    Every newly generated set has some overlap with the union of the previous
+    sets. The overlap is determined by the set size multiplied by the shared
+    proportion. If the union is not large enough, will use the union itself.
+
+    Args:
+      shared_prop: a number between 0 and 1, indicating the proportion of ids of
+        the current set coming from the union of the previously generated sets.
+      set_size_list: a list of the integer numbers representing the set size of
+        the sets.
+      random_state: a numpy.random.RandomState instance.
+    """
     self.random_state = random_state
     self.union_ids = np.array([], dtype=int)
     self.set_size_list = set_size_list
     self.num_sets = len(set_size_list)
     self.overlap_size_list = [0]
+    # Find the actual size of the overlap and the total number of ids.
     total_ids_size = set_size_list[0]
     for i in range(self.num_sets - 1):
       overlap_size = min(
-          int(set_size_list[i] * shared_prop),
-          set_size_list[i + 1]
+          int(set_size_list[i + 1] * shared_prop),
+          total_ids_size
       )
       self.overlap_size_list.append(overlap_size)
       total_ids_size += set_size_list[i + 1] - overlap_size
@@ -379,6 +393,20 @@ class _SequentiallyCorrelatedThePreviousSetGenerator(SetGeneratorBase):
   """
 
   def __init__(self, shared_prop, set_size_list, random_state):
+    """Construct a sequentially correlated set generator.
+
+    Every newly generated set has some overlap with THE previously generated
+    set. The overlap is determined by the previous set size multiplied by the
+    shared proportion. If the shared proportion is too large, will cap it by
+    the current set size.
+
+    Args:
+      shared_prop: a number between 0 and 1, indicating the proportion of ids of
+        the current set coming from the union of the previously generated sets.
+      set_size_list: a list of the integer numbers representing the set size of
+        the sets.
+      random_state: a numpy.random.RandomState instance.
+    """
     self.random_state = random_state
     self.union_ids = np.array([], dtype=int)
     self.set_size_list = set_size_list
