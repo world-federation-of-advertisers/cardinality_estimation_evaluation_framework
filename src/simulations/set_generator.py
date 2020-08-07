@@ -402,7 +402,8 @@ class _SequentiallyCorrelatedThePreviousSetGenerator(SetGeneratorBase):
 
     Args:
       shared_prop: a number between 0 and 1, indicating the proportion of ids of
-        the current set coming from the union of the previously generated sets.
+        the current set coming from the previously generated set. I.e.,
+        overlap size divided by the previous set size.
       set_size_list: a list of the integer numbers representing the set size of
         the sets.
       random_state: a numpy.random.RandomState instance.
