@@ -420,37 +420,26 @@ class SetGeneratorTest(parameterized.TestCase):
           shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
 
   @parameterized.parameters(
-      (set_generator.CORRELATED_SETS_ALL, 0),
-      (set_generator.CORRELATED_SETS_ONE, 1))
-  def test_sequentially_correlated_generator_overlap_size_larger_than_set_size(
-      self, correlation_type, expected_overlap_size):
+      (set_generator.CORRELATED_SETS_ALL,),
+      (set_generator.CORRELATED_SETS_ONE,))
+  def test_sequentially_correlated_generator_overlap_size_not_enough(
+      self, correlation_type):
     rs = np.random.RandomState(1)
+    set_sizes = [1, 10]
     sc_gen = set_generator.SequentiallyCorrelatedSetGenerator(
         order=set_generator.ORDER_ORIGINAL, correlated_sets=correlation_type,
-        shared_prop=0.5, set_sizes=[10, 1],
+        shared_prop=0.5,
+        set_sizes=set_sizes,
         random_state=rs)
     set_ids_list = [set_ids for set_ids in sc_gen]
-    self.assertLen(set_ids_list[0], 10,
+    self.assertLen(set_ids_list[0], set_sizes[0],
                    f'{correlation_type}: First set size not correct.')
-    self.assertLen(set_ids_list[1], 1,
+    self.assertLen(set_ids_list[1], set_sizes[1],
                    f'{correlation_type}: Second set size not correct.')
     self.assertLen(np.intersect1d(set_ids_list[0], set_ids_list[1]),
-                   expected_overlap_size,
+                   1,
                    f'{correlation_type}: Overlap set size not correct.')
 
-  def test_sequentially_correlated_all_generator_overlap_size_not_enough(self):
-    rs = np.random.RandomState(2)
-    sc_gen = set_generator.SequentiallyCorrelatedSetGenerator(
-        order=set_generator.ORDER_ORIGINAL,
-        correlated_sets=set_generator.CORRELATED_SETS_ALL,
-        shared_prop=0.5,
-        set_sizes=[1, 10],
-        random_state=rs)
-    set_ids_list = [set_ids for set_ids in sc_gen]
-    self.assertLen(set_ids_list[0], 1, 'First set size not correct.')
-    self.assertLen(set_ids_list[1], 10, 'Second set size not correct.')
-    self.assertLen(np.intersect1d(set_ids_list[0], set_ids_list[1]), 1,
-                   'Overlap set size not correct.')
 
 if __name__ == '__main__':
   absltest.main()

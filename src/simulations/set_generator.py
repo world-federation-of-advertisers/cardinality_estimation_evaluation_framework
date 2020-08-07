@@ -397,13 +397,13 @@ class _SequentiallyCorrelatedThePreviousSetGenerator(SetGeneratorBase):
 
     Every newly generated set has some overlap with THE previously generated
     set. The overlap is determined by the previous set size multiplied by the
-    shared proportion. If the shared proportion is too large, will cap it by
-    the current set size.
+    shared proportion. If the previous set is not large enough, then will the
+    overlap will use the previous set itself.
 
     Args:
       shared_prop: a number between 0 and 1, indicating the proportion of ids of
         the current set coming from the previously generated set. I.e.,
-        overlap size divided by the previous set size.
+        overlap size divided by the current set size.
       set_size_list: a list of the integer numbers representing the set size of
         the sets.
       random_state: a numpy.random.RandomState instance.
@@ -413,8 +413,9 @@ class _SequentiallyCorrelatedThePreviousSetGenerator(SetGeneratorBase):
     self.set_size_list = set_size_list
     self.num_sets = len(set_size_list)
     # i-th element is the overlap size for the (i+1)-st set.
+    # If the previous set is not large enough, will use the previou set.
     self.overlap_size_list = [
-        min(int(set_size_list[i] * shared_prop), set_size_list[i + 1])
+        min(int(set_size_list[i + 1] * shared_prop), set_size_list[i])
         for i in range(self.num_sets - 1)]
     total_ids_size = int(sum(self.set_size_list) - sum(self.overlap_size_list))
     self.ids_pool = np.arange(total_ids_size)
