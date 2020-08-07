@@ -359,6 +359,8 @@ class _SequentiallyCorrelatedAllPreviousSetGenerator(SetGeneratorBase):
     self.num_sets = len(set_size_list)
     self.overlap_size_list = [0]
     # Find the actual size of the overlap and the total number of ids.
+    # The i-th element is the size of the IDs of the i-th set to be taken from
+    # the union of the previous sets.
     total_ids_size = set_size_list[0]
     for i in range(self.num_sets - 1):
       overlap_size = min(
@@ -396,9 +398,9 @@ class _SequentiallyCorrelatedThePreviousSetGenerator(SetGeneratorBase):
     """Construct a sequentially correlated set generator.
 
     Every newly generated set has some overlap with THE previously generated
-    set. The overlap is determined by the previous set size multiplied by the
-    shared proportion. If the previous set is not large enough, then will the
-    overlap will use the previous set itself.
+    set. The overlap is determined by the current set size multiplied by the
+    shared proportion. If the previous set is not large enough, will use the
+    previous set itself.
 
     Args:
       shared_prop: a number between 0 and 1, indicating the proportion of ids of
