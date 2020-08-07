@@ -112,7 +112,6 @@ class EvaluationConfigTest(absltest.TestCase):
 
   def test_generate_configs_scenario_5(self):
     conf_list = evaluation_configs._generate_configs_scenario_5(
-        universe_size=100,
         num_sets=3,
         small_set_size=2,
         large_set_size=8,
@@ -126,75 +125,75 @@ class EvaluationConfigTest(absltest.TestCase):
       result[conf.name] = [len(set_ids) for set_ids in gen]
 
     expected = {
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:1st_half_large_2nd_half_small-'
         'large_set_size:8-small_set_size:2': [8, 2, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:1st_half_small_2nd_half_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:1st_large_then_small-'
         'large_set_size:8-small_set_size:2': [8, 2, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:1st_small_then_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:all_large_except_middle_small-'
         'large_set_size:8-small_set_size:2': [8, 2, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:all_small_except_middle_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:large_then_last_small-'
         'large_set_size:8-small_set_size:2': [8, 8, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:repeated_small_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:small_then_last_large-'
         'large_set_size:8-small_set_size:2': [2, 2, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:1st_half_large_2nd_half_small-'
         'large_set_size:8-small_set_size:2': [8, 2, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:1st_half_small_2nd_half_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:1st_large_then_small-'
         'large_set_size:8-small_set_size:2': [8, 2, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:1st_small_then_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:all_large_except_middle_small-'
         'large_set_size:8-small_set_size:2': [8, 2, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:all_small_except_middle_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:large_then_last_small-'
         'large_set_size:8-small_set_size:2': [8, 8, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:repeated_small_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:small_then_last_large-'
         'large_set_size:8-small_set_size:2': [2, 2, 8]

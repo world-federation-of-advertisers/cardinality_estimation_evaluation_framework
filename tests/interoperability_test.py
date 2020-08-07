@@ -371,7 +371,6 @@ class InteroperabilityTest(absltest.TestCase):
             order=self.order,
             correlated_sets=set_generator.CORRELATED_SETS_ALL,
             shared_prop=self.shared_prop,
-            universe_size=self.universe_size,
             num_sets=self.number_of_sets,
             set_size=self.set_size))
     self.simulate_with_set_generator(set_generator_factory,
@@ -385,7 +384,6 @@ class InteroperabilityTest(absltest.TestCase):
             order=self.order,
             correlated_sets=set_generator.CORRELATED_SETS_ALL,
             shared_prop=self.shared_prop,
-            universe_size=self.universe_size,
             set_size_list=self.set_size_list))
     self.simulate_with_set_generator(set_generator_factory,
                                      self.name_to_non_noised_estimator_config)
@@ -397,7 +395,6 @@ class InteroperabilityTest(absltest.TestCase):
             order=self.order,
             correlated_sets=set_generator.CORRELATED_SETS_ONE,
             shared_prop=self.shared_prop,
-            universe_size=self.universe_size,
             num_sets=self.number_of_sets,
             set_size=self.set_size))
     self.simulate_with_set_generator(set_generator_factory,
@@ -410,7 +407,6 @@ class InteroperabilityTest(absltest.TestCase):
             order=self.order,
             correlated_sets=set_generator.CORRELATED_SETS_ONE,
             shared_prop=self.shared_prop,
-            universe_size=self.universe_size,
             set_size_list=self.set_size_list))
     self.simulate_with_set_generator(set_generator_factory,
                                      self.name_to_noised_estimator_config)
