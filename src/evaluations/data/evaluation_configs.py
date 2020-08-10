@@ -387,49 +387,51 @@ def _complete_test_with_selected_parameters(
 
 
 def _frequency_end_to_end_test(num_runs=NUM_RUNS_VALUE):
-  """EvaluationConfig of end-to-end test of frequency evaluation code."""
-  num_sets=3
-  universe_size=10000
-  set_size=5000
-  freq_rate_list=[1,2,3]
-  freq_cap=5
-  return EvaluationConfig(
-    name='frequency_end_to_end_test',
-    num_runs=num_runs,
-    scenario_config_list=[
-      ScenarioConfig(
-        name='-'.join([
-          'subset',
-          'universe_size:' + str(universe_size),
-          'num_sets:' + str(num_sets)
-        ]),
-        set_generator_factory=(
-          set_generator.HomogeneousMultiSetGenerator
-          .get_generator_factory_with_num_and_size(
-            universe_size=universe_size,
-            num_sets=num_sets,
-            set_size=set_size,
-            freq_rate_list = freq_rate_list,
-            freq_cap=freq_cap)))]
-  )
+    """EvaluationConfig of end-to-end test of frequency evaluation code."""
+    num_sets=3
+    universe_size=10000
+    set_size=5000
+    freq_rate_list=[1,2,3]
+    freq_cap=5
+    return EvaluationConfig(
+        name='frequency_end_to_end_test',
+        num_runs=num_runs,
+        scenario_config_list=[
+            ScenarioConfig(
+                name='-'.join([
+                    'subset',
+                    'universe_size:' + str(universe_size),
+                    'num_sets:' + str(num_sets)
+                ]),
+                set_generator_factory=(
+                    set_generator.HomogeneousMultiSetGenerator
+                        .get_generator_factory_with_num_and_size(
+                            universe_size=universe_size,
+                            num_sets=num_sets,
+                            set_size=set_size,
+                            freq_rate_list=freq_rate_list,
+                            freq_cap=freq_cap)))]
+    )
 
+  
 def _generate_evaluation_configs():
-  return (
-    _smoke_test,
-    _complete_test_with_selected_parameters,
-    _frequency_end_to_end_test
-  )
+    return (
+        _smoke_test,
+        _complete_test_with_selected_parameters,
+        _frequency_end_to_end_test
+    )
 
+  
 def get_evaluation_config(config_name):
-  """Returns the evaluation config with the specified config_name."""
-  configs = _generate_evaluation_configs()
-  config = [c for c in configs if c().name == config_name]
-  if not config:
-    valid_config_names = [c().name for c in configs]
-    raise ValueError("Invalid evaluation config: {}\n"
-                     "Valid choices are as follows: {}".format(
-                       config_name, ','.join(valid_config_names)))
-  return config[0]
+    """Returns the evaluation config with the specified config_name."""
+    configs = _generate_evaluation_configs()
+    config = [c for c in configs if c().name == config_name]
+    if not config:
+        valid_config_names = [c().name for c in configs]
+        raise ValueError("Invalid evaluation config: {}\n"
+                         "Valid choices are as follows: {}".format(
+                             config_name, ','.join(valid_config_names)))
+    return config[0]
 
 
 # Document the estimators.
