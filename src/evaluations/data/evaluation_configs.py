@@ -430,7 +430,7 @@ def get_evaluation_config(config_name):
     valid_config_names = [c().name for c in configs]
     raise ValueError("Invalid evaluation config: {}\n"
                      "Valid choices are as follows: {}".format(
-                    config_name, ','.join(valid_config_names)))
+                     config_name, ','.join(valid_config_names)))
   return config[0]
 
 
