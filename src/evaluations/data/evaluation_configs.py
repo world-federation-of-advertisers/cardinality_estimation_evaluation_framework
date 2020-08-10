@@ -81,7 +81,7 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE):
                   .get_generator_factory_with_num_and_size(
                       order=set_generator.ORDER_ORIGINAL,
                       correlated_sets=set_generator.CORRELATED_SETS_ALL,
-                      universe_size=3 * 10**8, num_sets=20, set_size=10000,
+                      num_sets=20, set_size=10000,
                       shared_prop=0.5))),
           ScenarioConfig(
               name='sequentially_correlated_one',
@@ -90,7 +90,7 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE):
                   .get_generator_factory_with_num_and_size(
                       order=set_generator.ORDER_ORIGINAL,
                       correlated_sets=set_generator.CORRELATED_SETS_ONE,
-                      universe_size=3 * 10**8, num_sets=20, set_size=10000,
+                      num_sets=20, set_size=10000,
                       shared_prop=0.5))),
           )
       )
@@ -242,7 +242,7 @@ def _generate_configs_scenario_4b(universe_size, num_sets, small_set_size,
   return scenario_config_list
 
 
-def _generate_configs_scenario_5(universe_size, num_sets, small_set_size,
+def _generate_configs_scenario_5(num_sets, small_set_size,
                                  large_set_size, order, shared_prop_list):
   """Generate configs of Scenario 5.
 
@@ -252,7 +252,6 @@ def _generate_configs_scenario_5(universe_size, num_sets, small_set_size,
   https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#scenario-5-sequentially-correlated-campaigns
 
   Args:
-    universe_size: the size of the pools from which the IDs will be selected.
     num_sets: the number of sets.
     small_set_size: the reach of the small reach sets.
     large_set_size: the reach of the large reach sets.
@@ -298,7 +297,6 @@ def _generate_configs_scenario_5(universe_size, num_sets, small_set_size,
             ScenarioConfig(
                 name='-'.join([
                     'sequentially_correlated',
-                    'universe_size:' + str(universe_size),
                     'order:' + str(order),
                     'correlated_sets:' + str(correlated_sets),
                     'shared_prop:' + str(shared_prop),
@@ -311,7 +309,6 @@ def _generate_configs_scenario_5(universe_size, num_sets, small_set_size,
                     get_generator_factory_with_set_size_list(
                         order=order,
                         correlated_sets=correlated_sets,
-                        universe_size=universe_size,
                         shared_prop=shared_prop,
                         set_size_list=set_size_list)))
         )
@@ -352,26 +349,22 @@ def _complete_test_with_selected_parameters(
   large_set_size = int(large_set_size_rate * universe_size)
 
   # Scenario 3 (b). Exponential bow, identical user behavior.
-  scenario_config_list.append(
-      _generate_configs_scenario_3b(
-          universe_size, num_sets, small_set_size, large_set_size,
-          user_activity_assciation))
+  scenario_config_list += _generate_configs_scenario_3b(
+      universe_size, num_sets, small_set_size, large_set_size,
+      user_activity_assciation)
 
   # Scenario 4(a). Fully-overlapped.
-  scenario_config_list.append(
-      _generate_configs_scenario_4a(
-          universe_size, num_sets, small_set_size, large_set_size))
+  scenario_config_list += _generate_configs_scenario_4a(
+      universe_size, num_sets, small_set_size, large_set_size)
 
   # Scenario 4(b). Subset campaigns.
-  scenario_config_list.append(
-      _generate_configs_scenario_4b(
-          universe_size, num_sets, small_set_size, large_set_size, order))
+  scenario_config_list += _generate_configs_scenario_4b(
+      universe_size, num_sets, small_set_size, large_set_size, order)
 
   # Scenario 5. Sequentially correlated campaigns
-  scenario_config_list.append(
-      _generate_configs_scenario_5(
-          universe_size, num_sets, small_set_size, large_set_size, order,
-          shared_prop_list))
+  scenario_config_list += _generate_configs_scenario_5(
+      num_sets, small_set_size, large_set_size, order,
+      shared_prop_list)
 
   return EvaluationConfig(
       name='complete_test_with_selected_parameters',

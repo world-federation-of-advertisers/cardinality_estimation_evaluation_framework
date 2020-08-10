@@ -17,11 +17,17 @@ from absl.testing import absltest
 
 import numpy as np
 
+from wfa_cardinality_estimation_evaluation_framework.evaluations import configs
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data import evaluation_configs
+from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import _complete_test_with_selected_parameters
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 
 
 class EvaluationConfigTest(absltest.TestCase):
+
+  EVALUATION_CONFIGS_MODULE = (
+      'wfa_cardinality_estimation_evaluation_framework.evaluations.data.'
+      + 'evaluation_configs.')
 
   def test_generate_configs_scenario_3b_set_sizes_correct(self):
     conf_list = evaluation_configs._generate_configs_scenario_3b(
@@ -106,7 +112,6 @@ class EvaluationConfigTest(absltest.TestCase):
 
   def test_generate_configs_scenario_5(self):
     conf_list = evaluation_configs._generate_configs_scenario_5(
-        universe_size=100,
         num_sets=3,
         small_set_size=2,
         large_set_size=8,
@@ -120,75 +125,75 @@ class EvaluationConfigTest(absltest.TestCase):
       result[conf.name] = [len(set_ids) for set_ids in gen]
 
     expected = {
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:1st_half_large_2nd_half_small-'
         'large_set_size:8-small_set_size:2': [8, 2, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:1st_half_small_2nd_half_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:1st_large_then_small-'
         'large_set_size:8-small_set_size:2': [8, 2, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:1st_small_then_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:all_large_except_middle_small-'
         'large_set_size:8-small_set_size:2': [8, 2, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:all_small_except_middle_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:large_then_last_small-'
         'large_set_size:8-small_set_size:2': [8, 8, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:repeated_small_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:all-shared_prop:0.1-'
         'set_type:small_then_last_large-'
         'large_set_size:8-small_set_size:2': [2, 2, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:1st_half_large_2nd_half_small-'
         'large_set_size:8-small_set_size:2': [8, 2, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:1st_half_small_2nd_half_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:1st_large_then_small-'
         'large_set_size:8-small_set_size:2': [8, 2, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:1st_small_then_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:all_large_except_middle_small-'
         'large_set_size:8-small_set_size:2': [8, 2, 8],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:all_small_except_middle_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:large_then_last_small-'
         'large_set_size:8-small_set_size:2': [8, 8, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:repeated_small_large-'
         'large_set_size:8-small_set_size:2': [2, 8, 2],
-        'sequentially_correlated-universe_size:100-order:original-'
+        'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:small_then_last_large-'
         'large_set_size:8-small_set_size:2': [2, 2, 8]
@@ -196,10 +201,10 @@ class EvaluationConfigTest(absltest.TestCase):
 
     self.assertEqual(result, expected)
 
-  @mock.patch('__main__.evaluation_configs._generate_configs_scenario_3b')
-  @mock.patch('__main__.evaluation_configs._generate_configs_scenario_4a')
-  @mock.patch('__main__.evaluation_configs._generate_configs_scenario_4b')
-  @mock.patch('__main__.evaluation_configs._generate_configs_scenario_5')
+  @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_3b')
+  @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_4a')
+  @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_4b')
+  @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_5')
   def test_complete_test_with_selected_parameters_all_scenario_used(
       self,
       scenario_config_3b,
@@ -207,11 +212,17 @@ class EvaluationConfigTest(absltest.TestCase):
       scenario_config_4b,
       scenario_config_5):
     """Test all the scenarios are concluded in the complete test."""
-    _ = evaluation_configs._complete_test_with_selected_parameters()
+    _ = _complete_test_with_selected_parameters(num_runs=1)
     self.assertTrue(scenario_config_3b.called, 'Scenario 3b not included.')
     self.assertTrue(scenario_config_4a.called, 'Scenario 4a not included.')
     self.assertTrue(scenario_config_4b.called, 'Scenario 4b not included.')
     self.assertTrue(scenario_config_5.called, 'Scenario 5 not included.')
+
+  def test_complete_test_with_selected_parameters_contains_scenario_configs(
+      self):
+    eval_configs = _complete_test_with_selected_parameters(num_runs=1)
+    for scenario_config in eval_configs.scenario_config_list:
+      self.assertIsInstance(scenario_config, configs.ScenarioConfig)
 
 
 if __name__ == '__main__':
