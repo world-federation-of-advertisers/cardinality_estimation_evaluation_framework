@@ -387,51 +387,51 @@ def _complete_test_with_selected_parameters(
 
 
 def _frequency_end_to_end_test(num_runs=NUM_RUNS_VALUE):
-    """EvaluationConfig of end-to-end test of frequency evaluation code."""
-    num_sets=3
-    universe_size=10000
-    set_size=5000
-    freq_rate_list=[1,2,3]
-    freq_cap=5
-    return EvaluationConfig(
-        name='frequency_end_to_end_test',
-        num_runs=num_runs,
-        scenario_config_list=[
-            ScenarioConfig(
-                name='-'.join([
-                    'subset',
-                    'universe_size:' + str(universe_size),
-                    'num_sets:' + str(num_sets)
-                ]),
-                set_generator_factory=(
-                    set_generator.HomogeneousMultiSetGenerator
-                        .get_generator_factory_with_num_and_size(
-                            universe_size=universe_size,
-                            num_sets=num_sets,
-                            set_size=set_size,
-                            freq_rate_list=freq_rate_list,
-                            freq_cap=freq_cap)))]
+  """EvaluationConfig of end-to-end test of frequency evaluation code."""
+  num_sets=3
+  universe_size=10000
+  set_size=5000
+  freq_rate_list=[1,2,3]
+  freq_cap=5
+  return EvaluationConfig(
+      name='frequency_end_to_end_test',
+      num_runs=num_runs,
+      scenario_config_list=[
+        ScenarioConfig(
+            name='-'.join([
+                'subset',
+                'universe_size:' + str(universe_size),
+                'num_sets:' + str(num_sets)
+            ]),
+            set_generator_factory=(
+                set_generator.HomogeneousMultiSetGenerator
+                    .get_generator_factory_with_num_and_size(
+                        universe_size=universe_size,
+                        num_sets=num_sets,
+                        set_size=set_size,
+                        freq_rate_list=freq_rate_list,
+                        freq_cap=freq_cap)))]
     )
 
   
 def _generate_evaluation_configs():
-    return (
-        _smoke_test,
-        _complete_test_with_selected_parameters,
-        _frequency_end_to_end_test
-    )
+  return (
+      _smoke_test,
+      _complete_test_with_selected_parameters,
+      _frequency_end_to_end_test
+  )
 
   
 def get_evaluation_config(config_name):
-    """Returns the evaluation config with the specified config_name."""
-    configs = _generate_evaluation_configs()
-    config = [c for c in configs if c().name == config_name]
-    if not config:
-        valid_config_names = [c().name for c in configs]
-        raise ValueError("Invalid evaluation config: {}\n"
-                         "Valid choices are as follows: {}".format(
-                             config_name, ','.join(valid_config_names)))
-    return config[0]
+  """Returns the evaluation config with the specified config_name."""
+  configs = _generate_evaluation_configs()
+  config = [c for c in configs if c().name == config_name]
+  if not config:
+    valid_config_names = [c().name for c in configs]
+    raise ValueError("Invalid evaluation config: {}\n"
+                     "Valid choices are as follows: {}".format(
+                    config_name, ','.join(valid_config_names)))
+  return config[0]
 
 
 # Document the estimators.
@@ -500,23 +500,23 @@ VECTOR_OF_COUNTS_4096_INFTY_SEQUENTIAL = SketchEstimatorConfig(
 
 def _generate_cardinality_estimator_configs():
   return (
-    LOG_BLOOM_FILTER_1E5_LN3_FIRST_MOMENT_LOG,
-    LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG,
-    EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG,
-    EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG,
-    LIQUID_LEGIONS_1E5_10_LN3_SEQUENTIAL,
-    LIQUID_LEGIONS_1E5_10_INFTY_SEQUENTIAL,
-    VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL,
-    VECTOR_OF_COUNTS_4096_INFTY_SEQUENTIAL)
+      LOG_BLOOM_FILTER_1E5_LN3_FIRST_MOMENT_LOG,
+      LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG,
+      EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG,
+      EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG,
+      LIQUID_LEGIONS_1E5_10_LN3_SEQUENTIAL,
+      LIQUID_LEGIONS_1E5_10_INFTY_SEQUENTIAL,
+      VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL,
+      VECTOR_OF_COUNTS_4096_INFTY_SEQUENTIAL)
 
 def _generate_frequency_estimator_configs():
   return (
-    SketchEstimatorConfig(
-      name='exact_multi_set-10000-NA-NA',
-      sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
-      estimator=exact_set.LosslessEstimator(),
-      max_frequency=FLAGS.max_frequency),
-    )
+      SketchEstimatorConfig(
+          name='exact_multi_set-10000-NA-NA',
+          sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
+          estimator=exact_set.LosslessEstimator(),
+          max_frequency=FLAGS.max_frequency),
+      )
 
 def get_estimator_configs(estimator_names):
   """Returns a list of estimator configs by name."""
@@ -527,9 +527,9 @@ def get_estimator_configs(estimator_names):
                  _generate_frequency_estimator_configs())
 
   all_estimators = {
-    conf.name: conf for conf in
-    _generate_cardinality_estimator_configs() +
-    _generate_frequency_estimator_configs() }
+      conf.name: conf for conf in
+      _generate_cardinality_estimator_configs() +
+      _generate_frequency_estimator_configs() }
 
   estimator_list = [all_estimators[c] for c in estimator_names
                     if c in all_estimators]
