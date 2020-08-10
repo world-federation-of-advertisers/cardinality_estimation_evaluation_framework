@@ -36,7 +36,7 @@ NUM_SETS_VALUE = 20
 SMALL_REACH_RATE_VALUE = 0.01
 LARGE_REACH_RATE_VALUE = 0.2
 SHARED_PROP_LIST_VALUE = (0.25, 0.5, 0.75)
-
+REMARKETING_RATE_VALUE = 0.2
 
 # Document the evaluation configurations.
 def _smoke_test(num_runs=NUM_RUNS_VALUE):
@@ -96,15 +96,70 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE):
       )
 
 
-def _generate_configs_scenario_3b(universe_size, num_sets, small_set_size,
+def _generate_configs_scenario_1_2(universe_size, num_sets, small_set_size,
+                                  large_set_size, remarketing_rate=None):
+  """Generate configs of Scenario 1 & 2
+  In this scenario,  publishers have heterogeneous users reach probability.
+  The reach probability of a user in a publisher is the same as that in other
+  publishers.
+
+  If remarketing_rate is not provided, we take it as scenario 1 with universe_size
+  as total. Othersize, we take it as scenario 2 with remarketing size as
+  int(universe_size*remarketing_rate)
+
+  See scenario 1 / 2:
+  Independent m-publishers / n-publishers independently serve a remarketing list
+  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#scenario-1-independence-m-publishers-with-homogeneous-user-reach-probability
+  Returns:
+    A list of ScenarioConfigs of scenario 1 / 2 with selected parameters.
+  """
+  name_to_choices_of_set_size_list = {
+      'all_small': [small_set_size] * num_sets,
+      'all_large': [large_set_size] * num_sets,
+      '1st_small_then_large': (
+          [small_set_size] + [large_set_size] * (num_sets - 1)),
+      '1st_half_small_2nd_half_large': (
+          [small_set_size] * int(num_sets / 2) +
+          [large_set_size] * (num_sets - int(num_sets / 2))),
+      'small_then_last_large': (
+          [small_set_size] * (num_sets - 1) + [large_set_size]),
+  }
+
+  scenario_config_list = []
+  if remarketing_rate is None:
+    key_words = ['independent']
+    size = universe_size
+  else:
+    size = int(universe_size * remarketing_rate)
+    key_words = ['remarketing', 'remarketing_size:' + str(size)]
+
+  for set_type, set_size_list in name_to_choices_of_set_size_list.items():
+    scenario_config_list.append(
+        ScenarioConfig(
+            name='-'.join(key_words + [
+                'universe_size:' + str(universe_size),
+                'small_set:' + str(small_set_size),
+                'large_set:' + str(large_set_size),
+                'set_type:' + set_type]),
+            set_generator_factory=(
+                set_generator.IndependentSetGenerator
+                .get_generator_factory_with_set_size_list(
+                    universe_size=size,
+                    set_size_list=set_size_list)))
+    )
+
+  return scenario_config_list
+
+
+def _generate_configs_scenario_3(universe_size, num_sets, small_set_size,
                                   large_set_size, user_activity_assciation):
-  """Generate configs of Scenario 3(b).
+  """Generate configs of Scenario 3(a/b).
 
   In this scenario,  publishers have heterogeneous users reach probability.
   The reach probability of a user in a publisher is the same as that in other
   publishers.
 
-  See section (b). [fully correlated user reach probabilities] for more details:
+  See scenario 3. [m-publishers with heterogeneous users reach probability] for more details:
   https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#scenario-3-m-publishers-with-heterogeneous-users-reach-probability
 
   Args:
@@ -115,9 +170,10 @@ def _generate_configs_scenario_3b(universe_size, num_sets, small_set_size,
     user_activity_assciation: user activity association used in the Exponential
       Bow model. Should be one of the defined user activity association defined
       by the set_generator.USER_ACTIVITY_ASSOCIATION_XXX.
-
+      For 3(a) user_activity_assciation=set_generator.USER_ACTIVITY_ASSOCIATION_XXX
+      3(b) USER_ACTIVITY_ASSOCIATION_IDENTICAL
   Returns:
-    A list of ScenarioConfigs of scenario 3(b) with selected parameters.
+    A list of ScenarioConfigs of scenario 3(a/b) with selected parameters.
   """
   name_to_choices_of_set_size_list = {
       'all_small': [small_set_size] * num_sets,
@@ -319,10 +375,10 @@ def _complete_test_with_selected_parameters(
     num_runs=NUM_RUNS_VALUE,
     universe_size=UNIVERSE_SIZE_VALUE,
     num_sets=NUM_SETS_VALUE,
-    user_activity_assciation=set_generator.USER_ACTIVITY_ASSOCIATION_IDENTICAL,
     order=set_generator.ORDER_RANDOM,
     small_set_size_rate=SMALL_REACH_RATE_VALUE,
     large_set_size_rate=LARGE_REACH_RATE_VALUE,
+    remarketing_rate=REMARKETING_RATE_VALUE,
     shared_prop_list=SHARED_PROP_LIST_VALUE):
   """Generate configurations with handy selected parameters for scenarios.
 
@@ -347,11 +403,22 @@ def _complete_test_with_selected_parameters(
   scenario_config_list = []
   small_set_size = int(small_set_size_rate * universe_size)
   large_set_size = int(large_set_size_rate * universe_size)
+  # Scenario 1. Independent publishers
+  scenario_config_list += _generate_configs_scenario_1_2(
+      universe_size, num_sets, small_set_size, large_set_size)
+  # Scenario 2. publishers independently serve a remarketing list
+  scenario_config_list += _generate_configs_scenario_1_2(
+      universe_size, num_sets, small_set_size, large_set_size, remarketing_rate)
+
+  # Scenario 3 (a). Exponential bow, independent user behavior.
+  scenario_config_list += _generate_configs_scenario_3(
+      universe_size, num_sets, small_set_size, large_set_size,
+      set_generator.USER_ACTIVITY_ASSOCIATION_INDEPENDENT)
 
   # Scenario 3 (b). Exponential bow, identical user behavior.
-  scenario_config_list += _generate_configs_scenario_3b(
+  scenario_config_list += _generate_configs_scenario_3(
       universe_size, num_sets, small_set_size, large_set_size,
-      user_activity_assciation)
+      set_generator.USER_ACTIVITY_ASSOCIATION_IDENTICAL)
 
   # Scenario 4(a). Fully-overlapped.
   scenario_config_list += _generate_configs_scenario_4a(

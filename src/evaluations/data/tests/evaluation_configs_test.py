@@ -29,43 +29,66 @@ class EvaluationConfigTest(absltest.TestCase):
       'wfa_cardinality_estimation_evaluation_framework.evaluations.data.'
       + 'evaluation_configs.')
 
-  def test_generate_configs_scenario_3b_set_sizes_correct(self):
-    conf_list = evaluation_configs._generate_configs_scenario_3b(
+  def test_generate_configs_scenario_1_set_sizes_correct(self):
+    conf_list = evaluation_configs._generate_configs_scenario_1_2(
         universe_size=200,
         num_sets=3,
         small_set_size=50,
         large_set_size=100,
-        user_activity_assciation=(set_generator
-                                  .USER_ACTIVITY_ASSOCIATION_IDENTICAL)
     )
-
     result = {}
     for conf in conf_list:
       gen = conf.set_generator_factory(np.random.RandomState(1))
       result[conf.name] = [len(set_ids) for set_ids in gen]
 
     expected = {
-        'exponential_bow-user_activity_association:identical-'
-        'universe_size:200-small_set:50-large_set:100-set_type:all_small': [
-            48, 48, 48],
-        'exponential_bow-user_activity_association:identical-'
-        'universe_size:200-small_set:50-large_set:100-set_type:all_large': [
-            84, 84, 84],
-        'exponential_bow-user_activity_association:identical-'
-        'universe_size:200-small_set:50-large_set:100-'
-        'set_type:1st_small_then_large': [48, 84, 84],
-        'exponential_bow-user_activity_association:identical-'
-        'universe_size:200-small_set:50-large_set:100-'
-        'set_type:1st_half_small_2nd_half_large': [48, 84, 84],
-        'exponential_bow-user_activity_association:identical-'
-        'universe_size:200-small_set:50-large_set:100-'
-        'set_type:small_then_last_large': [48, 48, 84],
-        'exponential_bow-user_activity_association:identical-'
-        'universe_size:200-small_set:50-large_set:100-'
-        'set_type:gradually_smaller': [84, 67, 55]
+      'independent-universe_size:200-small_set:50-large_set:100-set_type:1st_half_small_2nd_half_large': [50, 100, 100],
+      'independent-universe_size:200-small_set:50-large_set:100-set_type:1st_small_then_large': [50, 100, 100],
+      'independent-universe_size:200-small_set:50-large_set:100-set_type:all_large': [100, 100, 100],
+      'independent-universe_size:200-small_set:50-large_set:100-set_type:all_small': [50, 50, 50],
+      'independent-universe_size:200-small_set:50-large_set:100-set_type:small_then_last_large': [50, 50, 100],
     }
 
     self.assertEqual(result, expected)
+
+  def test_generate_configs_scenario_3_set_sizes_correct(self):
+    for activity in [set_generator.USER_ACTIVITY_ASSOCIATION_INDEPENDENT,
+                    set_generator.USER_ACTIVITY_ASSOCIATION_IDENTICAL]:
+      conf_list = evaluation_configs._generate_configs_scenario_3(
+          universe_size=200,
+          num_sets=3,
+          small_set_size=50,
+          large_set_size=100,
+          user_activity_assciation=(activity)
+      )
+
+      result = {}
+      for conf in conf_list:
+        gen = conf.set_generator_factory(np.random.RandomState(1))
+        result[conf.name] = [len(set_ids) for set_ids in gen]
+
+      expected = {
+          f'exponential_bow-user_activity_association:{activity}-'
+          'universe_size:200-small_set:50-large_set:100-set_type:all_small': [
+              48, 48, 48],
+          f'exponential_bow-user_activity_association:{activity}-'
+          'universe_size:200-small_set:50-large_set:100-set_type:all_large': [
+              84, 84, 84],
+          f'exponential_bow-user_activity_association:{activity}-'
+          'universe_size:200-small_set:50-large_set:100-'
+          'set_type:1st_small_then_large': [48, 84, 84],
+          f'exponential_bow-user_activity_association:{activity}-'
+          'universe_size:200-small_set:50-large_set:100-'
+          'set_type:1st_half_small_2nd_half_large': [48, 84, 84],
+          f'exponential_bow-user_activity_association:{activity}-'
+          'universe_size:200-small_set:50-large_set:100-'
+          'set_type:small_then_last_large': [48, 48, 84],
+          f'exponential_bow-user_activity_association:{activity}-'
+          'universe_size:200-small_set:50-large_set:100-'
+          'set_type:gradually_smaller': [84, 67, 55]
+      }
+
+      self.assertEqual(result, expected)
 
   def test_generate_configs_scenario_4a_set_sizes_correct(self):
     conf_list = evaluation_configs._generate_configs_scenario_4a(
@@ -201,19 +224,22 @@ class EvaluationConfigTest(absltest.TestCase):
 
     self.assertEqual(result, expected)
 
-  @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_3b')
+  @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_1_2')
+  @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_3')
   @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_4a')
   @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_4b')
   @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_5')
   def test_complete_test_with_selected_parameters_all_scenario_used(
       self,
-      scenario_config_3b,
+      scenario_config_1_2,
+      scenario_config_3,
       scenario_config_4a,
       scenario_config_4b,
       scenario_config_5):
     """Test all the scenarios are concluded in the complete test."""
     _ = _complete_test_with_selected_parameters(num_runs=1)
-    self.assertTrue(scenario_config_3b.called, 'Scenario 3b not included.')
+    self.assertTrue(scenario_config_1_2.called, 'Scenario 1/2 not included.')
+    self.assertTrue(scenario_config_3.called, 'Scenario 3 not included.')
     self.assertTrue(scenario_config_4a.called, 'Scenario 4a not included.')
     self.assertTrue(scenario_config_4b.called, 'Scenario 4b not included.')
     self.assertTrue(scenario_config_5.called, 'Scenario 5 not included.')
