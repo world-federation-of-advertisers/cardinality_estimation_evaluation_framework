@@ -27,6 +27,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters im
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FixedProbabilityBitFlipNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import GeometricBloomFilter
+from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import get_probability_of_flip
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import invert_monotonic
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import LogarithmicBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import SurrealDenoiser
@@ -90,7 +91,6 @@ class AnyDistributionBloomFilterTest(parameterized.TestCase):
     adbf.add([1, 1])
     self.assertEqual(np.sum(adbf.sketch), 1)
 
-
   @parameterized.parameters(
       (UniformBloomFilter, {}),
       (LogarithmicBloomFilter, {}),
@@ -122,7 +122,8 @@ class GeometricBloomFilterTest(absltest.TestCase):
     self.assertNotIn(2, b)
 
   def test_factory(self):
-    factory = GeometricBloomFilter.get_sketch_factory(length=15, probability=0.08)
+    factory = GeometricBloomFilter.get_sketch_factory(length=15,
+                                                      probability=0.08)
 
     b = factory(2)
     b.add(1)
@@ -292,16 +293,14 @@ class FixedProbabilityBitFlipNoiserTest(absltest.TestCase):
 class BlipNoiserTest(absltest.TestCase):
 
   def test_probability_correct_single_hash(self):
-    rs = np.random.RandomState(2)
-    epsilon = math.log(3)
-    noiser = BlipNoiser(epsilon, rs)
-    self.assertAlmostEqual(noiser.get_probability_of_flip(num_hashes=1), 0.25)
+    self.assertAlmostEqual(
+        get_probability_of_flip(epsilon=math.log(3), num_hashes=1),
+        0.25)
 
   def test_probability_correct_two_hashes(self):
-    rs = np.random.RandomState(2)
-    epsilon = 2 * math.log(3)
-    noiser = BlipNoiser(epsilon, rs)
-    self.assertAlmostEqual(noiser.get_probability_of_flip(num_hashes=2), 0.25)
+    self.assertAlmostEqual(
+        get_probability_of_flip(epsilon=2 * math.log(3), num_hashes=2),
+        0.25)
 
   def test_bit_flip(self):
     b = BloomFilter(length=100000, random_seed=4)
@@ -323,17 +322,23 @@ class BlipNoiserTest(absltest.TestCase):
     self.assertAlmostEqual(average_bits, 0.75, delta=0.01)
 
 
-class SurrealDenoiserTest(absltest.TestCase):
+class SurrealDenoiserTest(parameterized.TestCase):
 
-  def test_denoise(self):
+  @parameterized.parameters(
+      ({'epsilon': math.log(3)},),
+      ({'probability': 0.25},),
+      ({'flip_one_probability': 0.25, 'flip_zero_probability': 0.25},),
+  )
+  def test_denoiser_estimation_correct(self, kwargs):
     noised_adbf = UniformBloomFilter(4, random_seed=1)
     noised_adbf.sketch[0] = 1
-    denoiser = SurrealDenoiser(probability=0.25)
+    denoiser = SurrealDenoiser(**kwargs)
     denoised_adbf = denoiser([noised_adbf])[0]
     expected = np.array([1.5, -0.5, -0.5, -0.5])
+    kwarg_names = ', '.join(kwargs.keys())
     np.testing.assert_allclose(
         denoised_adbf.sketch, expected, atol=0.01,
-        err_msg='Denoiser does not work.')
+        err_msg=f'Denoiser does not work with: {kwarg_names}.')
 
 
 if __name__ == '__main__':
