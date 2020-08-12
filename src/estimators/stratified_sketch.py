@@ -75,9 +75,9 @@ class StratifiedSketch(SketchBase):
     """Initialize a Stratified sketch from a Set Generator.
 
     Args:
-    set_generator: SetGenerator object to draw ids from in initialization.
-    CardinalitySketch: Class type of cardinality sketches this stratified
-      sketch will hold.
+      set_generator: SetGenerator object to draw ids from for initialization.
+      CardinalitySketch: Class type of cardinality sketches this stratified
+        sketch will hold.
 
     """
 
@@ -88,7 +88,7 @@ class StratifiedSketch(SketchBase):
     self.init_from_exact_multi_set(exact_multi_set, CardinalitySketch)
 
   def assert_compatible(self, other):
-    """"Check if the two StratifiedSketch are comparable for dedupe.
+    """"Check if the two StratifiedSketch are comparable.
 
     Args:
       other: the other StratifiedSketch for comparison.
@@ -158,14 +158,14 @@ class PairwiseEstimator(object):
               that.sketches[str(k + 1)], self.sketch_intersection(
                   this.sketches[ONE_PLUS], that.sketches[str(k + 1)])))
 
-      # Calculate A(i) & B(k-i).
+      # Calculate A(i) & B(k-i)
       for i in range(k):
         merged = self.sketch_union(
             merged, self.sketch_intersection(
                 this.sketches[str(i + 1)], that.sketches[str(k - i)]))
       merged_sketch.sketches[str(k + 1)] = merged
 
-    # Calculate Merged(max_freq).
+    # Calculate Merged(max_freq)
     merged = this.sketches[str(max_freq)]
     rest = that.sketches[ONE_PLUS]
     for k in range(max_freq - 1):
@@ -183,7 +183,7 @@ class PairwiseEstimator(object):
                 this.sketches[ONE_PLUS])))
     merged_sketch.sketches[str(max_freq)] = merged
 
-    # Calculate Merged(1+).
+    # Calculate Merged(1+)
     merged_one_plus = None
     for k in range(max_freq):
       merged_one_plus = self.sketch_union(merged_one_plus,
