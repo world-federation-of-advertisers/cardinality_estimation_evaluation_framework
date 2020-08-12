@@ -14,7 +14,7 @@
 r"""A commandline tool to run evaluations of cardinality estimators.
 
 To run this evaluation, in command line, type:
-  run-evaluation \
+  wfa-run-evaluation \
     --evaluation_out_dir="evaluation_output" \
     --analysis_out_dir="analysis_output" \
     --evaluation_config="smoke_test" \

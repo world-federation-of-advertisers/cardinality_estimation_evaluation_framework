@@ -30,7 +30,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'run-evaluation=wfa_cardinality_estimation_evaluation_framework'
+            'wfa-run-evaluation=wfa_cardinality_estimation_evaluation_framework'
                                 '.evaluations.__main__:main'
         ]
     }
