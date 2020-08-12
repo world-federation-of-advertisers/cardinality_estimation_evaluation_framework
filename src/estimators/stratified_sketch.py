@@ -163,7 +163,7 @@ class PairwiseEstimator(object):
                 this.sketches[str(i + 1)], that.sketches[str(k - i)]))
       merged_sketch.sketches[str(k + 1)] = merged
 
-    # Merged(max_freq).
+    # Calculate Merged(max_freq).
     merged = this.sketches[str(max_freq)]
     rest = that.sketches[ONE_PLUS]
     for k in range(max_freq - 1):
@@ -181,7 +181,7 @@ class PairwiseEstimator(object):
                 this.sketches[ONE_PLUS])))
     merged_sketch.sketches[str(max_freq)] = merged
 
-    # Merged(1+).
+    # Calculate Merged(1+).
     merged_one_plus = None
     for k in range(max_freq):
       merged_one_plus = self.sketch_union(merged_one_plus,
