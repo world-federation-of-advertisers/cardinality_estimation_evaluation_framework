@@ -131,7 +131,9 @@ class PairwiseEstimator(object):
 
        Given 2 sketches A and B:
        Merged(k) = (A(k) & B(0)) U (A(k-1) & B(1)) ... U (A(0) & B(k))
-
+         where
+         A(k) & B(0) =  A(k) - (A(k) & B(1+))
+         B(k) & A(0) =  B(k) - (B(k) & A(1+))
     Args:
       this: one of the two StratifiedSketch to be merged.
       that: the other StratifiedSketch to be merged.
@@ -145,12 +147,12 @@ class PairwiseEstimator(object):
     merged_sketch = copy.deepcopy(this)
 
     for k in range(max_freq - 1):
-      # Calculate A(k) & B(0).
+      # Calculate A(k) & B(0) = A(k) - (A(k) & B(1+))
       merged = self.sketch_difference(
           this.sketches[str(k + 1)], self.sketch_intersection(
               this.sketches[str(k + 1)], that.sketches[ONE_PLUS]))
 
-      # Calculate A(0) & B(k).
+      # Calculate A(0) & B(k) = B(k) - (B(k) & A(1+))
       merged = self.sketch_union(
           merged, self.sketch_difference(
               that.sketches[str(k + 1)], self.sketch_intersection(
