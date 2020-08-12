@@ -199,8 +199,7 @@ class SequentialEstimator(object):
     self.pairwise_estimator = PairwiseEstimator(sketch_operator)
 
   def __call__(self, sketches_list):
-    merged = self.merge_sketches(sketches_list)
-    return self.pairwise_estimator.estimate_cardinality(merged)
+    return self.merge_sketches(sketches_list)
 
   def merge_sketches(self, sketches_list):
     return functools.reduce(self.pairwise_estimator.merge_sketches,
