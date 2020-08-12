@@ -170,7 +170,7 @@ def _generate_configs_scenario_3(universe_size, num_sets, small_set_size,
     user_activity_assciation: user activity association used in the Exponential
       Bow model. Should be one of the defined user activity association defined
       by the set_generator.USER_ACTIVITY_ASSOCIATION_XXX.
-      For 3(a) user_activity_assciation=set_generator.USER_ACTIVITY_ASSOCIATION_XXX
+      For 3(a) user_activity_assciation=set_generator.USER_ACTIVITY_ASSOCIATION_INDEPENDENT
       3(b) USER_ACTIVITY_ASSOCIATION_IDENTICAL
   Returns:
     A list of ScenarioConfigs of scenario 3(a/b) with selected parameters.
