@@ -53,6 +53,11 @@ class ExactMultiSet(SketchBase):
     """Return true if x is contained in the sketch."""
     return x in self._ids
 
+  def add_ids(self, x):
+    """Adds a list of ids to the sketch."""
+    for item_id in x:
+      self.add(item_id)
+
   def add(self, x):
     """Adds an id x to the sketch."""
     self._ids[x] = self._ids.get(x, 0) + 1
