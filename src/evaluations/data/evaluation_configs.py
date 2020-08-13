@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Evaluation configurations."""
+import math
 import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.estimators import bloom_filters
@@ -397,7 +398,7 @@ LOG_BLOOM_FILTER_1E5_LN3_FIRST_MOMENT_LOG = SketchEstimatorConfig(
         length=10**5),
     estimator=bloom_filters.FirstMomentEstimator(
         method=bloom_filters.FirstMomentEstimator.METHOD_LOG,
-        denoiser=bloom_filters.SurrealDenoiser(probability=0.25)),
+        denoiser=bloom_filters.SurrealDenoiser(epsilon=math.log(3))),
     sketch_noiser=bloom_filters.BlipNoiser(epsilon=np.log(3)))
 
 LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(
@@ -413,7 +414,7 @@ EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG = SketchEstimatorConfig(
         length=10**5, decay_rate=10),
     estimator=bloom_filters.FirstMomentEstimator(
         method=bloom_filters.FirstMomentEstimator.METHOD_EXP,
-        denoiser=bloom_filters.SurrealDenoiser(probability=0.25)),
+        denoiser=bloom_filters.SurrealDenoiser(epsilon=math.log(3))),
     sketch_noiser=bloom_filters.BlipNoiser(epsilon=np.log(3)))
 
 EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(

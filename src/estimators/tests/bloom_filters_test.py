@@ -241,11 +241,11 @@ class FirstMomentEstimatorTest(parameterized.TestCase):
     self.assertAlmostEqual(estimate, truth, 3, msg=method)
 
   def test_denoise_and_union(self):
-    noiser = FixedProbabilityBitFlipNoiser(
-        probability=0.25, random_state=np.random.RandomState(5))
+    noiser = BlipNoiser(
+        epsilon=math.log(3), random_state=np.random.RandomState(5))
     estimator = FirstMomentEstimator(
         method='log',
-        denoiser=SurrealDenoiser(probability=0.25))
+        denoiser=SurrealDenoiser(epsilon=math.log(3)))
     results = []
     truth = 1000
     for i in range(100):
@@ -326,7 +326,6 @@ class SurrealDenoiserTest(parameterized.TestCase):
 
   @parameterized.parameters(
       ({'epsilon': math.log(3)},),
-      ({'probability': 0.25},),
       ({'flip_one_probability': 0.25, 'flip_zero_probability': 0.25},),
   )
   def test_denoiser_estimation_correct(self, kwargs):

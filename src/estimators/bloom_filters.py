@@ -501,14 +501,12 @@ class DenoiserBase(object):
 class SurrealDenoiser(DenoiserBase):
   """A closed form denoiser for a list of Any Distribution Bloom Filter."""
 
-  def __init__(self, epsilon=None, probability=None, flip_one_probability=None,
+  def __init__(self, epsilon=None, flip_one_probability=None,
                flip_zero_probability=None):
     """Construct a denoiser.
 
     Args:
       epsilon: a non-negative differential privacy parameter.
-      probability: the bit flipping probability. It will be ignored if epsilon
-        is given.
       flip_one_probability: the bit flipping probability of 1 bits. It will be
         ignored if either espilon or probability is given.
       flip_zero_probability: the bit flipping probability of 0 bits. It will be
@@ -522,12 +520,10 @@ class SurrealDenoiser(DenoiserBase):
       # Currently only support one hash function.
       probability = get_probability_of_flip(epsilon, 1)
       self._probability = (probability, probability)
-    elif probability is not None:
-      self._probability = (probability, probability)
     elif flip_one_probability is not None and flip_zero_probability is not None:
       self._probability = (flip_zero_probability, flip_one_probability)
     else:
-      raise ValueError("Should provide epsilon, or probability, or both "
+      raise ValueError("Should provide epsilon, or both "
                        "flip_one_probability and flip_zero_probability.")
 
   def  __call__(self, sketch_list):
