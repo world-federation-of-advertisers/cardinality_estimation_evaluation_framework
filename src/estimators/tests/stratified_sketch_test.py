@@ -102,10 +102,10 @@ class PairwiseEstimatorTest(absltest.TestCase):
     that_multi_set = self.generate_multi_set([(1,1),(3,1),(4,5),(5,1)])
     expected = {
     ONE_PLUS : {1: 1, 2: 1, 3: 1, 4: 1, 5: 1},
-    '1' : {5: 1},
-    '2' : {3: 1},
-    '3' : {1: 1, 2: 1, 4: 1},
-    }
+      '1' : {5: 1},
+      '2' : {3: 1},
+      '3' : {1: 1, 2: 1, 4: 1},
+      }
 
     this_sketch = stratified_sketch.StratifiedSketch(
       sketch_list=[], max_freq=max_freq)
@@ -157,10 +157,10 @@ class SequentialEstimatorTest(absltest.TestCase):
 
     expected = {
       ONE_PLUS : {1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1},
-      '1' : {6: 1},
-      '2' : {3: 1, 5: 1},
-      '3' : {1: 1, 2: 1, 4: 1},
-    }
+        '1' : {6: 1},
+        '2' : {3: 1, 5: 1},
+        '3' : {1: 1, 2: 1, 4: 1},
+      }
 
     self.assertLen(merged_sketches.sketches, len(expected))
     for freq, sketch in expected.items():
