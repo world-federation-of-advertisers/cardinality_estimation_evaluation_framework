@@ -282,7 +282,7 @@ class UnionEstimator(EstimatorBase):
 
 class FirstMomentEstimator(EstimatorBase):
   """First moment cardinality estimator for AnyDistributionBloomFilter."""
-
+  # TODO: Refactor this class to break down the methods for each type
   METHOD_UNIFORM = "uniform"
   METHOD_GEO = "geo"
   METHOD_LOG = "log"
