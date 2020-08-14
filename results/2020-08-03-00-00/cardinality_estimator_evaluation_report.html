@@ -1,0 +1,280 @@
+
+    <html>
+      <head>
+        <title>
+        Reach Cardinality Estimators Evaluation
+        </title>
+      </head>
+      <body>
+        <h1>Reach Cardinality Estimators Evaluation Report</h1>
+          <h2>Summary</h2>
+            <h3>Maximum number of estimable sets and the corresponding relative
+            errors</h3>
+              <p>
+                The larger the number of estimable sets is, the better the
+                cardinality estimator is.
+              </p>
+              <h4>epsilon=infty</h4><p><table border="1" class="dataframe">
+  <thead>
+    <tr>
+      <th>estimable_criteria</th>
+      <th colspan="2" halign="left">95%/5%</th>
+    </tr>
+    <tr>
+      <th>sketch_estimator</th>
+      <th>bloom_filter-3e6-infty-union_estimator</th>
+      <th>geo_bloom_filter-1e4-infty-first_moment_geo</th>
+    </tr>
+    <tr>
+      <th>scenario</th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>fully_overlapping</th>
+      <td>20<br>relative_error: mean=-0.0001, std=0.0004</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+    </tr>
+    <tr>
+      <th>independent</th>
+      <td>20<br>relative_error: mean=-0.0, std=0.0004</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+    </tr>
+    <tr>
+      <th>remarketing</th>
+      <td>20<br>relative_error: mean=-0.0, std=0.0004</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+    </tr>
+    <tr>
+      <th>sequentially_correlated_all</th>
+      <td>20<br>relative_error: mean=0.0001, std=0.0004</td>
+      <td>1<br>relative_error: mean=0.004, std=0.0228</td>
+    </tr>
+    <tr>
+      <th>sequentially_correlated_one</th>
+      <td>20<br>relative_error: mean=-0.0, std=0.0004</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+    </tr>
+  </tbody>
+</table></p>
+<h4>epsilon=ln3</h4><p><table border="1" class="dataframe">
+  <thead>
+    <tr>
+      <th>estimable_criteria</th>
+      <th colspan="2" halign="left">95%/5%</th>
+    </tr>
+    <tr>
+      <th>sketch_estimator</th>
+      <th>bloom_filter-3e6-ln3-union_estimator</th>
+      <th>geo_bloom_filter-1e4-ln3-first_moment_geo</th>
+    </tr>
+    <tr>
+      <th>scenario</th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>fully_overlapping</th>
+      <td>3<br>relative_error: mean=-0.0008, std=0.024</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+    </tr>
+    <tr>
+      <th>independent</th>
+      <td>8<br>relative_error: mean=-0.0022, std=0.0224</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+    </tr>
+    <tr>
+      <th>remarketing</th>
+      <td>5<br>relative_error: mean=0.0014, std=0.0259</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+    </tr>
+    <tr>
+      <th>sequentially_correlated_all</th>
+      <td>3<br>relative_error: mean=-0.0001, std=0.0241</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+    </tr>
+    <tr>
+      <th>sequentially_correlated_one</th>
+      <td>3<br>relative_error: mean=-0.0003, std=0.0233</td>
+      <td>0<br>relative_error: mean=nan, std=nan</td>
+    </tr>
+  </tbody>
+</table></p>
+            <h3>Running time</h3>
+              <p>
+                The nunning time of a cardinality estimator over all the
+                scenarios in hours. The smaller the better.<br>
+                <table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>sketch_estimator</th>
+      <th>running_time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>2</th>
+      <td>bloom_filter-3e6-infty-union_estimator</td>
+      <td>8.958269</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>bloom_filter-3e6-ln3-union_estimator</td>
+      <td>11.363258</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>geo_bloom_filter-1e4-infty-first_moment_geo</td>
+      <td>2.793176</td>
+    </tr>
+    <tr>
+      <th>0</th>
+      <td>geo_bloom_filter-1e4-ln3-first_moment_geo</td>
+      <td>2.772645</td>
+    </tr>
+  </tbody>
+</table>
+              </p>
+          <h2>Scenarios<h2>
+            <h3>remarketing</h3>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>sketch</th>
+      <th>bloom_filter</th>
+      <th>geo_bloom_filter</th>
+    </tr>
+    <tr>
+      <th>epsilon</th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>infty</th>
+      <td><figure><figcaption>bloom_filter, union_estimator<br>sketch_config: 3e6<br>epsilon: infty</figcaption><img src="results/smoke_test/bloom_filter-3e6-infty-union_estimator/remarketing/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>geo_bloom_filter, first_moment_geo<br>sketch_config: 1e4<br>epsilon: infty</figcaption><img src="results/smoke_test/geo_bloom_filter-1e4-infty-first_moment_geo/remarketing/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+    <tr>
+      <th>ln3</th>
+      <td><figure><figcaption>bloom_filter, union_estimator<br>sketch_config: 3e6<br>epsilon: ln3</figcaption><img src="results/smoke_test/bloom_filter-3e6-ln3-union_estimator/remarketing/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>geo_bloom_filter, first_moment_geo<br>sketch_config: 1e4<br>epsilon: ln3</figcaption><img src="results/smoke_test/geo_bloom_filter-1e4-ln3-first_moment_geo/remarketing/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+  </tbody>
+</table>
+<h3>independent</h3>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>sketch</th>
+      <th>bloom_filter</th>
+      <th>geo_bloom_filter</th>
+    </tr>
+    <tr>
+      <th>epsilon</th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>infty</th>
+      <td><figure><figcaption>bloom_filter, union_estimator<br>sketch_config: 3e6<br>epsilon: infty</figcaption><img src="results/smoke_test/bloom_filter-3e6-infty-union_estimator/independent/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>geo_bloom_filter, first_moment_geo<br>sketch_config: 1e4<br>epsilon: infty</figcaption><img src="results/smoke_test/geo_bloom_filter-1e4-infty-first_moment_geo/independent/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+    <tr>
+      <th>ln3</th>
+      <td><figure><figcaption>bloom_filter, union_estimator<br>sketch_config: 3e6<br>epsilon: ln3</figcaption><img src="results/smoke_test/bloom_filter-3e6-ln3-union_estimator/independent/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>geo_bloom_filter, first_moment_geo<br>sketch_config: 1e4<br>epsilon: ln3</figcaption><img src="results/smoke_test/geo_bloom_filter-1e4-ln3-first_moment_geo/independent/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+  </tbody>
+</table>
+<h3>fully_overlapping</h3>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>sketch</th>
+      <th>bloom_filter</th>
+      <th>geo_bloom_filter</th>
+    </tr>
+    <tr>
+      <th>epsilon</th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>infty</th>
+      <td><figure><figcaption>bloom_filter, union_estimator<br>sketch_config: 3e6<br>epsilon: infty</figcaption><img src="results/smoke_test/bloom_filter-3e6-infty-union_estimator/fully_overlapping/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>geo_bloom_filter, first_moment_geo<br>sketch_config: 1e4<br>epsilon: infty</figcaption><img src="results/smoke_test/geo_bloom_filter-1e4-infty-first_moment_geo/fully_overlapping/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+    <tr>
+      <th>ln3</th>
+      <td><figure><figcaption>bloom_filter, union_estimator<br>sketch_config: 3e6<br>epsilon: ln3</figcaption><img src="results/smoke_test/bloom_filter-3e6-ln3-union_estimator/fully_overlapping/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>geo_bloom_filter, first_moment_geo<br>sketch_config: 1e4<br>epsilon: ln3</figcaption><img src="results/smoke_test/geo_bloom_filter-1e4-ln3-first_moment_geo/fully_overlapping/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+  </tbody>
+</table>
+<h3>sequentially_correlated_one</h3>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>sketch</th>
+      <th>bloom_filter</th>
+      <th>geo_bloom_filter</th>
+    </tr>
+    <tr>
+      <th>epsilon</th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>infty</th>
+      <td><figure><figcaption>bloom_filter, union_estimator<br>sketch_config: 3e6<br>epsilon: infty</figcaption><img src="results/smoke_test/bloom_filter-3e6-infty-union_estimator/sequentially_correlated_one/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>geo_bloom_filter, first_moment_geo<br>sketch_config: 1e4<br>epsilon: infty</figcaption><img src="results/smoke_test/geo_bloom_filter-1e4-infty-first_moment_geo/sequentially_correlated_one/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+    <tr>
+      <th>ln3</th>
+      <td><figure><figcaption>bloom_filter, union_estimator<br>sketch_config: 3e6<br>epsilon: ln3</figcaption><img src="results/smoke_test/bloom_filter-3e6-ln3-union_estimator/sequentially_correlated_one/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>geo_bloom_filter, first_moment_geo<br>sketch_config: 1e4<br>epsilon: ln3</figcaption><img src="results/smoke_test/geo_bloom_filter-1e4-ln3-first_moment_geo/sequentially_correlated_one/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+  </tbody>
+</table>
+<h3>sequentially_correlated_all</h3>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>sketch</th>
+      <th>bloom_filter</th>
+      <th>geo_bloom_filter</th>
+    </tr>
+    <tr>
+      <th>epsilon</th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>infty</th>
+      <td><figure><figcaption>bloom_filter, union_estimator<br>sketch_config: 3e6<br>epsilon: infty</figcaption><img src="results/smoke_test/bloom_filter-3e6-infty-union_estimator/sequentially_correlated_all/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>geo_bloom_filter, first_moment_geo<br>sketch_config: 1e4<br>epsilon: infty</figcaption><img src="results/smoke_test/geo_bloom_filter-1e4-infty-first_moment_geo/sequentially_correlated_all/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+    <tr>
+      <th>ln3</th>
+      <td><figure><figcaption>bloom_filter, union_estimator<br>sketch_config: 3e6<br>epsilon: ln3</figcaption><img src="results/smoke_test/bloom_filter-3e6-ln3-union_estimator/sequentially_correlated_all/boxplot.png" width="400" height="250"></figure></td>
+      <td><figure><figcaption>geo_bloom_filter, first_moment_geo<br>sketch_config: 1e4<br>epsilon: ln3</figcaption><img src="results/smoke_test/geo_bloom_filter-1e4-ln3-first_moment_geo/sequentially_correlated_all/boxplot.png" width="400" height="250"></figure></td>
+    </tr>
+  </tbody>
+</table>
+      </body>
+    </html>
