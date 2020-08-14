@@ -104,6 +104,7 @@ def main(argv):
   estimator_config_list = [
       estimator_config_bloom_filter,
       estimator_config_logarithmic_bloom_filter,
+      estimator_config_geometric_bloom_filter,
       estimator_config_exponential_bloom_filter,
       estimator_config_cascading_legions,
       estimator_config_exact,
