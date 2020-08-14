@@ -20,7 +20,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import
 ONE_PLUS = '1+'
 
 
-class StratifiedSketch(SketchBase):
+class StratifiedSketch(object):
   """A frequency sketch that contains cardinality sketches per frequency bucket."""
 
   @classmethod
@@ -31,7 +31,7 @@ class StratifiedSketch(SketchBase):
 
     return f
 
-  def __init__(self, max_freq, sketch_list, random_seed):
+  def __init__(self, max_freq, cardinality_sketch_factory, random_seed):
     """Construct a Stratified sketch.
 
     Args:
@@ -39,7 +39,7 @@ class StratifiedSketch(SketchBase):
         to 3, then the sketches will include frequency=1, 2, and frequency >= 3.
       random_seed: This arg exists in order to conform to
         simulator.EstimatorConfig.sketch_factory.
-      sketch_list: List of cardinality sketches of the same sketch type.
+      cardinality_sketch_factory: A cardinality sketch factory.
     """
     SketchBase.__init__(self)
     # A dictionary that contains multiple sketches, which include:
@@ -63,7 +63,9 @@ class StratifiedSketch(SketchBase):
     assert (cardinality_sketch_factory is
             not None), ('cardinality_sketch is None')
     stratified_sketch = cls(
-        max_freq=max_freq, sketch_list=[], random_seed=random_seed)
+        max_freq=max_freq,
+        cardinality_sketch_factory=[],
+        random_seed=random_seed)
     stratified_sketch.sketches[ONE_PLUS] = cardinality_sketch_factory(
         random_seed)
     stratified_sketch.sketches[ONE_PLUS].add_ids(
@@ -90,7 +92,8 @@ class StratifiedSketch(SketchBase):
       CardinalitySketch: Class type of cardinality sketches this stratified
         sketch will hold.
     """
-    assert (cardinality_sketch_factory is not None), ('cardinality_sketch is None')
+    assert (cardinality_sketch_factory is
+            not None), ('cardinality_sketch is None')
     exact_multi_set = ExactMultiSet()
     for generated_set in set_generator:
       exact_multi_set.add_ids(generated_set)

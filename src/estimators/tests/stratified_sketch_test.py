@@ -89,7 +89,7 @@ class StratifiedTest(parameterized.TestCase):
     stratified_sketch_list = []
     for i in range(2):
       s = stratified_sketch.StratifiedSketch(
-          sketch_list=[], max_freq=max_freq[i], random_seed=random_seed[i])
+          cardinality_sketch_factory=None, max_freq=max_freq[i], random_seed=random_seed[i])
       stratified_sketch_list.append(s)
     with self.assertRaises(AssertionError):
       stratified_sketch_list[0].assert_compatible(stratified_sketch_list[1])
