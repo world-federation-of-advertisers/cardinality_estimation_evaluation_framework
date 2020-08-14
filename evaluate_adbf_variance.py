@@ -16,22 +16,32 @@
 
 from absl import app
 from absl import flags
+from absl.testing import absltest
 import numpy as np
 
+from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BlipNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import ExponentialBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import GeometricBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import LogarithmicBloomFilter
+from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import SurrealDenoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import UnionEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legions import CascadingLegions
 from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legions import Estimator
+from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legions import Noiser
+from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import AddRandomElementsNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log import HllCardinality
 from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log import HyperLogLogPlusPlus
+from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import LaplaceNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import SequentialEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import VectorOfCounts
+from wfa_cardinality_estimation_evaluation_framework.evaluations import analyzer
+from wfa_cardinality_estimation_evaluation_framework.evaluations import configs
+from wfa_cardinality_estimation_evaluation_framework.evaluations import evaluator
+from wfa_cardinality_estimation_evaluation_framework.evaluations import report_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
@@ -43,79 +53,90 @@ flags.DEFINE_integer('universe_size', 1000000,
 flags.DEFINE_integer(
     'number_of_sets', 10,
     'The number of sets to depulicate across, AKA the number of publishers')
-flags.DEFINE_integer('number_of_trials', 10,
+flags.DEFINE_integer('number_of_trials', 50,
                      'The number of times to run the experiment')
 flags.DEFINE_integer('set_size', 1000, 'The size of all generated sets')
-flags.DEFINE_integer('sketch_size', 8192, 'The size of sketches')
+flags.DEFINE_integer('sketch_size', 10000, 'The size of sketches')
 flags.DEFINE_integer('exponential_bloom_filter_decay_rate', 10,
                      'The decay rate in exponential bloom filter')
 flags.DEFINE_integer('num_bloom_filter_hashes', 3,
                      'The number of hashes for the bloom filter to use')
 flags.DEFINE_float('geometric_bloom_filter_probability', 0.0015,
-                     'probability of geometric distribution')
+                    'probability of geometric distribution')
+flags.DEFINE_float("noiser_epsilon", np.log(3), 
+                   "target privacy parameter in noiser")
 
 def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
+    if len(argv) > 1:
+        raise app.UsageError('Too many command-line arguments.')
 
-  estimator_config_bloom_filter = SketchEstimatorConfig(
-      name='bloom_filter-union_estimator',
-      sketch_factory=BloomFilter.get_sketch_factory(
-          FLAGS.sketch_size, FLAGS.num_bloom_filter_hashes),
-      estimator=UnionEstimator())
+    noiser_flip_probability = 1 / (1 + np.exp(FLAGS.noiser_epsilon))
 
-  estimator_config_geometric_bloom_filter = SketchEstimatorConfig(
-      name='geo_bloom_filter-first_moment_geo',
-      sketch_factory=GeometricBloomFilter.get_sketch_factory(
-          FLAGS.sketch_size, FLAGS.geometric_bloom_filter_probability),
-      estimator=FirstMomentEstimator(method='geo'))
+    estimator_config_bloom_filter = SketchEstimatorConfig(
+        name='bloom_filter-union_estimator',
+        sketch_factory=BloomFilter.get_sketch_factory(
+            FLAGS.sketch_size, FLAGS.num_bloom_filter_hashes),
+        estimator=UnionEstimator(),
+        sketch_noiser=BlipNoiser(FLAGS.noiser_epsilon))
 
-  estimator_config_logarithmic_bloom_filter = SketchEstimatorConfig(
-      name='log_bloom_filter-first_moment_log',
-      sketch_factory=LogarithmicBloomFilter.get_sketch_factory(
-          FLAGS.sketch_size),
-      estimator=FirstMomentEstimator(method='log'))
+    estimator_config_geometric_bloom_filter = SketchEstimatorConfig(
+        name='geo_bloom_filter-first_moment_geo',
+        sketch_factory=GeometricBloomFilter.get_sketch_factory(
+            FLAGS.sketch_size, FLAGS.geometric_bloom_filter_probability),
+        estimator=FirstMomentEstimator(
+            method='geo',
+            denoiser=SurrealDenoiser(
+                probability=noiser_flip_probability)), 
+        sketch_noiser=BlipNoiser(FLAGS.noiser_epsilon))
 
-  estimator_config_exponential_bloom_filter = SketchEstimatorConfig(
-      name='exp_bloom_filter-first_moment_exp',
-      sketch_factory=ExponentialBloomFilter.get_sketch_factory(
-          FLAGS.sketch_size, FLAGS.exponential_bloom_filter_decay_rate),
-      estimator=FirstMomentEstimator(method='exp'))
+    estimator_config_logarithmic_bloom_filter = SketchEstimatorConfig(
+        name='log_bloom_filter-first_moment_log',
+        sketch_factory=LogarithmicBloomFilter.get_sketch_factory(
+            FLAGS.sketch_size),
+        estimator=FirstMomentEstimator(
+            method='log',
+            denoiser=SurrealDenoiser(
+                probability=noiser_flip_probability)), 
+        sketch_noiser=BlipNoiser(FLAGS.noiser_epsilon))
 
-  estimator_config_exact = SketchEstimatorConfig(
-      name='exact_set-lossless',
-      sketch_factory=ExactMultiSet.get_sketch_factory(),
-      estimator=LosslessEstimator())
+    estimator_config_exponential_bloom_filter = SketchEstimatorConfig(
+        name='exp_bloom_filter-first_moment_exp',
+        sketch_factory=ExponentialBloomFilter.get_sketch_factory(
+            FLAGS.sketch_size, FLAGS.exponential_bloom_filter_decay_rate),
+        estimator=FirstMomentEstimator(
+            method='exp',
+            denoiser=SurrealDenoiser(
+                probability=noiser_flip_probability)), 
+        sketch_noiser=BlipNoiser(FLAGS.noiser_epsilon))
 
-  estimator_config_list = [
-      estimator_config_bloom_filter,
-      estimator_config_geometric_bloom_filter,
-      estimator_config_logarithmic_bloom_filter,
-      estimator_config_exponential_bloom_filter,
-      estimator_config_exact,
-  ]
+    estimator_config_list = [
+        estimator_config_bloom_filter,
+        estimator_config_geometric_bloom_filter,
+        estimator_config_logarithmic_bloom_filter,
+        estimator_config_exponential_bloom_filter,
+    ]
 
-  set_generator_factory = (
-      set_generator.IndependentSetGenerator.
-      get_generator_factory_with_num_and_size(
-          universe_size=FLAGS.universe_size,
-          num_sets=FLAGS.number_of_sets,
-          set_size=FLAGS.set_size))
+    set_generator_factory = (
+        set_generator.IndependentSetGenerator.
+        get_generator_factory_with_num_and_size(
+            universe_size=FLAGS.universe_size,
+            num_sets=FLAGS.number_of_sets,
+            set_size=FLAGS.set_size))
 
-  for estimator_method_config in estimator_config_list:
-    print(f'Calculations for {estimator_method_config.name}')
-    set_rs = np.random.RandomState(1)
-    sketch_rs = np.random.RandomState(1)
-    simulator = Simulator(
-        num_runs=FLAGS.number_of_trials,
-        set_generator_factory=set_generator_factory,
-        sketch_estimator_config=estimator_method_config,
-        set_random_state=set_rs,
-        sketch_random_state=sketch_rs)
+    for estimator_method_config in estimator_config_list:
+        print(f'Calculations for {estimator_method_config.name}')
+        set_rs = np.random.RandomState(1)
+        sketch_rs = np.random.RandomState(1)
+        simulator = Simulator(
+            num_runs=FLAGS.number_of_trials,
+            set_generator_factory=set_generator_factory,
+            sketch_estimator_config=estimator_method_config,
+            set_random_state=set_rs,
+            sketch_random_state=sketch_rs)
 
-    _, agg_data = simulator.run_all_and_aggregate()
-    print(f'Aggregate Statistics for {estimator_method_config.name}')
-    print(agg_data)
+        _, agg_data = simulator.run_all_and_aggregate()
+        print(f'Aggregate Statistics for {estimator_method_config.name}')
+        print(agg_data)
 
 
 if __name__ == '__main__':
