@@ -96,6 +96,26 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE):
       )
 
 
+def _get_default_name_to_choices_of_set_size_list(
+    small_set_size,
+    large_set_size,
+    num_sets
+):
+    return {
+      'all_small': [small_set_size] * num_sets,
+      'all_large': [large_set_size] * num_sets,
+      '1st_small_then_large': (
+          [small_set_size] + [large_set_size] * (num_sets - 1)),
+      '1st_half_small_2nd_half_large': (
+          [small_set_size] * int(num_sets / 2) +
+          [large_set_size] * (num_sets - int(num_sets / 2))),
+      'small_then_last_large': (
+          [small_set_size] * (num_sets - 1) + [large_set_size]),
+      'gradually_smaller': [
+          int(large_set_size / np.sqrt(i + 1)) for i in range(num_sets)]
+    }
+
+
 def _generate_configs_scenario_1_2(universe_size, num_sets, small_set_size,
                                   large_set_size, remarketing_rate=None):
   """Generate configs of Scenario 1 & 2
@@ -113,17 +133,9 @@ def _generate_configs_scenario_1_2(universe_size, num_sets, small_set_size,
   Returns:
     A list of ScenarioConfigs of scenario 1 / 2 with selected parameters.
   """
-  name_to_choices_of_set_size_list = {
-      'all_small': [small_set_size] * num_sets,
-      'all_large': [large_set_size] * num_sets,
-      '1st_small_then_large': (
-          [small_set_size] + [large_set_size] * (num_sets - 1)),
-      '1st_half_small_2nd_half_large': (
-          [small_set_size] * int(num_sets / 2) +
-          [large_set_size] * (num_sets - int(num_sets / 2))),
-      'small_then_last_large': (
-          [small_set_size] * (num_sets - 1) + [large_set_size]),
-  }
+  name_to_choices_of_set_size_list = _get_default_name_to_choices_of_set_size_list(
+      small_set_size, large_set_size, num_sets
+  )
 
   scenario_config_list = []
   if remarketing_rate is None:
@@ -175,19 +187,9 @@ def _generate_configs_scenario_3(universe_size, num_sets, small_set_size,
   Returns:
     A list of ScenarioConfigs of scenario 3(a/b) with selected parameters.
   """
-  name_to_choices_of_set_size_list = {
-      'all_small': [small_set_size] * num_sets,
-      'all_large': [large_set_size] * num_sets,
-      '1st_small_then_large': (
-          [small_set_size] + [large_set_size] * (num_sets - 1)),
-      '1st_half_small_2nd_half_large': (
-          [small_set_size] * int(num_sets / 2) +
-          [large_set_size] * (num_sets - int(num_sets / 2))),
-      'small_then_last_large': (
-          [small_set_size] * (num_sets - 1) + [large_set_size]),
-      'gradually_smaller': [
-          large_set_size / np.sqrt(i + 1) for i in range(num_sets)]
-  }
+  name_to_choices_of_set_size_list = _get_default_name_to_choices_of_set_size_list(
+      small_set_size, large_set_size, num_sets
+  )
 
   scenario_config_list = []
   for set_type, set_size_list in name_to_choices_of_set_size_list.items():
@@ -318,9 +320,11 @@ def _generate_configs_scenario_5(num_sets, small_set_size,
   Returns:
     A list of ScenarioConfigs of scenario 5 Sequentiall correlated sets.
   """
+
   name_to_choices_of_set_size_list = {
-      '1st_small_then_large': [small_set_size] + [large_set_size] * (
-          num_sets - 1),
+      **_get_default_name_to_choices_of_set_size_list(
+        small_set_size, large_set_size, num_sets
+      ),
       'large_then_last_small': [large_set_size] * (num_sets - 1) + [
           small_set_size],
       'all_large_except_middle_small': (
@@ -328,14 +332,9 @@ def _generate_configs_scenario_5(num_sets, small_set_size,
           + [large_set_size] * (num_sets - 1 - int(num_sets / 2))),
       '1st_large_then_small': [large_set_size] + [small_set_size] * (
           num_sets - 1),
-      'small_then_last_large': [small_set_size] * (num_sets - 1) + [
-          large_set_size],
       'all_small_except_middle_large': (
           [small_set_size] * int(num_sets / 2) + [large_set_size]
           + [small_set_size] * (num_sets - 1 - int(num_sets / 2))),
-      '1st_half_small_2nd_half_large': (
-          [small_set_size] * int(num_sets / 2)
-          + [large_set_size] * (num_sets - int(num_sets / 2))),
       '1st_half_large_2nd_half_small': (
           [large_set_size] * int(num_sets / 2)
           + [small_set_size] * (num_sets - int(num_sets / 2))),

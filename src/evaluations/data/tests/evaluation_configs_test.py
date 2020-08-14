@@ -29,27 +29,38 @@ class EvaluationConfigTest(absltest.TestCase):
       'wfa_cardinality_estimation_evaluation_framework.evaluations.data.'
       + 'evaluation_configs.')
 
-  def test_generate_configs_scenario_1_set_sizes_correct(self):
-    conf_list = evaluation_configs._generate_configs_scenario_1_2(
-        universe_size=200,
-        num_sets=3,
-        small_set_size=50,
-        large_set_size=100,
-    )
-    result = {}
-    for conf in conf_list:
-      gen = conf.set_generator_factory(np.random.RandomState(1))
-      result[conf.name] = [len(set_ids) for set_ids in gen]
+  def test_generate_configs_scenario_1_2_set_sizes_correct(self):
+    for remarketing_rate in [None, 0.2]:
+      universe_size = 2000
+      conf_list = evaluation_configs._generate_configs_scenario_1_2(
+          universe_size=universe_size,
+          num_sets=3,
+          small_set_size=50,
+          large_set_size=100,
+          remarketing_rate=remarketing_rate,
+      )
+      result = {}
+      for conf in conf_list:
+        gen = conf.set_generator_factory(np.random.RandomState(1))
+        result[conf.name] = [len(set_ids) for set_ids in gen]
 
-    expected = {
-      'independent-universe_size:200-small_set:50-large_set:100-set_type:1st_half_small_2nd_half_large': [50, 100, 100],
-      'independent-universe_size:200-small_set:50-large_set:100-set_type:1st_small_then_large': [50, 100, 100],
-      'independent-universe_size:200-small_set:50-large_set:100-set_type:all_large': [100, 100, 100],
-      'independent-universe_size:200-small_set:50-large_set:100-set_type:all_small': [50, 50, 50],
-      'independent-universe_size:200-small_set:50-large_set:100-set_type:small_then_last_large': [50, 50, 100],
-    }
+      if remarketing_rate == None:
+        type_header = 'independent'
+      else:
+        size = int(universe_size * remarketing_rate)
+        type_header = f'remarketing-remarketing_size:{size}'
 
-    self.assertEqual(result, expected)
+      universe_size
+      expected = {
+        f'{type_header}-universe_size:2000-small_set:50-large_set:100-set_type:1st_half_small_2nd_half_large': [50, 100, 100],
+        f'{type_header}-universe_size:2000-small_set:50-large_set:100-set_type:1st_small_then_large': [50, 100, 100],
+        f'{type_header}-universe_size:2000-small_set:50-large_set:100-set_type:all_large': [100, 100, 100],
+        f'{type_header}-universe_size:2000-small_set:50-large_set:100-set_type:all_small': [50, 50, 50],
+        f'{type_header}-universe_size:2000-small_set:50-large_set:100-set_type:small_then_last_large': [50, 50, 100],
+        f'{type_header}-universe_size:2000-small_set:50-large_set:100-set_type:gradually_smaller': [100, 70, 57],
+      }
+
+      self.assertEqual(result, expected)
 
   def test_generate_configs_scenario_3_set_sizes_correct(self):
     for activity in [set_generator.USER_ACTIVITY_ASSOCIATION_INDEPENDENT,
@@ -85,7 +96,7 @@ class EvaluationConfigTest(absltest.TestCase):
           'set_type:small_then_last_large': [48, 48, 84],
           f'exponential_bow-user_activity_association:{activity}-'
           'universe_size:200-small_set:50-large_set:100-'
-          'set_type:gradually_smaller': [84, 67, 55]
+          'set_type:gradually_smaller': [84, 66, 55]
       }
 
       self.assertEqual(result, expected)
@@ -219,7 +230,31 @@ class EvaluationConfigTest(absltest.TestCase):
         'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:small_then_last_large-'
-        'large_set_size:8-small_set_size:2': [2, 2, 8]
+        'large_set_size:8-small_set_size:2': [2, 2, 8],
+        'sequentially_correlated-order:original-'
+        'correlated_sets:all-shared_prop:0.1-'
+        'set_type:all_large-'
+        'large_set_size:8-small_set_size:2': [8, 8, 8],
+        'sequentially_correlated-order:original-'
+        'correlated_sets:all-shared_prop:0.1-'
+        'set_type:all_small-'
+        'large_set_size:8-small_set_size:2': [2, 2, 2],
+        'sequentially_correlated-order:original-'
+        'correlated_sets:all-shared_prop:0.1-'
+        'set_type:gradually_smaller-'
+        'large_set_size:8-small_set_size:2': [8, 5, 4],
+        'sequentially_correlated-order:original-'
+        'correlated_sets:one-shared_prop:0.1-'
+        'set_type:all_large-'
+        'large_set_size:8-small_set_size:2': [8, 8, 8],
+        'sequentially_correlated-order:original-'
+        'correlated_sets:one-shared_prop:0.1-'
+        'set_type:all_small-'
+        'large_set_size:8-small_set_size:2': [2, 2, 2],
+        'sequentially_correlated-order:original-'
+        'correlated_sets:one-shared_prop:0.1-'
+        'set_type:gradually_smaller-'
+        'large_set_size:8-small_set_size:2': [8, 5, 4],
     }
 
     self.assertEqual(result, expected)
