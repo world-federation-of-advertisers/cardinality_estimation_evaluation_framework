@@ -14,7 +14,7 @@
 """Tests for wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs."""
 from unittest import mock
 from absl.testing import absltest
-
+from absl.testing import parameterized
 import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.evaluations import configs
@@ -23,20 +23,58 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 
 
-class EvaluationConfigTest(absltest.TestCase):
+class EvaluationConfigTest(parameterized.TestCase):
 
   EVALUATION_CONFIGS_MODULE = (
       'wfa_cardinality_estimation_evaluation_framework.evaluations.data.'
       + 'evaluation_configs.')
 
-  def test_generate_configs_scenario_3b_set_sizes_correct(self):
-    conf_list = evaluation_configs._generate_configs_scenario_3b(
+  @parameterized.parameters(
+      (2000, None, 'independent-universe_size:2000'),
+      (2000, 0.2, 'remarketing-remarketing_size:400-universe_size:2000'),
+  )
+  def test_generate_configs_scenario_1_2_set_sizes_correct(
+    self, universe_size, remarketing_rate, type_header
+  ):
+    conf_list = evaluation_configs._generate_configs_scenario_1_2(
+        universe_size=universe_size,
+        num_sets=3,
+        small_set_size=50,
+        large_set_size=100,
+        remarketing_rate=remarketing_rate,
+    )
+    result = {}
+    for conf in conf_list:
+      gen = conf.set_generator_factory(np.random.RandomState(1))
+      result[conf.name] = [len(set_ids) for set_ids in gen]
+
+    expected = {
+      f'{type_header}-small_set:50-large_set:100-'
+      'set_type:1st_half_small_2nd_half_large': [50, 100, 100],
+      f'{type_header}-small_set:50-large_set:100-'
+      'set_type:1st_small_then_large': [50, 100, 100],
+      f'{type_header}-small_set:50-large_set:100-'
+      'set_type:all_large': [100, 100, 100],
+      f'{type_header}-small_set:50-large_set:100-'
+      'set_type:all_small': [50, 50, 50],
+      f'{type_header}-small_set:50-large_set:100-'
+      'set_type:small_then_last_large': [50, 50, 100],
+      f'{type_header}-small_set:50-large_set:100-'
+      'set_type:gradually_smaller': [100, 70, 57],
+    }
+
+    self.assertEqual(result, expected)
+  @parameterized.parameters(
+      (set_generator.USER_ACTIVITY_ASSOCIATION_INDEPENDENT),
+      (set_generator.USER_ACTIVITY_ASSOCIATION_IDENTICAL),
+  )
+  def test_generate_configs_scenario_3_set_sizes_correct(self, activity):
+    conf_list = evaluation_configs._generate_configs_scenario_3(
         universe_size=200,
         num_sets=3,
         small_set_size=50,
         large_set_size=100,
-        user_activity_assciation=(set_generator
-                                  .USER_ACTIVITY_ASSOCIATION_IDENTICAL)
+        user_activity_assciation=(activity)
     )
 
     result = {}
@@ -45,24 +83,24 @@ class EvaluationConfigTest(absltest.TestCase):
       result[conf.name] = [len(set_ids) for set_ids in gen]
 
     expected = {
-        'exponential_bow-user_activity_association:identical-'
+        f'exponential_bow-user_activity_association:{activity}-'
         'universe_size:200-small_set:50-large_set:100-set_type:all_small': [
             48, 48, 48],
-        'exponential_bow-user_activity_association:identical-'
+        f'exponential_bow-user_activity_association:{activity}-'
         'universe_size:200-small_set:50-large_set:100-set_type:all_large': [
             84, 84, 84],
-        'exponential_bow-user_activity_association:identical-'
+        f'exponential_bow-user_activity_association:{activity}-'
         'universe_size:200-small_set:50-large_set:100-'
         'set_type:1st_small_then_large': [48, 84, 84],
-        'exponential_bow-user_activity_association:identical-'
+        f'exponential_bow-user_activity_association:{activity}-'
         'universe_size:200-small_set:50-large_set:100-'
         'set_type:1st_half_small_2nd_half_large': [48, 84, 84],
-        'exponential_bow-user_activity_association:identical-'
+        f'exponential_bow-user_activity_association:{activity}-'
         'universe_size:200-small_set:50-large_set:100-'
         'set_type:small_then_last_large': [48, 48, 84],
-        'exponential_bow-user_activity_association:identical-'
+        f'exponential_bow-user_activity_association:{activity}-'
         'universe_size:200-small_set:50-large_set:100-'
-        'set_type:gradually_smaller': [84, 67, 55]
+        'set_type:gradually_smaller': [84, 66, 55]
     }
 
     self.assertEqual(result, expected)
@@ -196,24 +234,51 @@ class EvaluationConfigTest(absltest.TestCase):
         'sequentially_correlated-order:original-'
         'correlated_sets:one-shared_prop:0.1-'
         'set_type:small_then_last_large-'
-        'large_set_size:8-small_set_size:2': [2, 2, 8]
+        'large_set_size:8-small_set_size:2': [2, 2, 8],
+        'sequentially_correlated-order:original-'
+        'correlated_sets:all-shared_prop:0.1-'
+        'set_type:all_large-'
+        'large_set_size:8-small_set_size:2': [8, 8, 8],
+        'sequentially_correlated-order:original-'
+        'correlated_sets:all-shared_prop:0.1-'
+        'set_type:all_small-'
+        'large_set_size:8-small_set_size:2': [2, 2, 2],
+        'sequentially_correlated-order:original-'
+        'correlated_sets:all-shared_prop:0.1-'
+        'set_type:gradually_smaller-'
+        'large_set_size:8-small_set_size:2': [8, 5, 4],
+        'sequentially_correlated-order:original-'
+        'correlated_sets:one-shared_prop:0.1-'
+        'set_type:all_large-'
+        'large_set_size:8-small_set_size:2': [8, 8, 8],
+        'sequentially_correlated-order:original-'
+        'correlated_sets:one-shared_prop:0.1-'
+        'set_type:all_small-'
+        'large_set_size:8-small_set_size:2': [2, 2, 2],
+        'sequentially_correlated-order:original-'
+        'correlated_sets:one-shared_prop:0.1-'
+        'set_type:gradually_smaller-'
+        'large_set_size:8-small_set_size:2': [8, 5, 4],
     }
 
     self.assertEqual(result, expected)
 
-  @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_3b')
+  @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_1_2')
+  @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_3')
   @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_4a')
   @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_4b')
   @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_configs_scenario_5')
   def test_complete_test_with_selected_parameters_all_scenario_used(
       self,
-      scenario_config_3b,
+      scenario_config_1_2,
+      scenario_config_3,
       scenario_config_4a,
       scenario_config_4b,
       scenario_config_5):
     """Test all the scenarios are concluded in the complete test."""
     _ = _complete_test_with_selected_parameters(num_runs=1)
-    self.assertTrue(scenario_config_3b.called, 'Scenario 3b not included.')
+    self.assertTrue(scenario_config_1_2.called, 'Scenario 1/2 not included.')
+    self.assertTrue(scenario_config_3.called, 'Scenario 3 not included.')
     self.assertTrue(scenario_config_4a.called, 'Scenario 4a not included.')
     self.assertTrue(scenario_config_4b.called, 'Scenario 4b not included.')
     self.assertTrue(scenario_config_5.called, 'Scenario 5 not included.')
