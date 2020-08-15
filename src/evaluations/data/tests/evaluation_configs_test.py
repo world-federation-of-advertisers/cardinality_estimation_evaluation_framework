@@ -36,7 +36,6 @@ class EvaluationConfigTest(parameterized.TestCase):
   def test_generate_configs_scenario_1_2_set_sizes_correct(
     self, universe_size, remarketing_rate, type_header
   ):
-    universe_size = 2000
     conf_list = evaluation_configs._generate_configs_scenario_1_2(
         universe_size=universe_size,
         num_sets=3,
