@@ -37,7 +37,8 @@ class StratifiedSketch(object):
 
     Args:
       max_freq: the maximum targeting frequency level. For example, if it is set
-        to 3, then the sketches will include frequency=1, 2, and frequency >= 3.
+        to 3, then the sketches will include frequency=1+, 1, 2, and frequency
+        >= 3.
       random_seed: This arg exists in order to conform to
         simulator.EstimatorConfig.sketch_factory.
       cardinality_sketch_factory: A cardinality sketch factory.
