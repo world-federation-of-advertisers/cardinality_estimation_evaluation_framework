@@ -15,6 +15,7 @@
 import copy
 import functools
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchBase
+from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimatorBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
 
 ONE_PLUS = '1+'
@@ -121,7 +122,7 @@ class StratifiedSketch(object):
         f'{self.max_freq} != {other.max_freq}')
 
 
-class PairwiseEstimator(object):
+class PairwiseEstimator(EstimatorBase):
   """Merge and estimate two StratifiedSketch."""
 
   def __init__(self, sketch_operator, cardinality_estimator):
@@ -199,12 +200,9 @@ class PairwiseEstimator(object):
     merged_sketch.sketches[max_freq] = merged
 
     # Calculate Merged(1+)
-    merged_one_plus = None
-    for k in range(max_freq):
-      merged_one_plus = self.sketch_union(merged_one_plus,
-                                          merged_sketch.sketches[k + 1])
+    merged_one_plus = self.sketch_union(this.sketches[ONE_PLUS],
+                                        that.sketches[ONE_PLUS])
     merged_sketch.sketches[ONE_PLUS] = merged_one_plus
-
     return merged_sketch
 
   def estimate_cardinality(self, stratified_sketch):
@@ -223,7 +221,7 @@ class PairwiseEstimator(object):
     return result
 
 
-class SequentialEstimator(object):
+class SequentialEstimator(EstimatorBase):
   """Sequential frequency estimator."""
 
   def __init__(self, sketch_operator, cardinality_estimator):
