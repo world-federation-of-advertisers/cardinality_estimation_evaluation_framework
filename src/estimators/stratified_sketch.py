@@ -124,21 +124,23 @@ class StratifiedSketch(object):
 class PairwiseEstimator(object):
   """Merge and estimate two StratifiedSketch."""
 
-  def __init__(self, sketch_operator):
+  def __init__(self, sketch_operator, cardinality_estimator):
     """Create an estimator for two Stratified sketches.
 
     Args:
       sketch_operator: an object that have union, intersection, and difference
         methods for two sketches.
+      cardinality_estimator: a cardinality estimator for estimating the
+        cardinality of a sketch.
     """
-
+    self.cardinality_estimator = cardinality_estimator
     self.sketch_union = sketch_operator.union
     self.sketch_difference = sketch_operator.difference
     self.sketch_intersection = sketch_operator.intersection
 
   def __call__(self, this, that):
     merged = self.merge_sketches(this, that)
-    return merged
+    return self.estimate_cardinality(merged)
 
   def merge_sketches(self, this, that):
     """Merge two StratifiedSketch.
@@ -205,27 +207,44 @@ class PairwiseEstimator(object):
 
     return merged_sketch
 
+  def estimate_cardinality(self, stratified_sketch):
+    """Estimate the cardinality of a StratifiedSketch.
+
+    Args:
+     stratified_sketch: a StratifiedSketch object.
+
+    Returns:
+      A dictionary: the key is the frequency and the value is the corresponding
+      cardinality.
+    """
+    result = {}
+    for freq, sketch in stratified_sketch.sketches.items():
+      result[freq] = self.cardinality_estimator([sketch])
+    return result
+
 
 class SequentialEstimator(object):
   """Sequential frequency estimator."""
 
-  def __init__(self, sketch_operator):
-    self.pairwise_estimator = PairwiseEstimator(sketch_operator)
+  def __init__(self, sketch_operator, cardinality_estimator):
+    self.pairwise_estimator = PairwiseEstimator(sketch_operator,
+                                                cardinality_estimator)
 
   def __call__(self, sketches_list):
-    return self.merge_sketches(sketches_list)
+    merged = self.merge_sketches(sketches_list)
+    return self.pairwise_estimator.estimate_cardinality(merged)
 
   def merge_sketches(self, sketches_list):
     return functools.reduce(self.pairwise_estimator.merge_sketches,
                             sketches_list)
 
 
-class ExactMultiSetOperation(object):
-  """Set operations for ExactMultiSet."""
+class ExactSetOperation(object):
+  """Set operations for ExactSet."""
 
   @classmethod
   def union(cls, this, that):
-    """Union operation for ExactMultiSet."""
+    """Union operation for ExactSet."""
     if this is None:
       return copy.deepcopy(that)
     if that is None:
@@ -238,7 +257,7 @@ class ExactMultiSetOperation(object):
 
   @classmethod
   def intersection(cls, this, that):
-    """Intersection operation for ExactMultiSet."""
+    """Intersection operation for ExactSet."""
     if this is None or that is None:
       return None
     result = copy.deepcopy(this)
@@ -249,7 +268,7 @@ class ExactMultiSetOperation(object):
 
   @classmethod
   def difference(cls, this, that):
-    """Difference operation for ExactMultiSet."""
+    """Difference operation for ExactSet."""
     if this is None:
       return None
     if that is None:
