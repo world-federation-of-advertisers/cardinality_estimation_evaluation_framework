@@ -78,6 +78,8 @@ flags.DEFINE_integer('boxplot_size_height_inch', 6,
                      'The widths of the boxplot in inches.')
 flags.DEFINE_enum('analysis_type', 'cardinality', ['cardinality', 'frequency'],
                   'Type of analysis that is to be performed.')
+flags.DEFINE_integer('max_frequency', 10, 'Maximum frequency to be analyzed.')
+
 
 required_flags = ('evaluation_config', 'sketch_estimator_configs',
                   'evaluation_run_name', 'num_runs', 'evaluation_out_dir')
@@ -93,7 +95,7 @@ def main(argv):
     FLAGS.evaluation_config)(FLAGS.num_runs)
 
   sketch_estimator_config_list = evaluation_configs.get_estimator_configs(
-    FLAGS.sketch_estimator_configs)
+    FLAGS.sketch_estimator_configs, FLAGS.max_frequency)
 
   if FLAGS.run_evaluation:
     logging.info('====Running %s using evaluation %s for:\n%s',

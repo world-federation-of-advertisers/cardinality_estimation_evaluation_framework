@@ -14,8 +14,6 @@
 """Evaluation configurations."""
 import numpy as np
 
-from absl import flags
-
 from wfa_cardinality_estimation_evaluation_framework.estimators import bloom_filters
 from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
 from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_legions
@@ -24,10 +22,6 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import 
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import ScenarioConfig
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
-
-FLAGS = flags.FLAGS
-
-flags.DEFINE_integer('max_frequency', 10, 'Maximum frequency to be analyzed.')
 
 SKETCH = 'sketch'
 SKETCH_CONFIG = 'sketch_config'
@@ -425,9 +419,17 @@ def _generate_evaluation_configs():
 def get_evaluation_config(config_name):
   """Returns the evaluation config with the specified config_name."""
   configs = _generate_evaluation_configs()
+  valid_config_names = [c().name for c in configs]
+  duplicate_configs = []
+  for i in range(len(valid_config_names)-1):
+    if valid_config_names[i] in valid_config_names[(i+1):]:
+      duplicate_configs.append(valid_config_names[i])
+  if duplicate_configs:
+    raise ValueError("Duplicate names found in evaluation configs: {}".
+                     format(','.join(duplicate_configs)))
+
   config = [c for c in configs if c().name == config_name]
   if not config:
-    valid_config_names = [c().name for c in configs]
     raise ValueError("Invalid evaluation config: {}\n"
                      "Valid choices are as follows: {}".format(
                      config_name, ','.join(valid_config_names)))
@@ -509,27 +511,27 @@ def _generate_cardinality_estimator_configs():
       VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL,
       VECTOR_OF_COUNTS_4096_INFTY_SEQUENTIAL)
 
-def _generate_frequency_estimator_configs():
+def _generate_frequency_estimator_configs(max_frequency):
   return (
       SketchEstimatorConfig(
           name='exact_multi_set-10000-NA-NA',
           sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
           estimator=exact_set.LosslessEstimator(),
-          max_frequency=FLAGS.max_frequency),
+          max_frequency=max_frequency),
       )
 
-def get_estimator_configs(estimator_names):
+def get_estimator_configs(estimator_names, max_frequency):
   """Returns a list of estimator configs by name."""
   if not len(estimator_names):
     raise ValueError('No estimators were specified.')
 
   all_configs = (_generate_cardinality_estimator_configs() +
-                 _generate_frequency_estimator_configs())
+                 _generate_frequency_estimator_configs(max_frequency))
 
   all_estimators = {
       conf.name: conf for conf in
       _generate_cardinality_estimator_configs() +
-      _generate_frequency_estimator_configs() }
+      _generate_frequency_estimator_configs(max_frequency) }
 
   estimator_list = [all_estimators[c] for c in estimator_names
                     if c in all_estimators]
