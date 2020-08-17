@@ -215,8 +215,7 @@ class Simulator(object):
                  'estimate_noiser') and self.sketch_estimator_config.estimate_noiser:
         estimated_cardinality = [self.sketch_estimator_config.estimate_noiser(e)
             for e in estimated_cardinality]
-      for id in actual_ids[i]:
-        true_union.add(id)
+      true_union.add_ids(actual_ids)
       true_cardinality = self._extend_histogram(LosslessEstimator()([true_union]), max_freq)
       shuffle_distance = self._shuffle_distance(estimated_cardinality, true_cardinality)
       metrics.append([i + 1] + estimated_cardinality + true_cardinality + [shuffle_distance])
