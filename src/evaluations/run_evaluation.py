@@ -14,12 +14,13 @@
 r"""A commandline tool to run evaluations of cardinality estimators.
 
 To run this evaluation, in command line, type:
-python run_evaluation.py \
---evaluation_out_dir="evaluation_output" \
---analysis_out_dir="analysis_output" \
---evaluation_config="smoke_test" \
---sketch_estimator_configs="vector_of_counts-4096-ln3-sequential" \
---evaluation_run_name="simple_run"
+  wfa-run-evaluation \
+    --evaluation_out_dir="evaluation_output" \
+    --analysis_out_dir="analysis_output" \
+    --evaluation_config="smoke_test" \
+    --sketch_estimator_configs="vector_of_counts-4096-ln3-sequential" \
+    --evaluation_run_name="simple_run" \
+    --num_runs=1
 """
 
 from absl import app

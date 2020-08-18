@@ -63,9 +63,10 @@ MESSAGE_HTML_TEMPLATE = """
 # Number of digits that should be shown when reporting the relative error
 RELATIVE_ERROR_FORMAT_ACCURACY = 4
 
+
 class ReportGenerator:
   """Generate HTML report for an estimator evaluation."""
-  
+
   def __init__(self, out_dir, analysis_out_dir, evaluation_run_name,
                evaluation_name):
     """Read analysis results and generate HTML report.
