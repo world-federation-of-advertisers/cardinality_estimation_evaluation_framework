@@ -541,11 +541,11 @@ class HomogeneousMultiSetGenerator(SetGeneratorBase):
 
   @classmethod
   def get_generator_factory_with_set_size_list(cls, universe_size,
-                                               set_sizes, freq_rate_list,
+                                               set_size_list, freq_rate_list,
                                                freq_cap):
 
     def f(random_state):
-      return cls(universe_size, set_sizes, freq_rate_list, random_state,
+      return cls(universe_size, set_size_list, freq_rate_list, random_state,
                  freq_cap)
 
     return f
@@ -629,11 +629,11 @@ class HeterogeneousMultiSetGenerator(SetGeneratorBase):
 
   @classmethod
   def get_generator_factory_with_set_size_list(cls, universe_size,
-                                               set_sizes, gamma_params_list,
+                                               set_size_list, gamma_params_list,
                                                freq_cap):
 
     def f(random_state):
-      return cls(universe_size, set_sizes, gamma_params_list, random_state,
+      return cls(universe_size, set_size_list, gamma_params_list, random_state,
                  freq_cap)
 
     return f
@@ -661,8 +661,10 @@ class HeterogeneousMultiSetGenerator(SetGeneratorBase):
     """
     assert len(set_sizes) == len(gamma_params_list), (
         'set_size_list and gamma_params_list do not have equal length.')
-    assert all([gamma_rate >= 0 for gamma_rate in gamma_params_list]), (
-        'Elements of gamma_params_list should be non-negative.')
+    assert all([gamma_params[0] > 0 for gamma_params in gamma_params_list]), (
+        'Gamma shape parameters must be positive.')
+    assert all([gamma_params[1] > 0 for gamma_params in gamma_params_list]), (
+        'Gamma rate parameters must be positive.')
     assert freq_cap is None or freq_cap > 0, (
         'freq_cap should be None or positive.')
     self.universe_size = universe_size
@@ -670,19 +672,20 @@ class HeterogeneousMultiSetGenerator(SetGeneratorBase):
     self.gamma_params_list = gamma_params_list
     self.freq_cap = freq_cap
     self.random_state = random_state
-    self.choice = choice_fast  # For simple mock in unit testing.
+    self.choice = choice_fast
 
   def __iter__(self):
     for set_size, gamma_params in zip(self.set_sizes, self.gamma_params_list):
-      set_ids = self.choice(
-          self.universe_size, set_size, self.random_state)
-      freq_per_id = []
-      for set_id in set_ids:
-          freq_per_id.append(self.random_state.poisson(lam=self.random_state.gamma(gamma_params[0], gamma_params[1], size=1), size=1) + 1)
-      if self.freq_cap is not None:
-        freq_per_id = np.minimum(freq_per_id, self.freq_cap)
+      set_ids = self.choice(self.universe_size, set_size, self.random_state)
+      rate_parameters = self.random_state.gamma(shape=gamma_params[0],
+                                                scale=gamma_params[1],
+                                                size=set_size)
+      frequencies = self.random_state.poisson(lam=rate_parameters,
+                                              size=set_size) + 1
+      if self.freq_cap:
+        frequencies = np.minimum(frequencies, self.freq_cap)
       multiset_ids = []
-      for i, freq in zip(set_ids, freq_per_id):
+      for i, freq in zip(set_ids, frequencies):
         multiset_ids += [i] * freq
       self.random_state.shuffle(multiset_ids)
       yield multiset_ids
