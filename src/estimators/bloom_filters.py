@@ -501,30 +501,15 @@ class DenoiserBase(object):
 class SurrealDenoiser(DenoiserBase):
   """A closed form denoiser for a list of Any Distribution Bloom Filter."""
 
-  def __init__(self, epsilon=None, flip_one_probability=None,
-               flip_zero_probability=None):
+  def __init__(self, epsilon):
     """Construct a denoiser.
 
     Args:
       epsilon: a non-negative differential privacy parameter.
-      flip_one_probability: the bit flipping probability of 1 bits. It will be
-        ignored if either espilon or probability is given.
-      flip_zero_probability: the bit flipping probability of 0 bits. It will be
-        ignored if either espilon or probability is given.
-
-    Raises:
-      ValueError: if none of epsilon, probability, or flip_one_probability and
-        flip_zero_probability is given.
     """
     if epsilon is not None:
       # Currently only support one hash function.
-      probability = get_probability_of_flip(epsilon, 1)
-      self._probability = (probability, probability)
-    elif flip_one_probability is not None and flip_zero_probability is not None:
-      self._probability = (flip_zero_probability, flip_one_probability)
-    else:
-      raise ValueError("Should provide epsilon, or both "
-                       "flip_one_probability and flip_zero_probability.")
+      self._probability = get_probability_of_flip(epsilon, 1)
 
   def  __call__(self, sketch_list):
     return self._denoise(sketch_list)
@@ -549,8 +534,8 @@ class SurrealDenoiser(DenoiserBase):
         "Will extend to multiple hash functions later.")
     denoised_sketch = copy.deepcopy(sketch)
     expected_zeros = (
-        - denoised_sketch.sketch * self._probability[1]
-        + (1 - denoised_sketch.sketch) * (1 - self._probability[1]))
+        - denoised_sketch.sketch * self._probability
+        + (1 - denoised_sketch.sketch) * (1 - self._probability))
     denoised_sketch.sketch = 1 - expected_zeros / (
-        1 - self._probability[1] - self._probability[0])
+        1 - self._probability - self._probability)
     return denoised_sketch

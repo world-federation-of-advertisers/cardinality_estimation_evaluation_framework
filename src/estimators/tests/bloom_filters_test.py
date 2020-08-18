@@ -322,22 +322,16 @@ class BlipNoiserTest(absltest.TestCase):
     self.assertAlmostEqual(average_bits, 0.75, delta=0.01)
 
 
-class SurrealDenoiserTest(parameterized.TestCase):
+class SurrealDenoiserTest(absltest.TestCase):
 
-  @parameterized.parameters(
-      ({'epsilon': math.log(3)},),
-      ({'flip_one_probability': 0.25, 'flip_zero_probability': 0.25},),
-  )
-  def test_denoiser_estimation_correct(self, kwargs):
+  def test_denoiser_estimation_correct(self):
     noised_adbf = UniformBloomFilter(4, random_seed=1)
     noised_adbf.sketch[0] = 1
-    denoiser = SurrealDenoiser(**kwargs)
+    denoiser = SurrealDenoiser(epsilon=math.log(3))
     denoised_adbf = denoiser([noised_adbf])[0]
     expected = np.array([1.5, -0.5, -0.5, -0.5])
-    kwarg_names = ', '.join(kwargs.keys())
     np.testing.assert_allclose(
-        denoised_adbf.sketch, expected, atol=0.01,
-        err_msg=f'Denoiser does not work with: {kwarg_names}.')
+        denoised_adbf.sketch, expected, atol=0.01)
 
 
 if __name__ == '__main__':

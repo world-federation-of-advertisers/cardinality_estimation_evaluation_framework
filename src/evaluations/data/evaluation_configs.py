@@ -399,7 +399,7 @@ LOG_BLOOM_FILTER_1E5_LN3_FIRST_MOMENT_LOG = SketchEstimatorConfig(
     estimator=bloom_filters.FirstMomentEstimator(
         method=bloom_filters.FirstMomentEstimator.METHOD_LOG,
         denoiser=bloom_filters.SurrealDenoiser(epsilon=math.log(3))),
-    sketch_noiser=bloom_filters.BlipNoiser(epsilon=np.log(3)))
+    sketch_noiser=bloom_filters.BlipNoiser(epsilon=math.log(3)))
 
 LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(
     name='log_bloom_filter-1e5-infty-first_moment_log',
@@ -415,7 +415,7 @@ EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG = SketchEstimatorConfig(
     estimator=bloom_filters.FirstMomentEstimator(
         method=bloom_filters.FirstMomentEstimator.METHOD_EXP,
         denoiser=bloom_filters.SurrealDenoiser(epsilon=math.log(3))),
-    sketch_noiser=bloom_filters.BlipNoiser(epsilon=np.log(3)))
+    sketch_noiser=bloom_filters.BlipNoiser(epsilon=math.log(3)))
 
 EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(
     name='exp_bloom_filter-1e5_10-infty-first_moment_exp',
@@ -442,7 +442,7 @@ VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL = SketchEstimatorConfig(
     sketch_factory=vector_of_counts.VectorOfCounts.get_sketch_factory(
         num_buckets=4096),
     estimator=vector_of_counts.SequentialEstimator(),
-    sketch_noiser=vector_of_counts.LaplaceNoiser(epsilon=np.log(3)))
+    sketch_noiser=vector_of_counts.LaplaceNoiser(epsilon=math.log(3)))
 
 VECTOR_OF_COUNTS_4096_INFTY_SEQUENTIAL = SketchEstimatorConfig(
     name='vector_of_counts-4096-infty-sequential',
