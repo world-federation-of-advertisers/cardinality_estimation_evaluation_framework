@@ -37,8 +37,8 @@ class StratifiedSketch(object):
 
     Args:
       max_freq: the maximum targeting frequency level. For example, if it is set
-        to 3, then the sketches will include frequency=1+, 1, 2, and frequency
-        >= 3.
+        to 3, then the sketches will include frequency=1, 2, 3+ (frequency >=
+        3).
       random_seed: This arg exists in order to conform to
         simulator.EstimatorConfig.sketch_factory.
       cardinality_sketch_factory: A cardinality sketch factory.
@@ -47,10 +47,10 @@ class StratifiedSketch(object):
     # A dictionary that contains multiple sketches, which include:
     # (1) sketches with frequency equal to k, where k < max_freq;
     # (2) a sketch with frequency greater than or equal to max_freq;
-    # (3) a 1+ reach sketch.
     self.sketches = {}
     self.seed = random_seed
     self.max_freq = max_freq
+    self.cardinality_sketch_factory = cardinality_sketch_factory
 
   @classmethod
   def init_from_exact_multi_set(cls, max_freq, exact_multi_set,
@@ -66,22 +66,24 @@ class StratifiedSketch(object):
             not None), ('cardinality_sketch is None')
     stratified_sketch = cls(
         max_freq=max_freq,
-        cardinality_sketch_factory=[],
+        cardinality_sketch_factory=cardinality_sketch_factory,
         random_seed=random_seed)
-    stratified_sketch.sketches[ONE_PLUS] = cardinality_sketch_factory(
-        random_seed)
-    stratified_sketch.sketches[ONE_PLUS].add_ids(
-        list(exact_multi_set.ids().keys()))
 
     reversedict = {}
     for k, v in exact_multi_set.ids().items():
       reversedict.setdefault(min(v, max_freq), []).append(k)
 
-    for freq in range(1, max_freq + 1):
+    for freq in range(1, max_freq):
       stratified_sketch.sketches[freq] = cardinality_sketch_factory(random_seed)
       if (freq in reversedict):
         stratified_sketch.sketches[freq].add_ids(reversedict[freq])
 
+    # Initialize max_freq
+    max_key = str(max_freq) + '+'
+    stratified_sketch.sketches[max_key] = cardinality_sketch_factory(
+        random_seed)
+    if (max_freq in reversedict):
+      stratified_sketch.sketches[max_key].add_ids(reversedict[max_freq])
     return stratified_sketch
 
   @classmethod
@@ -163,20 +165,24 @@ class PairwiseEstimator(EstimatorBase):
     this.assert_compatible(that)
     max_freq = this.max_freq
     merged_sketch = copy.deepcopy(this)
+    this_one_plus = this.cardinality_sketch_factory(0)
+    that_one_plus = that.cardinality_sketch_factory(0)
+    for k in range(1, max_freq):
+      this_one_plus = self.sketch_union(this_one_plus, this.sketches[k])
+      that_one_plus = self.sketch_union(that_one_plus, that.sketches[k])
 
     for k in range(1, max_freq):
       # Calculate A(k) & B(0) = A(k) - (A(k) & B(1+))
       merged = self.sketch_difference(
           this.sketches[k],
-          self.sketch_intersection(this.sketches[k], that.sketches[ONE_PLUS]))
+          self.sketch_intersection(this.sketches[k], that_one_plus))
 
       # Calculate A(0) & B(k) = B(k) - (B(k) & A(1+))
       merged = self.sketch_union(
           merged,
           self.sketch_difference(
               that.sketches[k],
-              self.sketch_intersection(this.sketches[ONE_PLUS],
-                                       that.sketches[k])))
+              self.sketch_intersection(this_one_plus, that.sketches[k])))
 
       # Calculate A(i) & B(k-i)
       for i in range(1, k):
@@ -186,8 +192,9 @@ class PairwiseEstimator(EstimatorBase):
       merged_sketch.sketches[k] = merged
 
     # Calculate Merged(max_freq)
-    merged = this.sketches[max_freq]
-    rest = that.sketches[ONE_PLUS]
+    max_key = str(max_freq) + '+'
+    merged = this.sketches[max_key]
+    rest = that_one_plus
     for k in range(1, max_freq):
       merged = self.sketch_union(
           merged, self.sketch_intersection(this.sketches[max_freq - k], rest))
@@ -195,14 +202,17 @@ class PairwiseEstimator(EstimatorBase):
     merged = self.sketch_union(
         merged,
         self.sketch_difference(
-            that.sketches[max_freq],
-            self.sketch_intersection(that.sketches[max_freq],
-                                     this.sketches[ONE_PLUS])))
-    merged_sketch.sketches[max_freq] = merged
+            that.sketches[max_key],
+            self.sketch_intersection(that.sketches[max_key], this_one_plus)))
+    merged_sketch.sketches[max_key] = merged
 
     # Calculate Merged(1+)
-    merged_one_plus = self.sketch_union(this.sketches[ONE_PLUS],
-                                        that.sketches[ONE_PLUS])
+    merged_one_plus = None
+    for k in range(1, max_freq):
+      merged_one_plus = self.sketch_union(merged_one_plus,
+                                          merged_sketch.sketches[k])
+      merged_one_plus = self.sketch_union(merged_one_plus,
+                                    merged_sketch.sketches[max_key])
     merged_sketch.sketches[ONE_PLUS] = merged_one_plus
     return merged_sketch
 
