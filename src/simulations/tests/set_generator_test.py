@@ -48,11 +48,14 @@ class FakeRandomState:
 class SetGeneratorTest(parameterized.TestCase):
 
   @parameterized.parameters(
-      (set_generator.IndependentSetGenerator, {}),
+      (set_generator.IndependentSetGenerator,
+       {'universe_size': TEST_UNIVERSE_SIZE}),
       (set_generator.ExponentialBowSetGenerator,
-       {'user_activity_association': 'independent'}),
+       {'universe_size': TEST_UNIVERSE_SIZE,
+        'user_activity_association': 'independent'}),
       (set_generator.ExponentialBowSetGenerator,
-       {'user_activity_association': 'identical'}),
+       {'universe_size': TEST_UNIVERSE_SIZE,
+        'user_activity_association': 'identical'}),
       (set_generator.SequentiallyCorrelatedSetGenerator,
        {'order': 'original', 'correlated_sets': 'all', 'shared_prop': 0.2}),
       (set_generator.SequentiallyCorrelatedSetGenerator,
@@ -66,10 +69,15 @@ class SetGeneratorTest(parameterized.TestCase):
       (set_generator.SequentiallyCorrelatedSetGenerator,
        {'order': 'random', 'correlated_sets': 'one', 'shared_prop': 0.2}),
       (set_generator.HomogeneousMultiSetGenerator,
+<<<<<<< HEAD
        {'freq_rate_list': np.ones_like(TEST_SET_SIZE_LIST), 'freq_cap': 2}),
       (set_generator.HeterogeneousMultiSetGenerator,
        {'gamma_params_list': [(1,1) for i in range(TEST_NUM_SETS)],
         'freq_cap': 2})
+=======
+       {'universe_size': TEST_UNIVERSE_SIZE,
+        'freq_rate_list': np.ones_like(TEST_SET_SIZE_LIST), 'freq_cap': 2})
+>>>>>>> master
   )
   def test_set_generator_factory_with_num_and_size_corresponding_to_list(
       self, set_generator_class, kwargs):
@@ -86,11 +94,11 @@ class SetGeneratorTest(parameterized.TestCase):
         given by the global variables TEST_UNIVERSE_SIZE and TEST_SET_SIZE_LIST.
     """
     factory = set_generator_class.get_generator_factory_with_num_and_size(
-        universe_size=TEST_UNIVERSE_SIZE, num_sets=TEST_NUM_SETS,
+        num_sets=TEST_NUM_SETS,
         set_size=TEST_SET_SIZE, **kwargs)
     gen_from_factory = factory(np.random.RandomState(1))
     gen_from_class = set_generator_class(
-        universe_size=TEST_UNIVERSE_SIZE, set_sizes=TEST_SET_SIZE_LIST,
+        set_sizes=TEST_SET_SIZE_LIST,
         **kwargs, random_state=np.random.RandomState(1))
     set_list_gen_from_factory = []
     for ids in gen_from_factory:
@@ -142,11 +150,14 @@ class SetGeneratorTest(parameterized.TestCase):
     self.assertSameElements(set_list_gen_from_factory, set_list_gen_from_class)
 
   @parameterized.parameters(
-      (set_generator.IndependentSetGenerator, {}),
+      (set_generator.IndependentSetGenerator,
+       {'universe_size': TEST_UNIVERSE_SIZE}),
       (set_generator.ExponentialBowSetGenerator,
-       {'user_activity_association': 'independent'}),
+       {'universe_size': TEST_UNIVERSE_SIZE,
+        'user_activity_association': 'independent'}),
       (set_generator.ExponentialBowSetGenerator,
-       {'user_activity_association': 'identical'}),
+       {'universe_size': TEST_UNIVERSE_SIZE,
+        'user_activity_association': 'identical'}),
       (set_generator.SequentiallyCorrelatedSetGenerator,
        {'order': 'original', 'correlated_sets': 'all', 'shared_prop': 0.2}),
       (set_generator.SequentiallyCorrelatedSetGenerator,
@@ -160,11 +171,10 @@ class SetGeneratorTest(parameterized.TestCase):
   def test_set_generator_factory_with_set_size_list(self, set_generator_class,
                                                     kwargs):
     factory = set_generator_class.get_generator_factory_with_set_size_list(
-        universe_size=TEST_UNIVERSE_SIZE, set_size_list=TEST_SET_SIZE_LIST,
-        **kwargs)
+        set_size_list=TEST_SET_SIZE_LIST, **kwargs)
     gen_from_factory = factory(np.random.RandomState(1))
     gen_from_class = set_generator_class(
-        universe_size=TEST_UNIVERSE_SIZE, set_sizes=TEST_SET_SIZE_LIST,
+        set_sizes=TEST_SET_SIZE_LIST,
         **kwargs, random_state=np.random.RandomState(1))
     set_list_gen_from_factory = []
     for ids in gen_from_factory:
@@ -369,7 +379,7 @@ class SetGeneratorTest(parameterized.TestCase):
   def test_sequentially_correlated_all_previous_generator_original(self):
     rs = np.random.RandomState(1)
     sc_gen = set_generator.SequentiallyCorrelatedSetGenerator(
-        order='original', correlated_sets='all', universe_size=30,
+        order='original', correlated_sets='all',
         shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
     set_ids_list = [set_ids for set_ids in sc_gen]
     previous_set_ids = set(set_ids_list[0])
@@ -381,9 +391,9 @@ class SetGeneratorTest(parameterized.TestCase):
   def test_sequentially_correlated_all_previous_generator_different_sizes(self):
     rs = np.random.RandomState(1)
     sc_gen = set_generator.SequentiallyCorrelatedSetGenerator(
-        order='original', correlated_sets='all', universe_size=100,
+        order='original', correlated_sets='all',
         shared_prop=0.2, set_sizes=[10, 15, 20, 20], random_state=rs)
-    expected_overlap_size = iter([2, 3, 4])
+    expected_overlap_size = iter([3, 4, 4])
     set_ids_list = [set_ids for set_ids in sc_gen]
     previous_set_ids = set(set_ids_list[0])
     for set_ids in set_ids_list[1:]:
@@ -394,7 +404,7 @@ class SetGeneratorTest(parameterized.TestCase):
   def test_sequentially_correlated_all_previous_generator_reversed(self):
     rs = np.random.RandomState(1)
     sc_gen = set_generator.SequentiallyCorrelatedSetGenerator(
-        order='reversed', correlated_sets='all', universe_size=30,
+        order='reversed', correlated_sets='all',
         shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
     set_ids_list = [set_ids for set_ids in sc_gen][::-1]
     previous_set_ids = set(set_ids_list[0])
@@ -406,7 +416,7 @@ class SetGeneratorTest(parameterized.TestCase):
   def test_sequentially_correlated_one_previous_generator_original(self):
     rs = np.random.RandomState(1)
     sc_gen = set_generator.SequentiallyCorrelatedSetGenerator(
-        order='original', correlated_sets='one', universe_size=30,
+        order='original', correlated_sets='one',
         shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
     set_ids_list = [set_ids for set_ids in sc_gen]
     previous_set_ids = set(set_ids_list[0])
@@ -420,7 +430,7 @@ class SetGeneratorTest(parameterized.TestCase):
   def test_sequentially_correlated_one_previous_generator_reversed(self):
     rs = np.random.RandomState(1)
     sc_gen = set_generator.SequentiallyCorrelatedSetGenerator(
-        order='reversed', correlated_sets='one', universe_size=30,
+        order='reversed', correlated_sets='one',
         shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
     set_ids_list = [set_ids for set_ids in sc_gen][::-1]
     previous_set_ids = set(set_ids_list[0])
@@ -435,12 +445,33 @@ class SetGeneratorTest(parameterized.TestCase):
     rs = np.random.RandomState(1)
     with self.assertRaises(ValueError):
       _ = set_generator.SequentiallyCorrelatedSetGenerator(
-          order='not_implemented', correlated_sets='all', universe_size=30,
+          order='not_implemented', correlated_sets='all',
           shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
     with self.assertRaises(ValueError):
       _ = set_generator.SequentiallyCorrelatedSetGenerator(
-          order='random', correlated_sets='not_implemented', universe_size=30,
+          order='random', correlated_sets='not_implemented',
           shared_prop=0.2, set_sizes=[10] * 3, random_state=rs)
+
+  @parameterized.parameters(
+      (set_generator.CORRELATED_SETS_ALL,),
+      (set_generator.CORRELATED_SETS_ONE,))
+  def test_sequentially_correlated_generator_overlap_size_not_enough(
+      self, correlation_type):
+    rs = np.random.RandomState(1)
+    set_sizes = [1, 10]
+    sc_gen = set_generator.SequentiallyCorrelatedSetGenerator(
+        order=set_generator.ORDER_ORIGINAL, correlated_sets=correlation_type,
+        shared_prop=0.5,
+        set_sizes=set_sizes,
+        random_state=rs)
+    set_ids_list = [set_ids for set_ids in sc_gen]
+    self.assertLen(set_ids_list[0], set_sizes[0],
+                   f'{correlation_type}: First set size not correct.')
+    self.assertLen(set_ids_list[1], set_sizes[1],
+                   f'{correlation_type}: Second set size not correct.')
+    self.assertLen(np.intersect1d(set_ids_list[0], set_ids_list[1]),
+                   1,
+                   f'{correlation_type}: Overlap set size not correct.')
 
   @parameterized.parameters(
       (None, [[0, 0, 0, 0, 0, 0], [1, 1, 0, 0]]),

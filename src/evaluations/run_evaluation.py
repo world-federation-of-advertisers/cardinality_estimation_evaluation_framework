@@ -14,12 +14,13 @@
 r"""A commandline tool to run evaluations of cardinality estimators.
 
 To run this evaluation, in command line, type:
-python run_evaluation.py \
---evaluation_out_dir="evaluation_output" \
---analysis_out_dir="analysis_output" \
---evaluation_config="smoke_test" \
---sketch_estimator_configs="vector_of_counts-4096-ln3-sequential" \
---evaluation_run_name="simple_run"
+  wfa-run-evaluation \
+    --evaluation_out_dir="evaluation_output" \
+    --analysis_out_dir="analysis_output" \
+    --evaluation_config="smoke_test" \
+    --sketch_estimator_configs="vector_of_counts-4096-ln3-sequential" \
+    --evaluation_run_name="simple_run" \
+    --num_runs=1
 """
 
 from absl import app
@@ -84,6 +85,8 @@ flags.DEFINE_integer('boxplot_size_width_inch', 12,
                      'The widths of the boxplot in inches.')
 flags.DEFINE_integer('boxplot_size_height_inch', 6,
                      'The widths of the boxplot in inches.')
+flags.DEFINE_enum('analysis_type', 'cardinality', ['cardinality', 'frequency'],
+                  'Type of analysis that is to be performed.')
 
 required_flags = ('evaluation_config', 'sketch_estimator_configs',
                   'evaluation_run_name', 'num_runs', 'evaluation_out_dir')
@@ -117,9 +120,16 @@ def main(argv):
   proportion_of_runs = [float(x) for x in FLAGS.proportion_of_runs]
   estimable_criteria_list = zip(error_margin, proportion_of_runs)
 
+  if FLAGS.analysis_type == 'frequency':
+    estimator_analyzer_func = analyzer.FrequencyEstimatorEvaluationAnalyzer
+    report_generator_func = report_generator.FrequencyReportGenerator
+  else:
+    estimator_analyzer_func = analyzer.CardinalityEstimatorEvaluationAnalyzer
+    report_generator_func = report_generator.CardinalityReportGenerator
+
   if FLAGS.run_analysis:
     logging.info('====Analyzing the results.')
-    generate_summary = analyzer.CardinalityEstimatorEvaluationAnalyzer(
+    generate_summary = estimator_analyzer_func(
         out_dir=FLAGS.analysis_out_dir,
         evaluation_directory=FLAGS.evaluation_out_dir,
         evaluation_run_name=FLAGS.evaluation_run_name,
@@ -135,7 +145,7 @@ def main(argv):
   logging.info('====Evaluation and analysis done!')
 
   if FLAGS.generate_html_report:
-    generate_report = report_generator.ReportGenerator(
+    generate_report = report_generator_func(
         out_dir=FLAGS.report_out_dir,
         analysis_out_dir=FLAGS.analysis_out_dir,
         evaluation_run_name=FLAGS.evaluation_run_name,

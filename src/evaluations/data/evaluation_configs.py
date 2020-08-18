@@ -36,7 +36,7 @@ NUM_SETS_VALUE = 20
 SMALL_REACH_RATE_VALUE = 0.01
 LARGE_REACH_RATE_VALUE = 0.2
 SHARED_PROP_LIST_VALUE = (0.25, 0.5, 0.75)
-
+REMARKETING_RATE_VALUE = 0.2
 
 # Document the evaluation configurations.
 def _smoke_test(num_runs=NUM_RUNS_VALUE):
@@ -81,7 +81,7 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE):
                   .get_generator_factory_with_num_and_size(
                       order=set_generator.ORDER_ORIGINAL,
                       correlated_sets=set_generator.CORRELATED_SETS_ALL,
-                      universe_size=3 * 10**8, num_sets=20, set_size=10000,
+                      num_sets=20, set_size=10000,
                       shared_prop=0.5))),
           ScenarioConfig(
               name='sequentially_correlated_one',
@@ -90,36 +90,18 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE):
                   .get_generator_factory_with_num_and_size(
                       order=set_generator.ORDER_ORIGINAL,
                       correlated_sets=set_generator.CORRELATED_SETS_ONE,
-                      universe_size=3 * 10**8, num_sets=20, set_size=10000,
+                      num_sets=20, set_size=10000,
                       shared_prop=0.5))),
           )
       )
 
 
-def _generate_configs_scenario_3b(universe_size, num_sets, small_set_size,
-                                  large_set_size, user_activity_assciation):
-  """Generate configs of Scenario 3(b).
-
-  In this scenario,  publishers have heterogeneous users reach probability.
-  The reach probability of a user in a publisher is the same as that in other
-  publishers.
-
-  See section (b). [fully correlated user reach probabilities] for more details:
-  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#scenario-3-m-publishers-with-heterogeneous-users-reach-probability
-
-  Args:
-    universe_size: the size of the pools from which the IDs will be selected.
-    num_sets: the number of sets.
-    small_set_size: the reach of the small reach sets.
-    large_set_size: the reach of the large reach sets.
-    user_activity_assciation: user activity association used in the Exponential
-      Bow model. Should be one of the defined user activity association defined
-      by the set_generator.USER_ACTIVITY_ASSOCIATION_XXX.
-
-  Returns:
-    A list of ScenarioConfigs of scenario 3(b) with selected parameters.
-  """
-  name_to_choices_of_set_size_list = {
+def _get_default_name_to_choices_of_set_size_list(
+    small_set_size,
+    large_set_size,
+    num_sets
+):
+    return {
       'all_small': [small_set_size] * num_sets,
       'all_large': [large_set_size] * num_sets,
       '1st_small_then_large': (
@@ -130,8 +112,84 @@ def _generate_configs_scenario_3b(universe_size, num_sets, small_set_size,
       'small_then_last_large': (
           [small_set_size] * (num_sets - 1) + [large_set_size]),
       'gradually_smaller': [
-          large_set_size / np.sqrt(i + 1) for i in range(num_sets)]
-  }
+          int(large_set_size / np.sqrt(i + 1)) for i in range(num_sets)]
+    }
+
+
+def _generate_configs_scenario_1_2(universe_size, num_sets, small_set_size,
+                                  large_set_size, remarketing_rate=None):
+  """Generate configs of Scenario 1 & 2
+  In this scenario,  publishers have heterogeneous users reach probability.
+  The reach probability of a user in a publisher is the same as that in other
+  publishers.
+
+  If remarketing_rate is not provided, we take it as scenario 1 with universe_size
+  as total. Othersize, we take it as scenario 2 with remarketing size as
+  int(universe_size*remarketing_rate)
+
+  See scenario 1 / 2:
+  Independent m-publishers / n-publishers independently serve a remarketing list
+  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#scenario-1-independence-m-publishers-with-homogeneous-user-reach-probability
+  Returns:
+    A list of ScenarioConfigs of scenario 1 / 2 with selected parameters.
+  """
+  name_to_choices_of_set_size_list = _get_default_name_to_choices_of_set_size_list(
+      small_set_size, large_set_size, num_sets
+  )
+
+  scenario_config_list = []
+  if remarketing_rate is None:
+    key_words = ['independent']
+    size = universe_size
+  else:
+    size = int(universe_size * remarketing_rate)
+    key_words = ['remarketing', 'remarketing_size:' + str(size)]
+
+  for set_type, set_size_list in name_to_choices_of_set_size_list.items():
+    scenario_config_list.append(
+        ScenarioConfig(
+            name='-'.join(key_words + [
+                'universe_size:' + str(universe_size),
+                'small_set:' + str(small_set_size),
+                'large_set:' + str(large_set_size),
+                'set_type:' + set_type]),
+            set_generator_factory=(
+                set_generator.IndependentSetGenerator
+                .get_generator_factory_with_set_size_list(
+                    universe_size=size,
+                    set_size_list=set_size_list)))
+    )
+
+  return scenario_config_list
+
+
+def _generate_configs_scenario_3(universe_size, num_sets, small_set_size,
+                                  large_set_size, user_activity_assciation):
+  """Generate configs of Scenario 3(a/b).
+
+  In this scenario,  publishers have heterogeneous users reach probability.
+  The reach probability of a user in a publisher is the same as that in other
+  publishers.
+
+  See scenario 3. [m-publishers with heterogeneous users reach probability] for more details:
+  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#scenario-3-m-publishers-with-heterogeneous-users-reach-probability
+
+  Args:
+    universe_size: the size of the pools from which the IDs will be selected.
+    num_sets: the number of sets.
+    small_set_size: the reach of the small reach sets.
+    large_set_size: the reach of the large reach sets.
+    user_activity_assciation: user activity association used in the Exponential
+      Bow model. Should be one of the defined user activity association defined
+      by the set_generator.USER_ACTIVITY_ASSOCIATION_XXX.
+      For 3(a) user_activity_assciation=set_generator.USER_ACTIVITY_ASSOCIATION_INDEPENDENT
+      3(b) USER_ACTIVITY_ASSOCIATION_IDENTICAL
+  Returns:
+    A list of ScenarioConfigs of scenario 3(a/b) with selected parameters.
+  """
+  name_to_choices_of_set_size_list = _get_default_name_to_choices_of_set_size_list(
+      small_set_size, large_set_size, num_sets
+  )
 
   scenario_config_list = []
   for set_type, set_size_list in name_to_choices_of_set_size_list.items():
@@ -242,7 +300,7 @@ def _generate_configs_scenario_4b(universe_size, num_sets, small_set_size,
   return scenario_config_list
 
 
-def _generate_configs_scenario_5(universe_size, num_sets, small_set_size,
+def _generate_configs_scenario_5(num_sets, small_set_size,
                                  large_set_size, order, shared_prop_list):
   """Generate configs of Scenario 5.
 
@@ -252,7 +310,6 @@ def _generate_configs_scenario_5(universe_size, num_sets, small_set_size,
   https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#scenario-5-sequentially-correlated-campaigns
 
   Args:
-    universe_size: the size of the pools from which the IDs will be selected.
     num_sets: the number of sets.
     small_set_size: the reach of the small reach sets.
     large_set_size: the reach of the large reach sets.
@@ -263,9 +320,11 @@ def _generate_configs_scenario_5(universe_size, num_sets, small_set_size,
   Returns:
     A list of ScenarioConfigs of scenario 5 Sequentiall correlated sets.
   """
+
   name_to_choices_of_set_size_list = {
-      '1st_small_then_large': [small_set_size] + [large_set_size] * (
-          num_sets - 1),
+      **_get_default_name_to_choices_of_set_size_list(
+        small_set_size, large_set_size, num_sets
+      ),
       'large_then_last_small': [large_set_size] * (num_sets - 1) + [
           small_set_size],
       'all_large_except_middle_small': (
@@ -273,14 +332,9 @@ def _generate_configs_scenario_5(universe_size, num_sets, small_set_size,
           + [large_set_size] * (num_sets - 1 - int(num_sets / 2))),
       '1st_large_then_small': [large_set_size] + [small_set_size] * (
           num_sets - 1),
-      'small_then_last_large': [small_set_size] * (num_sets - 1) + [
-          large_set_size],
       'all_small_except_middle_large': (
           [small_set_size] * int(num_sets / 2) + [large_set_size]
           + [small_set_size] * (num_sets - 1 - int(num_sets / 2))),
-      '1st_half_small_2nd_half_large': (
-          [small_set_size] * int(num_sets / 2)
-          + [large_set_size] * (num_sets - int(num_sets / 2))),
       '1st_half_large_2nd_half_small': (
           [large_set_size] * int(num_sets / 2)
           + [small_set_size] * (num_sets - int(num_sets / 2))),
@@ -298,7 +352,6 @@ def _generate_configs_scenario_5(universe_size, num_sets, small_set_size,
             ScenarioConfig(
                 name='-'.join([
                     'sequentially_correlated',
-                    'universe_size:' + str(universe_size),
                     'order:' + str(order),
                     'correlated_sets:' + str(correlated_sets),
                     'shared_prop:' + str(shared_prop),
@@ -311,7 +364,6 @@ def _generate_configs_scenario_5(universe_size, num_sets, small_set_size,
                     get_generator_factory_with_set_size_list(
                         order=order,
                         correlated_sets=correlated_sets,
-                        universe_size=universe_size,
                         shared_prop=shared_prop,
                         set_size_list=set_size_list)))
         )
@@ -322,10 +374,10 @@ def _complete_test_with_selected_parameters(
     num_runs=NUM_RUNS_VALUE,
     universe_size=UNIVERSE_SIZE_VALUE,
     num_sets=NUM_SETS_VALUE,
-    user_activity_assciation=set_generator.USER_ACTIVITY_ASSOCIATION_IDENTICAL,
     order=set_generator.ORDER_RANDOM,
     small_set_size_rate=SMALL_REACH_RATE_VALUE,
     large_set_size_rate=LARGE_REACH_RATE_VALUE,
+    remarketing_rate=REMARKETING_RATE_VALUE,
     shared_prop_list=SHARED_PROP_LIST_VALUE):
   """Generate configurations with handy selected parameters for scenarios.
 
@@ -350,28 +402,35 @@ def _complete_test_with_selected_parameters(
   scenario_config_list = []
   small_set_size = int(small_set_size_rate * universe_size)
   large_set_size = int(large_set_size_rate * universe_size)
+  # Scenario 1. Independent publishers
+  scenario_config_list += _generate_configs_scenario_1_2(
+      universe_size, num_sets, small_set_size, large_set_size)
+  # Scenario 2. publishers independently serve a remarketing list
+  scenario_config_list += _generate_configs_scenario_1_2(
+      universe_size, num_sets, small_set_size, large_set_size, remarketing_rate)
+
+  # Scenario 3 (a). Exponential bow, independent user behavior.
+  scenario_config_list += _generate_configs_scenario_3(
+      universe_size, num_sets, small_set_size, large_set_size,
+      set_generator.USER_ACTIVITY_ASSOCIATION_INDEPENDENT)
 
   # Scenario 3 (b). Exponential bow, identical user behavior.
-  scenario_config_list.append(
-      _generate_configs_scenario_3b(
-          universe_size, num_sets, small_set_size, large_set_size,
-          user_activity_assciation))
+  scenario_config_list += _generate_configs_scenario_3(
+      universe_size, num_sets, small_set_size, large_set_size,
+      set_generator.USER_ACTIVITY_ASSOCIATION_IDENTICAL)
 
   # Scenario 4(a). Fully-overlapped.
-  scenario_config_list.append(
-      _generate_configs_scenario_4a(
-          universe_size, num_sets, small_set_size, large_set_size))
+  scenario_config_list += _generate_configs_scenario_4a(
+      universe_size, num_sets, small_set_size, large_set_size)
 
   # Scenario 4(b). Subset campaigns.
-  scenario_config_list.append(
-      _generate_configs_scenario_4b(
-          universe_size, num_sets, small_set_size, large_set_size, order))
+  scenario_config_list += _generate_configs_scenario_4b(
+      universe_size, num_sets, small_set_size, large_set_size, order)
 
   # Scenario 5. Sequentially correlated campaigns
-  scenario_config_list.append(
-      _generate_configs_scenario_5(
-          universe_size, num_sets, small_set_size, large_set_size, order,
-          shared_prop_list))
+  scenario_config_list += _generate_configs_scenario_5(
+      num_sets, small_set_size, large_set_size, order,
+      shared_prop_list)
 
   return EvaluationConfig(
       name='complete_test_with_selected_parameters',
@@ -413,6 +472,35 @@ LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(
         length=10**5),
     estimator=bloom_filters.FirstMomentEstimator(
         method=bloom_filters.FirstMomentEstimator.METHOD_LOG))
+
+GEO_BLOOM_FILTER_1E4_INFTY_FIRST_MOMENT_GEO = SketchEstimatorConfig(
+    name='geo_bloom_filter-1e4-infty-first_moment_geo',
+    sketch_factory=bloom_filters.GeometricBloomFilter.get_sketch_factory(10000, 0.0012),
+    estimator=bloom_filters.FirstMomentEstimator(
+        method=bloom_filters.FirstMomentEstimator.METHOD_GEO))
+
+GEO_BLOOM_FILTER_1E4_LN3_FIRST_MOMENT_GEO = SketchEstimatorConfig(
+    name='geo_bloom_filter-1e4-ln3-first_moment_geo',
+    sketch_factory=bloom_filters.GeometricBloomFilter.get_sketch_factory(10000, 0.0012),
+    estimator=bloom_filters.FirstMomentEstimator(
+        method=bloom_filters.FirstMomentEstimator.METHOD_GEO,
+        denoiser=bloom_filters.SurrealDenoiser(probability=0.25)),
+    sketch_noiser=bloom_filters.BlipNoiser(epsilon=np.log(3)))
+
+BLOOM_FILTER_3E6_INFTY_UNION_ESTIMATOR = SketchEstimatorConfig(
+    name='bloom_filter-3e6-infty-union_estimator',
+    sketch_factory=bloom_filters.BloomFilter.get_sketch_factory(
+        3*10**6, 8),
+    estimator=bloom_filters.UnionEstimator())
+
+BLOOM_FILTER_3E6_LN3_UNION_ESTIMATOR = SketchEstimatorConfig(
+    name='bloom_filter-3e6-ln3-union_estimator',
+    sketch_factory=bloom_filters.BloomFilter.get_sketch_factory(
+        3*10**6, 8),
+    estimator=bloom_filters.UnionEstimator(
+        denoiser=bloom_filters.SurrealDenoiser(probability=0.25)
+    ),
+    sketch_noiser=bloom_filters.BlipNoiser(epsilon=8*np.log(3)))
 
 EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG = SketchEstimatorConfig(
     name='exp_bloom_filter-1e5_10-ln3-first_moment_exp',
@@ -461,6 +549,10 @@ SKETCH_ESTIMATOR_CONFIGS_TUPLE = (
     LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG,
     EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG,
     EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG,
+    GEO_BLOOM_FILTER_1E4_INFTY_FIRST_MOMENT_GEO,
+    GEO_BLOOM_FILTER_1E4_LN3_FIRST_MOMENT_GEO,
+    BLOOM_FILTER_3E6_INFTY_UNION_ESTIMATOR,
+    BLOOM_FILTER_3E6_LN3_UNION_ESTIMATOR,
     LIQUID_LEGIONS_1E5_10_LN3_SEQUENTIAL,
     LIQUID_LEGIONS_1E5_10_INFTY_SEQUENTIAL,
     VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL,

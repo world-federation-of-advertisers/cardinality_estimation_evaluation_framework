@@ -58,13 +58,13 @@ class ReportGeneratorTest(absltest.TestCase):
                 set_generator_factory=(
                     set_generator.IndependentSetGenerator
                     .get_generator_factory_with_num_and_size(
-                        universe_size=10, num_sets=5, set_size=1))),
+                        universe_size=10, num_sets=5, set_size=2))),
             configs.ScenarioConfig(
                 name='ind2',
                 set_generator_factory=(
                     set_generator.IndependentSetGenerator
                     .get_generator_factory_with_num_and_size(
-                        universe_size=10, num_sets=5, set_size=1))),
+                        universe_size=10, num_sets=5, set_size=2))),
         ])
 
     self.evaluation_run_name = 'test_run'
@@ -86,6 +86,46 @@ class ReportGeneratorTest(absltest.TestCase):
       self.analyzer()
 
     self.run_evaluation_and_simulation = _run_evaluation_and_simulation
+
+    exact_set_lossless_freq3 = simulator.SketchEstimatorConfig(
+        name='exact_set-infty-infty-lossless',
+        sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
+        estimator=exact_set.LosslessEstimator(),
+        sketch_noiser=None,
+        estimate_noiser=None,
+        max_frequency=3)
+    exact_set_less_one_freq3 = simulator.SketchEstimatorConfig(
+        name='exact_set-infty-infty-less_one',
+        sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
+        estimator=exact_set.LessOneEstimator(),
+        sketch_noiser=exact_set.AddRandomElementsNoiser(
+            num_random_elements=0, random_state=np.random.RandomState()),
+        estimate_noiser=None,
+        max_frequency=3)
+    self.frequency_sketch_estimator_config_list = (exact_set_lossless_freq3,
+                                                   exact_set_less_one_freq3)
+
+    self.frequency_evaluation_run_name = 'freq_test_run'
+
+    def _run_frequency_evaluation_and_simulation(out_dir):
+      self.evaluator = evaluator.Evaluator(
+          evaluation_config=self.evaluation_config,
+          sketch_estimator_config_list=(
+            self.frequency_sketch_estimator_config_list),
+          run_name=self.frequency_evaluation_run_name,
+          out_dir=out_dir)
+      self.evaluator()
+
+      self.analyzer = analyzer.FrequencyEstimatorEvaluationAnalyzer(
+          out_dir=out_dir,
+          evaluation_directory=out_dir,
+          evaluation_run_name=self.frequency_evaluation_run_name,
+          evaluation_name=self.evaluation_config.name,
+          estimable_criteria_list=[(0.05, 0.95), (1.01, 0.9)])
+      self.analyzer()
+
+    self.run_frequency_evaluation_and_simulation = (
+      _run_frequency_evaluation_and_simulation)
 
   def test_parse_sketch_estimator_name(self):
     sketch_estimator_name = 'vector_of_counts-4096-ln3-sequential'
@@ -128,7 +168,8 @@ class ReportGeneratorTest(absltest.TestCase):
         evaluation_name=self.evaluation_config.name)
     num_estimable_sets_stats_df = (
         report_generator.ReportGenerator.widen_num_estimable_sets_df(
-            analysis_results[report_generator.KEY_NUM_ESTIMABLE_SETS_STATS_DF]))
+            analysis_results[report_generator.KEY_NUM_ESTIMABLE_SETS_STATS_DF],
+            'relative_error_1'))
 
     # Test values are in correct format.
     regex = re.compile(
@@ -169,14 +210,26 @@ class ReportGeneratorTest(absltest.TestCase):
       self.assertGreater(tab.shape[0], 0,
                          'The html table is empty table.')
 
-  def test_generate_and_save_html_report(self):
+  def test_generate_and_save_html_cardinality_report(self):
     analysis_out_dir = self.create_tempdir('analysis_dir')
     report_out_dir = self.create_tempdir('test_report_dir')
     self.run_evaluation_and_simulation(analysis_out_dir.full_path)
-    new_report = report_generator.ReportGenerator(
+    new_report = report_generator.CardinalityReportGenerator(
         out_dir=report_out_dir.full_path,
         analysis_out_dir=analysis_out_dir.full_path,
         evaluation_run_name=self.evaluation_run_name,
+        evaluation_name=self.evaluation_config.name)
+    report_url = new_report('new_report')
+    self.assertTrue(os.path.exists(report_url))
+
+  def test_generate_and_save_html_frequency_report(self):
+    analysis_out_dir = self.create_tempdir('analysis_dir')
+    report_out_dir = self.create_tempdir('test_report_dir')
+    self.run_frequency_evaluation_and_simulation(analysis_out_dir.full_path)
+    new_report = report_generator.FrequencyReportGenerator(
+        out_dir=report_out_dir.full_path,
+        analysis_out_dir=analysis_out_dir.full_path,
+        evaluation_run_name=self.frequency_evaluation_run_name,
         evaluation_name=self.evaluation_config.name)
     report_url = new_report('new_report')
     self.assertTrue(os.path.exists(report_url))
