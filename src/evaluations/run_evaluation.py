@@ -49,22 +49,14 @@ flags.DEFINE_string('report_out_dir', None,
                     'The output directory of analysis results.')
 
 # Configs.
-flags.DEFINE_enum(
-    'evaluation_config', None, evaluation_configs.EVALUATION_CONFIG_NAMES,
-    'The name of the evaluation configuration. '
-    'See evaluation_configs.EVALUATION_CONFIG_NAMES for the complete list '
-    'of supported configs.')
-flags.DEFINE_multi_enum(
-    'sketch_estimator_configs', None,
-    evaluation_configs.ESTIMATOR_CONFIG_NAMES,
-    'The name of the estimator configuration documented in '
-    'evaluation_configs.ESTIMATOR_CONFIG_NAMES. '
-    'Can evaluate multiple estimator_config.')
-flags.DEFINE_string(
-    'evaluation_run_name', None,
-    'The name of this evaluation run.')
-flags.DEFINE_integer(
-    'num_runs', None, 'The number of runs per scenario.', lower_bound=1)
+flags.DEFINE_string('evaluation_config', None,
+                    'The name of the evaluation configuration. ')
+flags.DEFINE_list('sketch_estimator_configs', None,
+                  'The name(s) of the estimator configuration(s)')
+flags.DEFINE_string('evaluation_run_name', None,
+                    'The name of this evaluation run.')
+flags.DEFINE_integer('num_runs', None,
+                     'The number of runs per scenario.', lower_bound=1)
 flags.DEFINE_integer(
     'num_workers', 0, 
     'The number of processes to use in parallel. If 1, runs serially.'
@@ -87,9 +79,12 @@ flags.DEFINE_integer('boxplot_size_height_inch', 6,
                      'The widths of the boxplot in inches.')
 flags.DEFINE_enum('analysis_type', 'cardinality', ['cardinality', 'frequency'],
                   'Type of analysis that is to be performed.')
+flags.DEFINE_integer('max_frequency', 10, 'Maximum frequency to be analyzed.')
+
 
 required_flags = ('evaluation_config', 'sketch_estimator_configs',
                   'evaluation_run_name', 'num_runs', 'evaluation_out_dir')
+
 
 def main(argv):
   if len(argv) > 1:
@@ -97,11 +92,11 @@ def main(argv):
 
   logging.set_verbosity(logging.INFO)
 
-  evaluation_config = evaluation_configs.NAME_TO_EVALUATION_CONFIGS[
-      FLAGS.evaluation_config](FLAGS.num_runs)
-  sketch_estimator_config_list = [
-      evaluation_configs.NAME_TO_ESTIMATOR_CONFIGS[conf]
-      for conf in FLAGS.sketch_estimator_configs]
+  evaluation_config = evaluation_configs.get_evaluation_config(
+    FLAGS.evaluation_config)(FLAGS.num_runs)
+
+  sketch_estimator_config_list = evaluation_configs.get_estimator_configs(
+    FLAGS.sketch_estimator_configs, FLAGS.max_frequency)
 
   if FLAGS.run_evaluation:
     logging.info('====Running %s using evaluation %s for:\n%s',
