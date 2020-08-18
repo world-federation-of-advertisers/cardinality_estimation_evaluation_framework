@@ -86,7 +86,7 @@ class StratifiedTest(parameterized.TestCase):
 
     expected = {1: {4: 1}, 2: {2: 1}, '3+': {1: 1, 3: 1}}
     self.assertLen(s.sketches.keys(), max_freq)
-    
+
     for freq, sketch in s.sketches.items():
       self.assertEqual(sketch.ids(), expected[freq])
 
@@ -109,7 +109,7 @@ class PairwiseEstimatorTest(absltest.TestCase):
   def setUp(self):
     super(PairwiseEstimatorTest, self).setUp()
     max_freq = 3
-    this_multi_set = generate_multi_set([(1, 2), (2, 3), (3, 1)])
+    this_multi_set = generate_multi_set([(1, 2), (2, 3), (3, 1), (10, 1)])
     that_multi_set = generate_multi_set([(1, 1), (3, 1), (4, 5), (5, 1)])
     self.this_sketch = stratified_sketch.StratifiedSketch.init_from_exact_multi_set(
         max_freq,
@@ -130,10 +130,12 @@ class PairwiseEstimatorTest(absltest.TestCase):
             2: 1,
             3: 1,
             4: 1,
-            5: 1
+            5: 1,
+            10: 1
         },
         1: {
-            5: 1
+            5: 1,
+            10: 1
         },
         2: {
             3: 1
@@ -163,7 +165,7 @@ class PairwiseEstimatorTest(absltest.TestCase):
         sketch_operator=stratified_sketch.ExactSetOperation,
         cardinality_estimator=LosslessEstimator())
     estimated = estimator(self.this_sketch, self.that_sketch)
-    expected = {1: 1, 2: 1, '3+': 3, ONE_PLUS: 5}
+    expected = {1: 2, 2: 1, '3+': 3, ONE_PLUS: 6}
     self.assertLen(estimated, len(expected))
     for freq, n in expected.items():
       self.assertEqual(estimated[freq], [n])

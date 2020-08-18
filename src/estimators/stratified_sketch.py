@@ -164,12 +164,17 @@ class PairwiseEstimator(EstimatorBase):
     assert isinstance(this, StratifiedSketch)
     this.assert_compatible(that)
     max_freq = this.max_freq
+    max_key = str(max_freq) + '+'
     merged_sketch = copy.deepcopy(this)
+
     this_one_plus = this.cardinality_sketch_factory(0)
     that_one_plus = that.cardinality_sketch_factory(0)
     for k in range(1, max_freq):
       this_one_plus = self.sketch_union(this_one_plus, this.sketches[k])
       that_one_plus = self.sketch_union(that_one_plus, that.sketches[k])
+
+    this_one_plus = self.sketch_union(this_one_plus, this.sketches[max_key])
+    that_one_plus = self.sketch_union(that_one_plus, that.sketches[max_key])
 
     for k in range(1, max_freq):
       # Calculate A(k) & B(0) = A(k) - (A(k) & B(1+))
@@ -192,13 +197,13 @@ class PairwiseEstimator(EstimatorBase):
       merged_sketch.sketches[k] = merged
 
     # Calculate Merged(max_freq)
-    max_key = str(max_freq) + '+'
     merged = this.sketches[max_key]
     rest = that_one_plus
     for k in range(1, max_freq):
       merged = self.sketch_union(
           merged, self.sketch_intersection(this.sketches[max_freq - k], rest))
       rest = self.sketch_difference(rest, that.sketches[k])
+
     merged = self.sketch_union(
         merged,
         self.sketch_difference(
