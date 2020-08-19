@@ -27,4 +27,11 @@ setup(
         'wfa_cardinality_estimation_evaluation_framework.evaluations',
         'wfa_cardinality_estimation_evaluation_framework.evaluations.data',
         'wfa_cardinality_estimation_evaluation_framework.simulations',
-    ])
+    ],
+    entry_points={
+        'console_scripts': [
+            'wfa-run-evaluation=wfa_cardinality_estimation_evaluation_framework'
+                                '.evaluations.__main__:main'
+        ]
+    }
+)

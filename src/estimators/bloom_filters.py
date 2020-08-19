@@ -167,7 +167,8 @@ class GeometricBloomFilter(AnyDistributionBloomFilter):
     super().__init__(
         any_sketch.SketchConfig([
             any_sketch.IndexSpecification(
-                any_sketch.GeometricDistribution(length, probability), "geometric")
+                any_sketch.GeometricDistribution(length, probability),
+                "geometric")
         ], num_hashes=1, value_functions=[any_sketch.BitwiseOrFunction()]),
         random_seed)
 
@@ -234,8 +235,12 @@ class ExponentialBloomFilter(AnyDistributionBloomFilter):
 class UnionEstimator(EstimatorBase):
   """A class that unions BloomFilters and estimates the combined cardinality."""
 
-  def __init__(self):
+  def __init__(self, denoiser=None):
     EstimatorBase.__init__(self)
+    if denoiser is None:
+      self._denoiser = copy.deepcopy
+    else:
+      self._denoiser = denoiser
 
   @classmethod
   def _check_compatibility(cls, sketch_list):
@@ -244,19 +249,19 @@ class UnionEstimator(EstimatorBase):
     for cur_sketch in sketch_list[1:]:
       first_sketch.assert_compatible(cur_sketch)
 
-  @classmethod
-  def union_sketches(cls, sketch_list):
+  def union_sketches(self, sketch_list):
     """Exposed for testing."""
     UnionEstimator._check_compatibility(sketch_list)
-    union = copy.deepcopy(sketch_list[0])
+    sketch_list = self._denoiser(sketch_list)
+    union = sketch_list[0]
     for cur_sketch in sketch_list[1:]:
-      union.sketch = union.sketch + cur_sketch.sketch
+      union.sketch = 1 - (1 - union.sketch) * (1 - cur_sketch.sketch)
     return union
 
   @classmethod
   def estimate_cardinality(cls, sketch):
     """Estimate the number of elements contained in the BloomFilter."""
-    x = np.sum(sketch.sketch != 0)
+    x = np.sum(sketch.sketch)
     k = float(sketch.num_hashes())
     m = float(sketch.max_size())
     if x >= m:
@@ -273,13 +278,12 @@ class UnionEstimator(EstimatorBase):
     if not sketch_list:
       return 0
     assert isinstance(sketch_list[0], BloomFilter), "expected a BloomFilter"
-    union = UnionEstimator.union_sketches(sketch_list)
+    union = self.union_sketches(sketch_list)
     return [UnionEstimator.estimate_cardinality(union)]
-
 
 class FirstMomentEstimator(EstimatorBase):
   """First moment cardinality estimator for AnyDistributionBloomFilter."""
-
+  # TODO: Refactor this class to break down the methods for each type
   METHOD_UNIFORM = "uniform"
   METHOD_GEO = "geo"
   METHOD_LOG = "log"
@@ -380,6 +384,21 @@ class FirstMomentEstimator(EstimatorBase):
 
     return invert_monotonic(first_moment, lower_bound)(0)
 
+  @classmethod
+  def _estimate_cardinality_geo(cls, sketch, weights):
+    """Estimate cardinality of a Bloom Filter with geometric distribution."""
+    register_probs = sketch.config.index_specs[0].distribution.register_probs
+    n = np.mean(sketch.sketch)
+
+    if(n >= 1):
+      return 0
+    def first_moment(u):
+      return np.sum(1 - np.power(1 - register_probs, u) - sketch.sketch)
+
+    lower_bound = (np.log(1 - n) / np.log(1 - np.mean(register_probs)))
+
+    return invert_monotonic(first_moment, lower_bound)(0)
+
   def __call__(self, sketch_list):
     """Merge all sketches and estimates the cardinality of their union."""
     if not sketch_list:
@@ -393,6 +412,9 @@ class FirstMomentEstimator(EstimatorBase):
       return [FirstMomentEstimator._estimate_cardinality_exp(union)]
     if self._method == FirstMomentEstimator.METHOD_UNIFORM:
       return [FirstMomentEstimator._estimate_cardinality_uniform(union)]
+    if self._method == FirstMomentEstimator.METHOD_GEO:
+      return [FirstMomentEstimator._estimate_cardinality_geo(
+        union, self._weights)]
     return [FirstMomentEstimator._estimate_cardinality_any(
         union, self._weights)]
 
@@ -435,6 +457,19 @@ class FixedProbabilityBitFlipNoiser(SketchNoiserBase):
     return new_filter
 
 
+def get_probability_of_flip(epsilon, num_hashes):
+  """Get the flipping probability from the privacy epsilon.
+
+  Args:
+    epsilon: the differential privacy parameter.
+    num_hashes: the number of hash functions used by the bloom filter.
+
+  Returns:
+    The flipping probability.
+  """
+  return 1 / (1 + math.exp(epsilon / num_hashes))
+
+
 class BlipNoiser(SketchNoiserBase):
   """This class applies "Blip" noise to a BloomFilter.
 
@@ -447,27 +482,25 @@ class BlipNoiser(SketchNoiserBase):
     """Creates a Blip Perturbator.
 
     Args:
-       epsilon: the privacy parameter
-       random_state: a numpy.random.RandomState used to draw random numbers
+      epsilon: the privacy parameter
+      random_state: a numpy.random.RandomState used to draw random numbers
     """
     SketchNoiserBase.__init__(self)
     self._epsilon = epsilon
     self.random_state = random_state
 
-  def get_probability_of_flip(self, num_hashes):
-    return 1 / (1 + math.exp(self._epsilon / num_hashes))
-
   def __call__(self, bloom_filter):
     """Returns a copy of a BloomFilter with possibly flipped bits.
 
     Args:
-      bloom_filter: The BloomFilter
+      bloom_filter: The BloomFilter.
 
     Returns:
-      Bit flipped BloomFilter
+      Bit flipped BloomFilter.
     """
     fixed_noiser = FixedProbabilityBitFlipNoiser(
-        probability=self.get_probability_of_flip(bloom_filter.num_hashes()),
+        probability=get_probability_of_flip(self._epsilon,
+                                            bloom_filter.num_hashes()),
         random_state=self.random_state)
     return fixed_noiser(bloom_filter)
 
@@ -489,15 +522,15 @@ class DenoiserBase(object):
 class SurrealDenoiser(DenoiserBase):
   """A closed form denoiser for a list of Any Distribution Bloom Filter."""
 
-  def __init__(self, probability=None, flip_one_probability=None,
-               flip_zero_probability=None):
-    if probability is not None:
-      self._probability = (probability, probability)
-    elif flip_one_probability is not None and flip_zero_probability is not None:
-      self._probability = (flip_zero_probability, flip_one_probability)
-    else:
-      raise ValueError("Should provide probability or both "
-                       "flip_one_probability and flip_zero_probability.")
+  def __init__(self, epsilon):
+    """Construct a denoiser.
+
+    Args:
+      epsilon: a non-negative differential privacy parameter.
+    """
+    if epsilon is not None:
+      # Currently only support one hash function.
+      self._probability = get_probability_of_flip(epsilon, 1)
 
   def  __call__(self, sketch_list):
     return self._denoise(sketch_list)
@@ -517,10 +550,13 @@ class SurrealDenoiser(DenoiserBase):
     Returns:
       A denoised Any Distribution Bloom Filter.
     """
+    assert sketch.num_hashes() == 1, (
+        "Currently only support one hash function. "
+        "Will extend to multiple hash functions later.")
     denoised_sketch = copy.deepcopy(sketch)
     expected_zeros = (
-        - denoised_sketch.sketch * self._probability[1]
-        + (1 - denoised_sketch.sketch) * (1 - self._probability[1]))
+        - denoised_sketch.sketch * self._probability
+        + (1 - denoised_sketch.sketch) * (1 - self._probability))
     denoised_sketch.sketch = 1 - expected_zeros / (
-        1 - self._probability[1] - self._probability[0])
+        1 - self._probability - self._probability)
     return denoised_sketch
