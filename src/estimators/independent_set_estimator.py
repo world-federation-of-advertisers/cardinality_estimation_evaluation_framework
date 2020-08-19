@@ -94,8 +94,8 @@ class IndependentSetEstimator(EstimatorBase):
 
       a_hist = c_hist
 
-      if sum(a_hist) > self.universe_size:
-          raise ValueError("Constraint violation: sketch is larger than universe")
+      assert sum(a_hist) <= self.universe_size, (
+        "Constraint violation: sketch is larger than universe")
 
     # At this point, a_hist is the histogram of exact frequencies,
     # e.g., a_hist[i] is the number of items having frequency exactly i+1.

@@ -61,7 +61,7 @@ class IndependentSetEstimatorTest(absltest.TestCase):
     sketch = ExactMultiSet()
     sketch.add_ids(range(11))
     estimator = IndependentSetEstimator(LosslessEstimator(), 10)
-    with self.assertRaises(ValueError):
+    with self.assertRaises(AssertionError):
         result = estimator([sketch])
     
 if __name__ == '__main__':
