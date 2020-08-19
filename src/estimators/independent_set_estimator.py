@@ -33,6 +33,10 @@ class IndependentSetEstimator(EstimatorBase):
 
     |A union B| = |A| + |B| - |A| * |B| / |U|.
 
+  Note that the estimators for A and B will in general return cumulative histograms,
+  which may contain values for frequencies greater than 1.  The
+  IndependentSetEstimator also returns a cumulative histogram, which estimates the
+  number of items in the intersection at various frequencies.
   """
 
   def __init__(self, single_sketch_estimator, universe_size):
@@ -40,19 +44,33 @@ class IndependentSetEstimator(EstimatorBase):
 
     Args:
       single_sketch_estimator:  An object derived from EstimatorBase for
-        providing cardinality estimates of individual sketches.
+        providing cardinality estimates of individual sketches.  The
+        single_sketch_estimator is assumed to return a cumulative histogram.
       universe_size: Size of the universe.
     """
     self.single_sketch_estimator = single_sketch_estimator
     self.universe_size = universe_size
 
   def __call__(self, sketch_list):
-    """Returns the frequency histogram of a union of sketches."""
+    """Computes the frequency histogram of a union of sketches.
+
+    Args:
+      sketch_list: A list of sketches.  For each sketch in the list, its
+        cumulative frequency histogram is determined using the 
+        single_sketch_estimator that was provided in the 
+        IndependentSetEstimator constructor.
+
+    Returns:
+      A cumulative histogram h.  The element h[i] represents the number
+      of items in the union having frequency i+1 or greater, under the
+      independence assumption.
+    """
     if not sketch_list:
       return [0]
     
     a_hist = [0]  # Exact frequencies of current estimate
     for sketch in sketch_list:
+      # ch is a cumulative histogram.
       ch = self.single_sketch_estimator([sketch])
       # b_hist is the exact frequency histogram for the new sketch.
       b_hist = [ch[i] - ch[i+1] for i in range(len(ch)-1)] + [ch[-1]]
@@ -63,9 +81,7 @@ class IndependentSetEstimator(EstimatorBase):
       # of A[i] and B[j] will have frequency i+j+2 in the union.
       # These items will need to be deducted from the frequency counts for
       # both i and j to avoid overcounting.
-      c_hist = a_hist.copy()
-      if len(c_hist) < len(b_hist):
-        c_hist += [0] * (len(b_hist) - len(c_hist))
+      c_hist = a_hist.copy() + [0] * (len(b_hist) + 1)
       for i in range(len(b_hist)):
         c_hist[i] += b_hist[i]
       for i in range(len(a_hist)):
@@ -74,8 +90,6 @@ class IndependentSetEstimator(EstimatorBase):
           if overlap:
             c_hist[i] -= overlap
             c_hist[j] -= overlap
-            if len(c_hist) < i+j+2:
-              c_hist += [0] * (i + j + 2 - len(c_hist))
             c_hist[i+j+1] += overlap
 
       a_hist = c_hist
@@ -88,6 +102,11 @@ class IndependentSetEstimator(EstimatorBase):
     # Now convert it into a histogram of cumulative frequencies.
 
     a_hist = [int(f) for f in a_hist]
+    
+    # Trim away trailing 0's
+    while len(a_hist) > 0 and a_hist[-1] == 0:
+      del a_hist[-1]
+      
     cumulative_hist = list(reversed(list(accumulate(reversed(a_hist)))))
 
     return cumulative_hist
