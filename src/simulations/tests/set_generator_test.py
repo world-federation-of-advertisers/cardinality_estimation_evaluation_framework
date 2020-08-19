@@ -73,7 +73,7 @@ class SetGeneratorTest(parameterized.TestCase):
         'freq_rate_list': np.ones_like(TEST_SET_SIZE_LIST), 'freq_cap': 2}),
       (set_generator.HeterogeneousMultiSetGenerator,
        {'universe_size': TEST_UNIVERSE_SIZE,
-        'gamma_params_list': [(1,1) for i in range(TEST_NUM_SETS)],
+        'gamma_params': [(1,1) for i in range(TEST_NUM_SETS)],
         'freq_cap': 2})
   )
   def test_set_generator_factory_with_num_and_size_corresponding_to_list(
@@ -164,7 +164,7 @@ class SetGeneratorTest(parameterized.TestCase):
         'freq_rate_list': np.ones_like(TEST_SET_SIZE_LIST), 'freq_cap': 2}),
       (set_generator.HeterogeneousMultiSetGenerator,
        {'universe_size': TEST_UNIVERSE_SIZE,
-        'gamma_params_list': [(1,1) for i in range(TEST_NUM_SETS)],
+        'gamma_params': [(1,1) for i in range(TEST_NUM_SETS)],
         'freq_cap': 2})
   )
   def test_set_generator_factory_with_set_size_list(self, set_generator_class,
