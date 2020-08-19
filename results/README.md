@@ -13,5 +13,5 @@ record here.
 [html](2020-07-16-00-00/cardinality_estimator_evaluation_report.html) | |
 2020-08-16-00-00 |
 [#34/938965b](https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/pull/34/commits/938965b543397de4bec5235fd7a0ce05d5735392)
-| smoke test | log-ADBF, exp-ADBF, VoC |
-[html](2020-07-16-00-00/cardinality_estimator_evaluation_report.html) |
+| complete evaluation scenario 3b-5 | log-ADBF, exp-ADBF, VoC |
+[html](2020-08-06-05-23/cardinality_estimator_evaluation_report.html) |
