@@ -70,6 +70,29 @@ class StratifiedTest(parameterized.TestCase):
     for freq, sketch in s.sketches.items():
       self.assertEqual(sketch.ids(), expected[freq])
 
+  def test_sketch_create_and_destroy(self):
+    max_freq = 3
+    s = stratified_sketch.StratifiedSketch(
+        max_freq=max_freq,
+        cardinality_sketch_factory=ExactMultiSet.get_sketch_factory(),
+        random_seed=1)
+
+    for k in range(max_freq + 2):
+      for i in range(k):
+        s.add(k)
+        
+    s.create_sketches()
+
+    expected = {1: {1: 1}, 2: {2: 1}, '3+': {3: 1, 4: 1}}
+
+    self.assertLen(s.sketches.keys(), max_freq)
+
+    for freq, sketch in s.sketches.items():
+      self.assertEqual(sketch.ids(), expected[freq])
+
+    s.destroy_sketches()
+    self.assertEqual(s.sketches, {})
+
   def test_sketch_building_from_set_generator(self):
     universe_size = 1000
     set_sizes = [100] * 5
@@ -96,6 +119,7 @@ class StratifiedTest(parameterized.TestCase):
     for i in range(2):
       s = stratified_sketch.StratifiedSketch(
           cardinality_sketch_factory=None,
+          underlying_set=None,
           max_freq=max_freq[i],
           random_seed=random_seed[i])
       stratified_sketch_list.append(s)
@@ -148,7 +172,7 @@ class PairwiseEstimatorTest(absltest.TestCase):
     }
 
     estimator = stratified_sketch.PairwiseEstimator(
-        sketch_operator=stratified_sketch.ExactSetOperation,
+        sketch_operator=stratified_sketch.ExactSetOperator,
         cardinality_estimator=LosslessEstimator())
 
     merged_sketches = estimator.merge_sketches(self.this_sketch,
@@ -162,13 +186,12 @@ class PairwiseEstimatorTest(absltest.TestCase):
 
   def test_end_to_end(self):
     estimator = stratified_sketch.PairwiseEstimator(
-        sketch_operator=stratified_sketch.ExactSetOperation,
+        sketch_operator=stratified_sketch.ExactSetOperator,
         cardinality_estimator=LosslessEstimator())
     estimated = estimator(self.this_sketch, self.that_sketch)
-    expected = {1: 2, 2: 1, '3+': 3, ONE_PLUS: 6}
-    self.assertLen(estimated, len(expected))
-    for freq, n in expected.items():
-      self.assertEqual(estimated[freq], [n])
+    expected = [6, 4, 3]
+    self.assertEqual(estimated, expected)
+
 
 
 class SequentialEstimatorTest(absltest.TestCase):
@@ -191,13 +214,13 @@ class SequentialEstimatorTest(absltest.TestCase):
     init_set_list = []
     init_set_list.append(generate_multi_set([(1, 2), (2, 3), (3, 1)]))
     init_set_list.append(generate_multi_set([(1, 1), (3, 1), (4, 5), (5, 1)]))
-    init_set_list.append(generate_multi_set([(5, 1), (6, 1)]))
+    init_set_list.append(generate_multi_set([(5, 1)]))
     self.sketches_list = self.generate_sketches_from_sets(
         init_set_list, max_freq)
 
   def test_merge_sketches(self):
     estimator = stratified_sketch.SequentialEstimator(
-        sketch_operator=stratified_sketch.ExactSetOperation,
+        sketch_operator=stratified_sketch.ExactSetOperator,
         cardinality_estimator=LosslessEstimator())
     merged_sketches = estimator.merge_sketches(self.sketches_list)
 
@@ -207,12 +230,9 @@ class SequentialEstimatorTest(absltest.TestCase):
             2: 1,
             3: 1,
             4: 1,
-            5: 1,
-            6: 1
+            5: 1
         },
-        1: {
-            6: 1
-        },
+        1: {},
         2: {
             3: 1,
             5: 1
@@ -228,19 +248,17 @@ class SequentialEstimatorTest(absltest.TestCase):
     for freq, sketch in expected.items():
       self.assertEqual(merged_sketches.sketches[freq].ids(), sketch)
 
-    def test_end_to_end(self):
+  def test_end_to_end(self):
       estimator = stratified_sketch.SequentialEstimator(
-          sketch_operator=stratified_sketch.ExactSetOperation,
+          sketch_operator=stratified_sketch.ExactSetOperator,
           cardinality_estimator=LosslessEstimator())
       estimated = estimator(self.sketches_list)
 
-      expected = {1: 0, 2: 1, 3: 3, ONE_PLUS: 6}
-      self.assertLen(estimated, len(expected))
-      for freq, n in expected.items():
-        self.assertEqual(estimated[freq], [n])
+      expected = [5, 5, 3]
+      self.assertEqual(estimated, expected)
 
 
-class ExactSetOperationTest(absltest.TestCase):
+class ExactSetOperatorTest(absltest.TestCase):
   """Test ExactSet set operations."""
 
   def setUp(self):
@@ -251,19 +269,19 @@ class ExactSetOperationTest(absltest.TestCase):
   def test_union(self):
     expected_union_set = generate_multi_set([(1, 1), (2, 1), (3, 1), (4, 1),
                                              (5, 1)])
-    union_set = stratified_sketch.ExactSetOperation.union(
+    union_set = stratified_sketch.ExactSetOperator.union(
         self.this_set, self.that_set)
     self.assertEqual(union_set.ids(), expected_union_set.ids())
 
   def test_intersection(self):
     expected_intersection_set = generate_multi_set([(1, 1), (2, 1)])
-    intersection_set = stratified_sketch.ExactSetOperation.intersection(
+    intersection_set = stratified_sketch.ExactSetOperator.intersection(
         self.this_set, self.that_set)
     self.assertEqual(intersection_set.ids(), expected_intersection_set.ids())
 
   def test_difference(self):
     expected_difference_set = generate_multi_set([(3, 1)])
-    difference_set = stratified_sketch.ExactSetOperation.difference(
+    difference_set = stratified_sketch.ExactSetOperator.difference(
         self.this_set, self.that_set)
     self.assertEqual(difference_set.ids(), expected_difference_set.ids())
 

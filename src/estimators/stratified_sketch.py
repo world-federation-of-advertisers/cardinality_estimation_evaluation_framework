@@ -14,6 +14,8 @@
 
 import copy
 import functools
+import numpy as np
+import warnings
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimatorBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
@@ -21,18 +23,29 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import
 ONE_PLUS = '1+'
 
 
-class StratifiedSketch(object):
+class StratifiedSketch(SketchBase):
   """A frequency sketch that contains cardinality sketches per frequency bucket."""
 
   @classmethod
-  def get_sketch_factory(cls):
+  def get_sketch_factory(cls,
+                         max_freq,
+                         cardinality_sketch_factory,
+                         underlying_set=None):
 
     def f(random_seed):
-      return cls(random_seed=random_seed)
+      return cls(
+          random_seed=random_seed,
+          max_freq=max_freq,
+          underlying_set=underlying_set,
+          cardinality_sketch_factory=cardinality_sketch_factory)
 
     return f
 
-  def __init__(self, max_freq, cardinality_sketch_factory, random_seed):
+  def __init__(self,
+               max_freq,
+               cardinality_sketch_factory,
+               random_seed,
+               underlying_set=None):
     """Construct a Stratified sketch.
 
     Args:
@@ -51,6 +64,35 @@ class StratifiedSketch(object):
     self.seed = random_seed
     self.max_freq = max_freq
     self.cardinality_sketch_factory = cardinality_sketch_factory
+    self.underlying_set = underlying_set if underlying_set is not None else ExactMultiSet(
+    )
+
+  def create_sketches(self):
+    reversedict = {}
+    for k, v in self.underlying_set.ids().items():
+      reversedict.setdefault(min(v, self.max_freq), []).append(k)
+
+    for freq in range(1, self.max_freq):
+      self.sketches[freq] = self.cardinality_sketch_factory(self.seed)
+      if (freq in reversedict):
+        self.sketches[freq].add_ids(reversedict[freq])
+
+    # Initialize max_freq
+    max_key = str(self.max_freq) + '+'
+    self.sketches[max_key] = self.cardinality_sketch_factory(self.seed)
+    if (self.max_freq in reversedict):
+      self.sketches[max_key].add_ids(reversedict[self.max_freq])
+
+  def destroy_sketches(self):
+    self.sketches = {}
+
+  def add(self, x):
+    if (self.sketches != {}):
+      self.destroy_sketches()
+      warnings.warn(
+          """Tried to add ids after sketch creation, sketches are destroyed.""",
+          RuntimeWarning)
+    self.underlying_set.add(x)
 
   @classmethod
   def init_from_exact_multi_set(cls, max_freq, exact_multi_set,
@@ -66,24 +108,11 @@ class StratifiedSketch(object):
             not None), ('cardinality_sketch is None')
     stratified_sketch = cls(
         max_freq=max_freq,
+        underlying_set=exact_multi_set,
         cardinality_sketch_factory=cardinality_sketch_factory,
         random_seed=random_seed)
+    stratified_sketch.create_sketches()
 
-    reversedict = {}
-    for k, v in exact_multi_set.ids().items():
-      reversedict.setdefault(min(v, max_freq), []).append(k)
-
-    for freq in range(1, max_freq):
-      stratified_sketch.sketches[freq] = cardinality_sketch_factory(random_seed)
-      if (freq in reversedict):
-        stratified_sketch.sketches[freq].add_ids(reversedict[freq])
-
-    # Initialize max_freq
-    max_key = str(max_freq) + '+'
-    stratified_sketch.sketches[max_key] = cardinality_sketch_factory(
-        random_seed)
-    if (max_freq in reversedict):
-      stratified_sketch.sketches[max_key].add_ids(reversedict[max_freq])
     return stratified_sketch
 
   @classmethod
@@ -217,7 +246,7 @@ class PairwiseEstimator(EstimatorBase):
       merged_one_plus = self.sketch_union(merged_one_plus,
                                           merged_sketch.sketches[k])
       merged_one_plus = self.sketch_union(merged_one_plus,
-                                    merged_sketch.sketches[max_key])
+                                          merged_sketch.sketches[max_key])
     merged_sketch.sketches[ONE_PLUS] = merged_one_plus
     return merged_sketch
 
@@ -231,9 +260,31 @@ class PairwiseEstimator(EstimatorBase):
       A dictionary: the key is the frequency and the value is the corresponding
       cardinality.
     """
-    result = {}
-    for freq, sketch in stratified_sketch.sketches.items():
-      result[freq] = self.cardinality_estimator([sketch])
+
+    # We estimate a histogram for each frequency bucket. Since an estimator
+    # returns a histogram, we assert that for each bucket it has a lenghth of 1
+    # This has to be the case because, the input to the underliying estimators
+    # are cardinality sketches and should not have any repeated ids, thus, no
+    # bucket other than frequency = 1.
+    # We then put them into a list and take the cumilative of it to match the
+    # api output.
+
+    result = []
+    for freq in range(1, stratified_sketch.max_freq):
+      freq_count_histogram = self.cardinality_estimator(
+          [stratified_sketch.sketches[freq]])
+      assert (len(freq_count_histogram) == 1), (
+          'cardinality sketch has more than 1 freq bucket.')
+      result.append(freq_count_histogram[0])
+
+    max_key = str(stratified_sketch.max_freq) + '+'
+    max_freq_count_histogram = self.cardinality_estimator(
+        [stratified_sketch.sketches[max_key]])
+    assert (len(freq_count_histogram) == 1), (
+        'cardinality sketch has more than 1 freq bucket for max_freq.')
+    result.append(max_freq_count_histogram[0])
+    result = list(np.cumsum(list(reversed(result))))
+    result = list(reversed(result))
     return result
 
 
@@ -245,6 +296,9 @@ class SequentialEstimator(EstimatorBase):
                                                 cardinality_estimator)
 
   def __call__(self, sketches_list):
+    for sketch in sketches_list:
+      if (sketch.sketches == {}):
+        sketch.create_sketches()
     merged = self.merge_sketches(sketches_list)
     return self.pairwise_estimator.estimate_cardinality(merged)
 
@@ -253,7 +307,7 @@ class SequentialEstimator(EstimatorBase):
                             sketches_list)
 
 
-class ExactSetOperation(object):
+class ExactSetOperator(object):
   """Set operations for ExactSet."""
 
   @classmethod
