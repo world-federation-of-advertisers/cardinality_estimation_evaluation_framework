@@ -86,7 +86,7 @@ class IndependentSetEstimator(EstimatorBase):
         c_hist[i] += b_hist[i]
       for i in range(len(a_hist)):
         for j in range(len(b_hist)):
-          overlap = a_hist[i] * b_hist[j] / self.universe_size
+          overlap = a_hist[i] * b_hist[j] / float(self.universe_size)
           if overlap:
             c_hist[i] -= overlap
             c_hist[j] -= overlap
@@ -97,16 +97,14 @@ class IndependentSetEstimator(EstimatorBase):
       assert sum(a_hist) <= self.universe_size, (
         "Constraint violation: sketch is larger than universe")
 
-    # At this point, a_hist is the histogram of exact frequencies,
-    # e.g., a_hist[i] is the number of items having frequency exactly i+1.
-    # Now convert it into a histogram of cumulative frequencies.
-
-    a_hist = [int(f) for f in a_hist]
-    
     # Trim away trailing 0's
     while len(a_hist) > 0 and a_hist[-1] == 0:
       del a_hist[-1]
       
+    # At this point, a_hist is the histogram of exact frequencies,
+    # e.g., a_hist[i] is the number of items having frequency exactly i+1.
+    # Now convert it into a histogram of cumulative frequencies.
+
     cumulative_hist = list(reversed(list(accumulate(reversed(a_hist)))))
 
     return cumulative_hist
