@@ -191,8 +191,8 @@ class Simulator(object):
         estimated_cardinality = [
             self.sketch_estimator_config.estimate_noiser(e)
             for e in estimated_cardinality]
-      for id_ in actual_ids[i]:
-        true_union.add(id_)
+
+      true_union.add_ids(actual_ids[i])
       true_cardinality = self._extend_histogram(
           LosslessEstimator()([true_union]), max_freq)
       shuffle_distance = self._shuffle_distance(
@@ -206,6 +206,5 @@ class Simulator(object):
         + [ESTIMATED_CARDINALITY_BASENAME + str(i+1) for i in range(max_freq)]
         + [TRUE_CARDINALITY_BASENAME + str(i+1) for i in range(max_freq)]
         + [SHUFFLE_DISTANCE])
-
     df = pd.DataFrame(metrics, columns=df_columns)
     return df

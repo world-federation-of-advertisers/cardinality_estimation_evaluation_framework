@@ -522,13 +522,17 @@ class DenoiserBase(object):
 class SurrealDenoiser(DenoiserBase):
   """A closed form denoiser for a list of Any Distribution Bloom Filter."""
 
-  def __init__(self, epsilon):
+  def __init__(self, epsilon=None, probability=None):
     """Construct a denoiser.
 
     Args:
       epsilon: a non-negative differential privacy parameter.
     """
-    if epsilon is not None:
+    assert epsilon is not None or probability is not None, (
+      "Either epsilon or probability must be given")
+    if probability is not None:
+      self._probability = probability
+    elif epsilon is not None:
       # Currently only support one hash function.
       self._probability = get_probability_of_flip(epsilon, 1)
 
