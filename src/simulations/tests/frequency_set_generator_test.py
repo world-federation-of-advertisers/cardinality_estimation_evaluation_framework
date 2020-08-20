@@ -177,10 +177,19 @@ class FrequencySetGeneratorTest(parameterized.TestCase):
       self.assertEqual(hists[2], [3,3,3])
 
   def test_publisher_constant_frequency_factory_with_num_and_size(self):
-      pass
+      f = PublisherConstantFrequencySetGenerator.get_generator_factory_with_num_and_size(
+          100, 3, 3, 3)
+      gen = f(np.random.RandomState(1))
+      sets = [s for s in gen]
+      self.assertLen(sets, 3)
 
   def test_publisher_constant_frequency_factory_with_set_size_list(self):
-      pass
-  
+      f = PublisherConstantFrequencySetGenerator.get_generator_factory_with_set_size_list(
+          100, [1, 2, 3], 3)
+      gen = f(np.random.RandomState(1))
+      sets = [s for s in gen]
+      self.assertLen(sets, 3)
+
+      
 if __name__ == '__main__':
   absltest.main()
