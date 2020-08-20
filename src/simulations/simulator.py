@@ -14,8 +14,6 @@
 
 """Simulator for evaluating deduplication methods."""
 
-
-import collections
 import numpy as np
 import pandas as pd
 from wfa_cardinality_estimation_evaluation_framework.common.analysis import relative_error
@@ -29,33 +27,6 @@ TRUE_CARDINALITY_BASENAME = 'true_cardinality_'
 RELATIVE_ERROR_BASENAME = 'relative_error_'
 NUM_SETS = 'num_sets'
 SHUFFLE_DISTANCE = 'shuffle_distance'
-
-_SketchEstimatorConfig = collections.namedtuple(
-    'EstimatorConfig', ['name', 'sketch_factory', 'estimator', 'sketch_noiser',
-                        'estimate_noiser', 'max_frequency'])
-
-
-# This class exists as a placeholder for a docstring.
-class SketchEstimatorConfig(_SketchEstimatorConfig):
-  """A subclass of namedtuple for providing a estimator config to the simulator.
-
-  The arguments to the named tuple are as follows:
-    name: A string that represents the name of the sketch and estimator.
-    sketch_factory: A callable that takes as a single argument a
-      numpy.random.RandomState and returns a class that conforms to
-      cardinality_estimator_base.Sketch.
-    estimator: A class that conforms to cardinality_estimator_base.Estimator.
-    sketch_noiser: A class that conforms to
-      cardinality_estimator_base.SketchNoiser.
-    estimate_noiser: A class that conforms to
-      cardinality_estimator_base.EstimateNoiser.
-    max_frequency: The maximum frequency for which estimates should be produced.
-  """
-
-  def __new__(cls, name, sketch_factory, estimator, sketch_noiser=None,
-              estimate_noiser=None, max_frequency=1):
-    return super(cls, SketchEstimatorConfig).__new__(
-        cls, name, sketch_factory, estimator, sketch_noiser, estimate_noiser, max_frequency)
 
 
 class Simulator(object):
@@ -107,7 +78,7 @@ class Simulator(object):
       agg_groups[ESTIMATED_CARDINALITY_BASENAME + str(i+1)] = ['mean', 'std']
       agg_groups[TRUE_CARDINALITY_BASENAME + str(i+1)] = ['mean', 'std']
       agg_groups[RELATIVE_ERROR_BASENAME + str(i+1)] = ['mean', 'std']
-      
+
     df_agg = df.groupby(NUM_SETS).agg(agg_groups)
     return df_agg
 
@@ -128,8 +99,8 @@ class Simulator(object):
 
     for i in range(self.sketch_estimator_config.max_frequency):
       df[RELATIVE_ERROR_BASENAME + str(i+1)] = relative_error(
-        df[ESTIMATED_CARDINALITY_BASENAME + str(i+1)],
-        df[TRUE_CARDINALITY_BASENAME + str(i+1)])
+          df[ESTIMATED_CARDINALITY_BASENAME + str(i+1)],
+          df[TRUE_CARDINALITY_BASENAME + str(i+1)])
     df_agg = self.aggregate(df)
 
     if self.file_handle_raw is not None:
@@ -145,13 +116,13 @@ class Simulator(object):
     if len(histogram) <= max_freq:
       return histogram + [0] * (max_freq - len(histogram))
     else:
-      return histogram[:max_freq] 
+      return histogram[:max_freq]
 
   def _shuffle_distance(self, histogram1, histogram2):
     """Computes shuffle distance between two histograms.
 
     Given two frequency distributions f_1 and f_2, the shuffle distance
-    between them is defined as 
+    between them is defined as
 
        1/2 * sum_{k=1}^f |f_1(k) - f_2(k)|
 
@@ -163,25 +134,27 @@ class Simulator(object):
     Returns:
       The shuffle distance between histogram1 and histogram2.
     """
-    assert len(histogram1), "Attempt to call _shuffle_distance with empty histogram1"
-    assert len(histogram2), "Attempt to call _shuffle_distance with empty histogram2"
+    assert histogram1, (
+        'Attempt to call _shuffle_distance with empty histogram1')
+    assert histogram2, (
+        'Attempt to call _shuffle_distance with empty histogram2')
     counts1 = [histogram1[i] - histogram1[i+1]
                for i in range(len(histogram1)-1)] + [histogram1[-1]]
     counts2 = [histogram2[i] - histogram2[i+1]
                for i in range(len(histogram2)-1)] + [histogram2[-1]]
     max_freq = max(len(counts1), len(counts2))
     freq1 = (
-      np.array(self._extend_histogram(counts1, max_freq)) / np.sum(counts1))
+        np.array(self._extend_histogram(counts1, max_freq)) / np.sum(counts1))
     freq2 = (
-      np.array(self._extend_histogram(counts2, max_freq)) / np.sum(counts2))
+        np.array(self._extend_histogram(counts2, max_freq)) / np.sum(counts2))
     return 0.5 * np.sum(np.abs(freq1 - freq2))
-    
+
   def run_one(self):
     """Run one iteration.
 
     Returns:
       A pd.DataFrame that has 2f+1 columns, where f is the maximum
-      frequency.  The column names are num_sets, estimated_cardinality_i 
+      frequency.  The column names are num_sets, estimated_cardinality_i
       and true_cardinality_i, for i = 1, ..., f.
     """
     set_generator = self.set_generator_factory(self.set_random_state)
@@ -210,21 +183,29 @@ class Simulator(object):
     metrics = []
     max_freq = self.sketch_estimator_config.max_frequency
     for i in range(len(sketches)):
-      estimated_cardinality = self._extend_histogram(estimator(sketches[:i + 1]), max_freq)
-      if hasattr(self.sketch_estimator_config,
-                 'estimate_noiser') and self.sketch_estimator_config.estimate_noiser:
-        estimated_cardinality = [self.sketch_estimator_config.estimate_noiser(e)
+      estimated_cardinality = self._extend_histogram(
+          estimator(sketches[:i + 1]), max_freq)
+      if hasattr(
+          self.sketch_estimator_config,
+          'estimate_noiser') and self.sketch_estimator_config.estimate_noiser:
+        estimated_cardinality = [
+            self.sketch_estimator_config.estimate_noiser(e)
             for e in estimated_cardinality]
-      for id in actual_ids[i]:
-        true_union.add(id)
-      true_cardinality = self._extend_histogram(LosslessEstimator()([true_union]), max_freq)
-      shuffle_distance = self._shuffle_distance(estimated_cardinality, true_cardinality)
-      metrics.append([i + 1] + estimated_cardinality + true_cardinality + [shuffle_distance])
+      for id_ in actual_ids[i]:
+        true_union.add(id_)
+      true_cardinality = self._extend_histogram(
+          LosslessEstimator()([true_union]), max_freq)
+      shuffle_distance = self._shuffle_distance(
+          estimated_cardinality, true_cardinality)
+      metrics.append(
+          [i + 1] + estimated_cardinality + true_cardinality
+          + [shuffle_distance])
 
-    df_columns = ([NUM_SETS] +
-                  [ESTIMATED_CARDINALITY_BASENAME + str(i+1) for i in range(max_freq)] +
-                  [TRUE_CARDINALITY_BASENAME + str(i+1) for i in range(max_freq)] +
-                  [SHUFFLE_DISTANCE])
-    
+    df_columns = (
+        [NUM_SETS]
+        + [ESTIMATED_CARDINALITY_BASENAME + str(i+1) for i in range(max_freq)]
+        + [TRUE_CARDINALITY_BASENAME + str(i+1) for i in range(max_freq)]
+        + [SHUFFLE_DISTANCE])
+
     df = pd.DataFrame(metrics, columns=df_columns)
     return df

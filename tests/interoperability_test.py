@@ -40,13 +40,10 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log im
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import LaplaceNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import SequentialEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import VectorOfCounts
-from wfa_cardinality_estimation_evaluation_framework.evaluations import analyzer
-from wfa_cardinality_estimation_evaluation_framework.evaluations import configs
-from wfa_cardinality_estimation_evaluation_framework.evaluations import evaluator
-from wfa_cardinality_estimation_evaluation_framework.evaluations import report_generator
+from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import SketchEstimatorConfig
+from wfa_cardinality_estimation_evaluation_framework.evaluations import run_evaluation
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
-from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
 
 
 class InteroperabilityTest(absltest.TestCase):
@@ -205,27 +202,6 @@ class InteroperabilityTest(absltest.TestCase):
     self.name_to_noised_estimator_config = {
         config.name: config for config in noised_config_list
     }
-
-    # For testing the compatibility of evaluator, analyzer and report_generator
-    # with the estimators, set generators and simulator.
-    self.evaluation_config = configs.EvaluationConfig(
-        name='evaluation_config',
-        num_runs=1,
-        scenario_config_list=[
-            configs.ScenarioConfig(
-                name='independent',
-                set_generator_factory=(
-                    set_generator.IndependentSetGenerator
-                    .get_generator_factory_with_num_and_size(
-                        universe_size=2, num_sets=1, set_size=1)))
-        ])
-
-    self.sketch_estimator_config_list = [
-        SketchEstimatorConfig(
-            name='exact_set-0-infty-lossless',
-            sketch_factory=ExactMultiSet.get_sketch_factory(),
-            estimator=LosslessEstimator())
-    ]
 
   def simulate_with_set_generator(self, set_generator_factory, config_dict):
     for _, estimator_method_config in config_dict.items():
@@ -417,35 +393,29 @@ class InteroperabilityTest(absltest.TestCase):
     the evaluation, analyzes results, and generates a report, which should not
     run into any error.
     """
-    # Run evaluation.
-    evaluator_out_dir = self.create_tempdir('evaluator').full_path
-    evaluation_run_name = 'interoperability_test_for_evaluator'
-    generate_results = evaluator.Evaluator(
-        evaluation_config=self.evaluation_config,
-        sketch_estimator_config_list=self.sketch_estimator_config_list,
-        run_name=evaluation_run_name,
-        out_dir=evaluator_out_dir,
-        workers=0)
-    generate_results()
-
-    # Run analysis.
-    analysis_out_dir = self.create_tempdir('analyzer').full_path
-    generate_summary = analyzer.CardinalityEstimatorEvaluationAnalyzer(
-        out_dir=analysis_out_dir,
-        evaluation_directory=evaluator_out_dir,
-        evaluation_run_name=evaluation_run_name,
-        evaluation_name=self.evaluation_config.name,
-        estimable_criteria_list=[(0.1, 0.9)])
-    generate_summary()
-
-    # Generator report.
-    report_out_dir = self.create_tempdir('report').full_path
-    generate_report = report_generator.CardinalityReportGenerator(
-        out_dir=report_out_dir,
-        analysis_out_dir=analysis_out_dir,
-        evaluation_run_name=evaluation_run_name,
-        evaluation_name=self.evaluation_config.name)
-    generate_report()
+    run_evaluation._run(
+        run_evaluation=True,
+        run_analysis=True,
+        generate_html_report=True,
+        evaluation_out_dir=self.create_tempdir('evaluator').full_path,
+        analysis_out_dir=self.create_tempdir('analyzer').full_path,
+        report_out_dir=self.create_tempdir('report').full_path,
+        evaluation_config='smoke_test',
+        sketch_estimator_configs=[
+            'log_bloom_filter-1e5-first_moment_log-1.0986-infty',
+            'vector_of_counts-4096-sequential-infty-1.0986',
+        ],
+        evaluation_run_name='interoperability_test_for_evaluator',
+        num_runs=1,
+        num_workers=0,
+        error_margin=[0.05],
+        proportion_of_runs=[0.95],
+        boxplot_xlabel_rotate=90,
+        boxplot_size_width_inch=6,
+        boxplot_size_height_inch=4,
+        analysis_type='cardinality',
+        max_frequency=10
+    )
 
 if __name__ == '__main__':
   absltest.main()

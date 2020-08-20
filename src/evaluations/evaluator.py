@@ -22,12 +22,13 @@ import time
 
 from absl import logging
 import numpy as np
-from pathos.multiprocessing import ProcessPool, cpu_count
+from pathos.multiprocessing import cpu_count
+from pathos.multiprocessing import ProcessPool
 from tqdm import tqdm
 
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import EvaluationConfig
+from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import SketchEstimatorConfig
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
-from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
 
 # Pickle filenames for saving the configurations.
 SCENARIO_SEED_FILE = 'set_generator_seed.p'
@@ -175,24 +176,20 @@ def aggregate_and_write_times(times, estimator_to_file, pbar=None):
     times: list of (time (s), sketch estimator name, scenario name)
     estimator_to_file: dictionary mapping estimator name to file
     pbar: tqdm progress bar object. Can be None.
-  
-  Returns:
-    None
-  
+
   Side Effects:
     Writes to files given by estimator_to_file if estimator_name is in times
   """
   # Aggregate time spent on each scenario by estimator
   performance_stats = dict()
 
-  # Sum up the time taken on each process, grouped by estimator. 
+  # Sum up the time taken on each process, grouped by estimator.
   # This should provide similar runtime numbers serially or
   # in parallel because it calculates CPU time, not wall time.
   for elapsed_time, sketch_estimator_name, scenario_name in times:
     time_file = os.path.join(
-      estimator_to_file[
-          sketch_estimator_name],
-      EVALUATION_RUN_TIME_FILE)
+        estimator_to_file[sketch_estimator_name],
+        EVALUATION_RUN_TIME_FILE)
 
     if time_file not in performance_stats.keys():
       performance_stats[time_file] = 0
@@ -229,8 +226,8 @@ class Evaluator(object):
       overwrite: a boolean variable. If set to True, will allow to overwrite the
         results even if the run exists. Otherwise, will raise error. By default,
         set to False.
-      workers: (integer) number of processes to spawn. If this is set to 1, 
-        the evaluations will run serially. If this is set to 0 or less, the 
+      workers: (integer) number of processes to spawn. If this is set to 1,
+        the evaluations will run serially. If this is set to 0 or less, the
         evaluations will run on as many processes as there are CPUs.
 
     Raises:
@@ -250,9 +247,9 @@ class Evaluator(object):
       self.workers = cpu_count()
     else:
       self.workers = workers
-      
+
     logging.info(f'Number of workers: {self.workers}')
-    
+
     self.evaluation_config = evaluation_config
     self.sketch_estimator_config_list = sketch_estimator_config_list
 
@@ -284,9 +281,9 @@ class Evaluator(object):
     """Evaluate all estimators under all scenarios."""
     # Get all combinations of (scenario, estimator)
     work_items = itertools.product(
-                  self.evaluation_config.scenario_config_list,
-                  self.sketch_estimator_config_list
-                 )
+        self.evaluation_config.scenario_config_list,
+        self.sketch_estimator_config_list
+    )
     total_length = len(self.evaluation_config.scenario_config_list) * \
                 len(self.sketch_estimator_config_list)
 
@@ -296,14 +293,15 @@ class Evaluator(object):
       # tuples for each process spawned.
       with ProcessPool(self.workers) as pool:
         times = pool.uimap(self._run_one_scenario_process, work_items)
-      
+
       # While the scenarios are running, save estimator configs
       for sketch_estimator_config in self.sketch_estimator_config_list:
         self.save_estimator(sketch_estimator_config)
 
-      aggregate_and_write_times(times,
-                                self.description_to_file_dir[KEY_ESTIMATOR_DIRS],
-                                pbar)
+      aggregate_and_write_times(
+          times,
+          self.description_to_file_dir[KEY_ESTIMATOR_DIRS],
+          pbar)
 
   def evaluate_estimator(self, sketch_estimator_config):
     """Evaluate one estimator under all the scenarios."""
@@ -351,8 +349,7 @@ class Evaluator(object):
       _ = sim()
 
   def _run_one_scenario_process(self, args):
-    """
-    Spawnable process to evaluate a sketch estimator on a certain scenario.
+    """Spawnable process to evaluate a sketch estimator on a certain scenario.
 
     Args:
       args: tuple of (scenario config, sketch estimator config)

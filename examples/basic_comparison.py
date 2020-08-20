@@ -30,9 +30,9 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log im
 from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log import HyperLogLogPlusPlus
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import SequentialEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import VectorOfCounts
+from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import SketchEstimatorConfig
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
-from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
 
 FLAGS = flags.FLAGS
 
@@ -50,7 +50,8 @@ flags.DEFINE_integer('exponential_bloom_filter_decay_rate', 10,
 flags.DEFINE_integer('num_bloom_filter_hashes', 3,
                      'The number of hashes for the bloom filter to use')
 flags.DEFINE_float('geometric_bloom_filter_probability', 0.0015,
-                     'probability of geometric distribution')
+                   'probability of geometric distribution')
+
 
 def main(argv):
   if len(argv) > 1:

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs."""
+import math
 from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -34,7 +35,7 @@ class EvaluationConfigTest(parameterized.TestCase):
       (2000, 0.2, 'remarketing-remarketing_size:400-universe_size:2000'),
   )
   def test_generate_configs_scenario_1_2_set_sizes_correct(
-    self, universe_size, remarketing_rate, type_header
+      self, universe_size, remarketing_rate, type_header
   ):
     conf_list = evaluation_configs._generate_configs_scenario_1_2(
         universe_size=universe_size,
@@ -49,21 +50,22 @@ class EvaluationConfigTest(parameterized.TestCase):
       result[conf.name] = [len(set_ids) for set_ids in gen]
 
     expected = {
-      f'{type_header}-small_set:50-large_set:100-'
-      'set_type:1st_half_small_2nd_half_large': [50, 100, 100],
-      f'{type_header}-small_set:50-large_set:100-'
-      'set_type:1st_small_then_large': [50, 100, 100],
-      f'{type_header}-small_set:50-large_set:100-'
-      'set_type:all_large': [100, 100, 100],
-      f'{type_header}-small_set:50-large_set:100-'
-      'set_type:all_small': [50, 50, 50],
-      f'{type_header}-small_set:50-large_set:100-'
-      'set_type:small_then_last_large': [50, 50, 100],
-      f'{type_header}-small_set:50-large_set:100-'
-      'set_type:gradually_smaller': [100, 70, 57],
+        f'{type_header}-small_set:50-large_set:100-'
+        'set_type:1st_half_small_2nd_half_large': [50, 100, 100],
+        f'{type_header}-small_set:50-large_set:100-'
+        'set_type:1st_small_then_large': [50, 100, 100],
+        f'{type_header}-small_set:50-large_set:100-'
+        'set_type:all_large': [100, 100, 100],
+        f'{type_header}-small_set:50-large_set:100-'
+        'set_type:all_small': [50, 50, 50],
+        f'{type_header}-small_set:50-large_set:100-'
+        'set_type:small_then_last_large': [50, 50, 100],
+        f'{type_header}-small_set:50-large_set:100-'
+        'set_type:gradually_smaller': [100, 70, 57],
     }
 
     self.assertEqual(result, expected)
+
   @parameterized.parameters(
       (set_generator.USER_ACTIVITY_ASSOCIATION_INDEPENDENT),
       (set_generator.USER_ACTIVITY_ASSOCIATION_IDENTICAL),
@@ -288,6 +290,50 @@ class EvaluationConfigTest(parameterized.TestCase):
     eval_configs = _complete_test_with_selected_parameters(num_runs=1)
     for scenario_config in eval_configs.scenario_config_list:
       self.assertIsInstance(scenario_config, configs.ScenarioConfig)
+
+  @parameterized.parameters(
+      (None, evaluation_configs.INFINITY_STR),
+      (math.log(3), '1.0986'),
+      ('1.09861', '1.0986'),
+      (0, '0.0000'),
+  )
+  def test_format_epsilon_correct(self, epsilon, expected):
+    self.assertEqual(evaluation_configs._format_epsilon(epsilon), expected)
+
+  def test_construct_sketch_estimator_config_name(self):
+    name = evaluation_configs.construct_sketch_estimator_config_name(
+        sketch_name='vector_of_counts',
+        sketch_config='4096',
+        estimator_name='sequential',
+        sketch_epsilon=None,
+        estimate_epsilon=1,
+    )
+    expected = (
+        'vector_of_counts-4096-sequential-'
+        f'{evaluation_configs.INFINITY_STR}-1.0000')
+    self.assertEqual(name, expected)
+
+  @parameterized.parameters(
+      ('vector-of_counts', '4096', 'sequential'),
+      ('vector_of_counts', '4096-0', 'sequential'),
+      ('vector_of_counts', '4096', 'pairwise-sequential')
+  )
+  def test_construct_sketch_estimator_config_raise_invalid_input(
+      self, sketch_name, sketch_config, estimator_name):
+    with self.assertRaises(AssertionError):
+      evaluation_configs.construct_sketch_estimator_config_name(
+          sketch_name, sketch_config, estimator_name)
+
+  @parameterized.parameters(
+      (['log_bloom_filter-1e5-first_moment_log-0.2747-infty'],),
+      (['vector_of_counts-4096-sequential-1.0986-infty'],),
+  )
+  def test_get_estimator_configs_return_configs(self, estimator_names):
+    sketch_estimator_configs = evaluation_configs.get_estimator_configs(
+        estimator_names, 1)
+    self.assertLen(sketch_estimator_configs, len(estimator_names))
+    for conf in sketch_estimator_configs:
+      self.assertIn(conf.name, estimator_names)
 
 
 if __name__ == '__main__':

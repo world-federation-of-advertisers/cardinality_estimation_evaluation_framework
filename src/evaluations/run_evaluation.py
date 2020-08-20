@@ -51,14 +51,15 @@ flags.DEFINE_string('report_out_dir', None,
 # Configs.
 flags.DEFINE_string('evaluation_config', None,
                     'The name of the evaluation configuration. ')
-flags.DEFINE_list('sketch_estimator_configs', None,
-                  'The name(s) of the estimator configuration(s)')
+flags.DEFINE_multi_string(
+    'sketch_estimator_configs', None,
+    'The name(s) of the estimator configuration(s)')
 flags.DEFINE_string('evaluation_run_name', None,
                     'The name of this evaluation run.')
 flags.DEFINE_integer('num_runs', None,
                      'The number of runs per scenario.', lower_bound=1)
 flags.DEFINE_integer(
-    'num_workers', 0, 
+    'num_workers', 0,
     'The number of processes to use in parallel. If 1, runs serially.'
     'If 0 or less, use as many processes as cores.')
 
@@ -86,67 +87,98 @@ required_flags = ('evaluation_config', 'sketch_estimator_configs',
                   'evaluation_run_name', 'num_runs', 'evaluation_out_dir')
 
 
-def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
-
-  logging.set_verbosity(logging.INFO)
-
+def _run(run_evaluation, run_analysis, generate_html_report, evaluation_out_dir,
+         analysis_out_dir, report_out_dir, evaluation_config,
+         sketch_estimator_configs, evaluation_run_name, num_runs,
+         num_workers, error_margin, proportion_of_runs,
+         boxplot_xlabel_rotate, boxplot_size_width_inch,
+         boxplot_size_height_inch, analysis_type,
+         max_frequency):
+  """Run evaluation."""
   evaluation_config = evaluation_configs.get_evaluation_config(
-    FLAGS.evaluation_config)(FLAGS.num_runs)
+      evaluation_config)(num_runs)
 
   sketch_estimator_config_list = evaluation_configs.get_estimator_configs(
-    FLAGS.sketch_estimator_configs, FLAGS.max_frequency)
+      sketch_estimator_configs, max_frequency)
 
-  if FLAGS.run_evaluation:
+  if run_evaluation:
     logging.info('====Running %s using evaluation %s for:\n%s',
-                 FLAGS.evaluation_config,
-                 FLAGS.evaluation_run_name,
-                 ', '.join(FLAGS.sketch_estimator_configs))
+                 evaluation_config,
+                 evaluation_run_name,
+                 ', '.join(sketch_estimator_configs))
     generate_results = evaluator.Evaluator(
         evaluation_config=evaluation_config,
         sketch_estimator_config_list=sketch_estimator_config_list,
-        run_name=FLAGS.evaluation_run_name,
-        out_dir=FLAGS.evaluation_out_dir,
-        workers=FLAGS.num_workers)
+        run_name=evaluation_run_name,
+        out_dir=evaluation_out_dir,
+        workers=num_workers)
     generate_results()
 
-  error_margin = [float(x) for x in FLAGS.error_margin]
-  proportion_of_runs = [float(x) for x in FLAGS.proportion_of_runs]
+  error_margin = [float(x) for x in error_margin]
+  proportion_of_runs = [float(x) for x in proportion_of_runs]
   estimable_criteria_list = zip(error_margin, proportion_of_runs)
 
-  if FLAGS.analysis_type == 'frequency':
+  if analysis_type == 'frequency':
     estimator_analyzer_func = analyzer.FrequencyEstimatorEvaluationAnalyzer
     report_generator_func = report_generator.FrequencyReportGenerator
   else:
     estimator_analyzer_func = analyzer.CardinalityEstimatorEvaluationAnalyzer
     report_generator_func = report_generator.CardinalityReportGenerator
 
-  if FLAGS.run_analysis:
+  if run_analysis:
     logging.info('====Analyzing the results.')
     generate_summary = estimator_analyzer_func(
-        out_dir=FLAGS.analysis_out_dir,
-        evaluation_directory=FLAGS.evaluation_out_dir,
-        evaluation_run_name=FLAGS.evaluation_run_name,
+        out_dir=analysis_out_dir,
+        evaluation_directory=evaluation_out_dir,
+        evaluation_run_name=evaluation_run_name,
         evaluation_name=evaluation_config.name,
         estimable_criteria_list=estimable_criteria_list,
         plot_params={
-            analyzer.XLABEL_ROTATE: FLAGS.boxplot_xlabel_rotate,
-            analyzer.BOXPLOT_SIZE_WIDTH_INCH: FLAGS.boxplot_size_width_inch,
-            analyzer.BOXPLOT_SIZE_HEIGHT_INCH: FLAGS.boxplot_size_height_inch,
+            analyzer.XLABEL_ROTATE: boxplot_xlabel_rotate,
+            analyzer.BOXPLOT_SIZE_WIDTH_INCH: boxplot_size_width_inch,
+            analyzer.BOXPLOT_SIZE_HEIGHT_INCH: boxplot_size_height_inch,
         })
     generate_summary()
 
   logging.info('====Evaluation and analysis done!')
 
-  if FLAGS.generate_html_report:
+  if generate_html_report:
     generate_report = report_generator_func(
-        out_dir=FLAGS.report_out_dir,
-        analysis_out_dir=FLAGS.analysis_out_dir,
-        evaluation_run_name=FLAGS.evaluation_run_name,
+        out_dir=report_out_dir,
+        analysis_out_dir=analysis_out_dir,
+        evaluation_run_name=evaluation_run_name,
         evaluation_name=evaluation_config.name)
     report_url = generate_report()
     logging.info('====Report generated: %s.', report_url)
+
+
+def main(argv):
+  if len(argv) > 1:
+    raise app.UsageError('Too many command-line arguments.')
+
+  logging.set_verbosity(logging.INFO)
+
+  _run(
+      run_evaluation=FLAGS.run_evaluation,
+      run_analysis=FLAGS.run_analysis,
+      generate_html_report=FLAGS.generate_html_report,
+      evaluation_out_dir=FLAGS.evaluation_out_dir,
+      analysis_out_dir=FLAGS.analysis_out_dir,
+      report_out_dir=FLAGS.report_out_dir,
+      evaluation_config=FLAGS.evaluation_config,
+      sketch_estimator_configs=FLAGS.sketch_estimator_configs,
+      evaluation_run_name=FLAGS.evaluation_run_name,
+      num_runs=FLAGS.num_runs,
+      num_workers=FLAGS.num_workers,
+      error_margin=FLAGS.error_margin,
+      proportion_of_runs=FLAGS.proportion_of_runs,
+      boxplot_xlabel_rotate=FLAGS.boxplot_xlabel_rotate,
+      boxplot_size_width_inch=FLAGS.boxplot_size_width_inch,
+      boxplot_size_height_inch=FLAGS.boxplot_size_height_inch,
+      analysis_type=FLAGS.analysis_type,
+      max_frequency=FLAGS.max_frequency,
+  )
+
 
 if __name__ == '__main__':
   flags.mark_flags_as_required(required_flags)
