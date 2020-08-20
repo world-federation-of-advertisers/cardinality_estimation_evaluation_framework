@@ -18,7 +18,7 @@ work with the simulation and set generation code in simulations/, and (2) the
 estimator, set generator and simulator works with the evaluator, analyzer and
 report generator.
 """
-
+import math
 from absl.testing import absltest
 import numpy as np
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BlipNoiser
@@ -159,8 +159,7 @@ class InteroperabilityTest(absltest.TestCase):
             self.sketch_size, self.geometic_bloom_filter_probability),
         estimator=FirstMomentEstimator(
             method='geo',
-            denoiser=SurrealDenoiser(
-                probability=self.noiser_flip_probability)),
+            denoiser=SurrealDenoiser(epsilon=math.log(3))),
         sketch_noiser=BlipNoiser(self.noiser_epsilon, self.noise_random_state))
 
     noised_estimator_config_logarithmic_bloom_filter = SketchEstimatorConfig(
@@ -169,8 +168,7 @@ class InteroperabilityTest(absltest.TestCase):
             self.sketch_size),
         estimator=FirstMomentEstimator(
             method='log',
-            denoiser=SurrealDenoiser(
-                probability=self.noiser_flip_probability)),
+            denoiser=SurrealDenoiser(epsilon=math.log(3))),
         sketch_noiser=BlipNoiser(self.noiser_epsilon, self.noise_random_state))
 
     noised_estimator_config_exponential_bloom_filter = SketchEstimatorConfig(
@@ -179,8 +177,7 @@ class InteroperabilityTest(absltest.TestCase):
             self.sketch_size, self.exponential_bloom_filter_decay_rate),
         estimator=FirstMomentEstimator(
             method='exp',
-            denoiser=SurrealDenoiser(
-                probability=self.noiser_flip_probability)),
+            denoiser=SurrealDenoiser(epsilon=math.log(3))),
         sketch_noiser=BlipNoiser(self.noiser_epsilon, self.noise_random_state))
 
     noised_estimator_config_voc = SketchEstimatorConfig(
@@ -443,7 +440,7 @@ class InteroperabilityTest(absltest.TestCase):
 
     # Generator report.
     report_out_dir = self.create_tempdir('report').full_path
-    generate_report = report_generator.ReportGenerator(
+    generate_report = report_generator.CardinalityReportGenerator(
         out_dir=report_out_dir,
         analysis_out_dir=analysis_out_dir,
         evaluation_run_name=evaluation_run_name,

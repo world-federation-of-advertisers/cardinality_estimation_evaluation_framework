@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Evaluation configurations."""
+import math
 import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.estimators import bloom_filters
+from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
 from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_legions
 from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import EvaluationConfig
@@ -438,17 +440,60 @@ def _complete_test_with_selected_parameters(
       scenario_config_list=scenario_config_list)
 
 
-EVALUATION_CONFIGS_TUPLE = (
-    _smoke_test,
-    _complete_test_with_selected_parameters,
-)
+def _frequency_end_to_end_test(num_runs=NUM_RUNS_VALUE):
+  """EvaluationConfig of end-to-end test of frequency evaluation code."""
+  num_sets=3
+  universe_size=10000
+  set_size=5000
+  freq_rate_list=[1,2,3]
+  freq_cap=5
+  return EvaluationConfig(
+      name='frequency_end_to_end_test',
+      num_runs=num_runs,
+      scenario_config_list=[
+        ScenarioConfig(
+            name='-'.join([
+                'subset',
+                'universe_size:' + str(universe_size),
+                'num_sets:' + str(num_sets)
+            ]),
+            set_generator_factory=(
+                set_generator.HomogeneousMultiSetGenerator
+                    .get_generator_factory_with_num_and_size(
+                        universe_size=universe_size,
+                        num_sets=num_sets,
+                        set_size=set_size,
+                        freq_rate_list=freq_rate_list,
+                        freq_cap=freq_cap)))]
+    )
 
+  
+def _generate_evaluation_configs():
+  return (
+      _smoke_test,
+      _complete_test_with_selected_parameters,
+      _frequency_end_to_end_test
+  )
 
-NAME_TO_EVALUATION_CONFIGS = {
-    conf().name: conf for conf in EVALUATION_CONFIGS_TUPLE
-}
+  
+def get_evaluation_config(config_name):
+  """Returns the evaluation config with the specified config_name."""
+  configs = _generate_evaluation_configs()
+  valid_config_names = [c().name for c in configs]
+  duplicate_configs = []
+  for i in range(len(valid_config_names)-1):
+    if valid_config_names[i] in valid_config_names[(i+1):]:
+      duplicate_configs.append(valid_config_names[i])
+  if duplicate_configs:
+    raise ValueError("Duplicate names found in evaluation configs: {}".
+                     format(','.join(duplicate_configs)))
 
-EVALUATION_CONFIG_NAMES = tuple(NAME_TO_EVALUATION_CONFIGS.keys())
+  config = [c for c in configs if c().name == config_name]
+  if not config:
+    raise ValueError("Invalid evaluation config: {}\n"
+                     "Valid choices are as follows: {}".format(
+                     config_name, ','.join(valid_config_names)))
+  return config[0]
 
 
 # Document the estimators.
@@ -463,8 +508,8 @@ LOG_BLOOM_FILTER_1E5_LN3_FIRST_MOMENT_LOG = SketchEstimatorConfig(
         length=10**5),
     estimator=bloom_filters.FirstMomentEstimator(
         method=bloom_filters.FirstMomentEstimator.METHOD_LOG,
-        denoiser=bloom_filters.SurrealDenoiser(probability=0.25)),
-    sketch_noiser=bloom_filters.BlipNoiser(epsilon=np.log(3)))
+        denoiser=bloom_filters.SurrealDenoiser(epsilon=math.log(3))),
+    sketch_noiser=bloom_filters.BlipNoiser(epsilon=math.log(3)))
 
 LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(
     name='log_bloom_filter-1e5-infty-first_moment_log',
@@ -508,8 +553,8 @@ EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG = SketchEstimatorConfig(
         length=10**5, decay_rate=10),
     estimator=bloom_filters.FirstMomentEstimator(
         method=bloom_filters.FirstMomentEstimator.METHOD_EXP,
-        denoiser=bloom_filters.SurrealDenoiser(probability=0.25)),
-    sketch_noiser=bloom_filters.BlipNoiser(epsilon=np.log(3)))
+        denoiser=bloom_filters.SurrealDenoiser(epsilon=math.log(3))),
+    sketch_noiser=bloom_filters.BlipNoiser(epsilon=math.log(3)))
 
 EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(
     name='exp_bloom_filter-1e5_10-infty-first_moment_exp',
@@ -536,7 +581,7 @@ VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL = SketchEstimatorConfig(
     sketch_factory=vector_of_counts.VectorOfCounts.get_sketch_factory(
         num_buckets=4096),
     estimator=vector_of_counts.SequentialEstimator(),
-    sketch_noiser=vector_of_counts.LaplaceNoiser(epsilon=np.log(3)))
+    sketch_noiser=vector_of_counts.LaplaceNoiser(epsilon=math.log(3)))
 
 VECTOR_OF_COUNTS_4096_INFTY_SEQUENTIAL = SketchEstimatorConfig(
     name='vector_of_counts-4096-infty-sequential',
@@ -544,21 +589,49 @@ VECTOR_OF_COUNTS_4096_INFTY_SEQUENTIAL = SketchEstimatorConfig(
         num_buckets=4096),
     estimator=vector_of_counts.SequentialEstimator())
 
-SKETCH_ESTIMATOR_CONFIGS_TUPLE = (
-    LOG_BLOOM_FILTER_1E5_LN3_FIRST_MOMENT_LOG,
-    LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG,
-    EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG,
-    EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG,
-    GEO_BLOOM_FILTER_1E4_INFTY_FIRST_MOMENT_GEO,
-    GEO_BLOOM_FILTER_1E4_LN3_FIRST_MOMENT_GEO,
-    BLOOM_FILTER_3E6_INFTY_UNION_ESTIMATOR,
-    BLOOM_FILTER_3E6_LN3_UNION_ESTIMATOR,
-    LIQUID_LEGIONS_1E5_10_LN3_SEQUENTIAL,
-    LIQUID_LEGIONS_1E5_10_INFTY_SEQUENTIAL,
-    VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL,
-    VECTOR_OF_COUNTS_4096_INFTY_SEQUENTIAL)
+def _generate_cardinality_estimator_configs():
+  return (
+      LOG_BLOOM_FILTER_1E5_LN3_FIRST_MOMENT_LOG,
+      LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG,
+      EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG,
+      EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG,
+      LIQUID_LEGIONS_1E5_10_LN3_SEQUENTIAL,
+      LIQUID_LEGIONS_1E5_10_INFTY_SEQUENTIAL,
+      VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL,
+      VECTOR_OF_COUNTS_4096_INFTY_SEQUENTIAL)
 
-NAME_TO_ESTIMATOR_CONFIGS = {
-    conf.name: conf for conf in SKETCH_ESTIMATOR_CONFIGS_TUPLE}
+def _generate_frequency_estimator_configs(max_frequency):
+  return (
+      SketchEstimatorConfig(
+          name='exact_multi_set-10000-NA-NA',
+          sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
+          estimator=exact_set.LosslessEstimator(),
+          max_frequency=max_frequency),
+      )
 
-ESTIMATOR_CONFIG_NAMES = tuple(NAME_TO_ESTIMATOR_CONFIGS.keys())
+def get_estimator_configs(estimator_names, max_frequency):
+  """Returns a list of estimator configs by name."""
+  if not len(estimator_names):
+    raise ValueError('No estimators were specified.')
+
+  all_configs = (_generate_cardinality_estimator_configs() +
+                 _generate_frequency_estimator_configs(max_frequency))
+
+  all_estimators = {
+      conf.name: conf for conf in
+      _generate_cardinality_estimator_configs() +
+      _generate_frequency_estimator_configs(max_frequency) }
+
+  estimator_list = [all_estimators[c] for c in estimator_names
+                    if c in all_estimators]
+
+  if len(estimator_list) == len(estimator_names):
+    return estimator_list
+
+  invalid_estimator_names = [c for c in estimator_names
+                             if not c in all_estimators]
+
+  raise ValueError('Invalid estimator(s): {}\nSupported estimators: {}'.
+                   format(','.join(invalid_estimator_names),
+                          ','.join(all_estimators.keys())))
+
