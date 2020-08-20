@@ -529,7 +529,7 @@ GEO_BLOOM_FILTER_1E4_LN3_FIRST_MOMENT_GEO = SketchEstimatorConfig(
     sketch_factory=bloom_filters.GeometricBloomFilter.get_sketch_factory(10000, 0.0012),
     estimator=bloom_filters.FirstMomentEstimator(
         method=bloom_filters.FirstMomentEstimator.METHOD_GEO,
-        denoiser=bloom_filters.SurrealDenoiser(probability=0.25)),
+        denoiser=bloom_filters.SurrealDenoiser(epsilon=np.log(3))),
     sketch_noiser=bloom_filters.BlipNoiser(epsilon=np.log(3)))
 
 BLOOM_FILTER_3E6_INFTY_UNION_ESTIMATOR = SketchEstimatorConfig(
@@ -543,7 +543,7 @@ BLOOM_FILTER_3E6_LN3_UNION_ESTIMATOR = SketchEstimatorConfig(
     sketch_factory=bloom_filters.BloomFilter.get_sketch_factory(
         3*10**6, 8),
     estimator=bloom_filters.UnionEstimator(
-        denoiser=bloom_filters.SurrealDenoiser(probability=0.25)
+        denoiser=bloom_filters.SurrealDenoiser(epsilon=np.log(3))
     ),
     sketch_noiser=bloom_filters.BlipNoiser(epsilon=8*np.log(3)))
 
