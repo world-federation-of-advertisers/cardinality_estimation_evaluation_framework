@@ -634,6 +634,7 @@ class HeterogeneousMultiSetGenerator(SetGeneratorBase):
   Frequency scenario 2: Heterogeneous user frequency of this doc:
 
   https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#frequency-scenario-2-heterogeneous-user-frequency
+
   Heterogeneous means that the reached ID's have different frequency
   distribution.
 
@@ -683,7 +684,7 @@ class HeterogeneousMultiSetGenerator(SetGeneratorBase):
       set_sizes: An iterable specifying the size of each set, aka, the number of
         reached IDs.
       gamma_params: An iterable of the same size as set_sizes, specifying the
-        shape and rate parameters of the gamma distributions.
+        shape and scale parameters of the gamma distributions.
       random_state: a numpy random state.
       freq_cap: An optional positive integer which represents the maximum number
         of times an ID can be seen in the returned set. If not set, will not
@@ -701,7 +702,7 @@ class HeterogeneousMultiSetGenerator(SetGeneratorBase):
     assert all([params[0] > 0 for params in self.gamma_params]), (
         'Gamma shape parameters must be positive.')
     assert all([params[1] > 0 for params in self.gamma_params]), (
-        'Gamma rate parameters must be positive.')
+        'Gamma scale parameters must be positive.')
     assert freq_cap is None or freq_cap > 0, (
         'freq_cap should be None or positive.')
 
