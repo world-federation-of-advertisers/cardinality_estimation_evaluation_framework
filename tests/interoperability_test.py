@@ -393,6 +393,8 @@ class InteroperabilityTest(absltest.TestCase):
     the evaluation, analyzes results, and generates a report, which should not
     run into any error.
     """
+    # TODO: the bloom filter with the union estimator doesn't work with the
+    # global noiser. Need to fix this.
     run_evaluation._run(
         run_evaluation=True,
         run_analysis=True,
@@ -402,8 +404,11 @@ class InteroperabilityTest(absltest.TestCase):
         report_out_dir=self.create_tempdir('report').full_path,
         evaluation_config='smoke_test',
         sketch_estimator_configs=[
-            'log_bloom_filter-1e5-first_moment_log-1.0986-infty',
-            'vector_of_counts-4096-sequential-infty-1.0986',
+            'log_bloom_filter-100000-first_moment_log-infty-0.2747',
+            'exp_bloom_filter-250000_10-first_moment_exp-0.1099-0.2747',
+            'vector_of_counts-4096-sequential-1.0986-infty',
+            'exact_set-None-independent_estimator_universe100000-infty-0.2747',
+            # 'bloom_filter-5000000_hash8-union_estimator-infty-0.2747',
         ],
         evaluation_run_name='interoperability_test_for_evaluator',
         num_runs=1,

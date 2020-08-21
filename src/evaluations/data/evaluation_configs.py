@@ -20,6 +20,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators import estimator
 from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
 from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_legions
 from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts
+from wfa_cardinality_estimation_evaluation_framework.estimators.independent_set_estimator import IndependentSetEstimator
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import EvaluationConfig
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import ScenarioConfig
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import SketchEstimatorConfig
@@ -44,15 +45,19 @@ REMARKETING_RATE_VALUE = 0.2
 
 INFINITY_STR = 'infty'
 
-# Each tuple represents the sketch epsilon and the estimate epsilon values.
-# If set to None, then will not noise the sketch or estimate.
-EPSILON_VALUES = (
-    (math.log(3), None),
-    (math.log(3) / 4, None),
-    (math.log(3) / 10, None),
-    (None, math.log(3)),
-    (None, None),
-)
+# The None in the epsilon value is used to tell the sketch estimator constructor
+# that we do not want to noise the sketch.
+SKETCH_EPSILON_VALUES = (math.log(3), math.log(3) / 4, math.log(3) / 10, None)
+# The current simulator module add noise to the estimated cardinality so as to
+# mimic the global differential privacy use case. In the real world, the
+# implementation could be different and more complicated.
+# As such, we use a small epsilon so as to be conservative on the result.
+ESTIMATE_EPSILON_VALUES = (math.log(3) / 4, None)
+
+# The length of the Any Distribution Bloom Filters.
+ADBF_LENGTH_LIST = [2.5e5, 1e5]
+# The length of the bloom filters.
+BLOOM_FILTERS_LENGTH_LIST = [3e6, 5e6]
 
 
 # Document the evaluation configurations.
@@ -585,16 +590,31 @@ def _independent_set_estimator(estimate_epsilon=None):
   Returns:
     A SketchEstimatorConfig for the independent estimator.
   """
-  pass
+  if estimate_epsilon:
+    estimate_noiser = estimator_noisers.LaplaceEstimateNoiser(
+        epsilon=estimate_epsilon)
+  else:
+    estimate_noiser = None
+
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='exact_set',
+          sketch_config='None',
+          estimator_name=f'independent_estimator_universe{UNIVERSE_SIZE_VALUE}',
+          estimate_epsilon=estimate_epsilon),
+      sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
+      estimator=IndependentSetEstimator(
+          exact_set.LosslessEstimator(), UNIVERSE_SIZE_VALUE),
+      estimate_noiser=estimate_noiser
+  )
 
 
-def _log_bloom_filter_1e5_first_moment_log(sketch_epsilon=None,
-                                           estimate_epsilon=None):
+def _log_bloom_filter_first_moment_log(length, sketch_epsilon=None,
+                                       estimate_epsilon=None):
   """Generate a SketchEstimatorConfig for Log Bloom Filters.
 
-  The length of the log Bloom Filters sketch will be set to 10**5.
-
   Args:
+    length: the length of the log bloom filters.
     sketch_epsilon: a differential private parameter for the sketch.
     estimate_epsilon: a differential private parameter for the estimated
       cardinality.
@@ -614,15 +634,17 @@ def _log_bloom_filter_1e5_first_moment_log(sketch_epsilon=None,
   else:
     estimate_noiser = None
 
+  length = int(length)
+
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='log_bloom_filter',
-          sketch_config='1e5',
+          sketch_config=str(length),
           estimator_name='first_moment_log',
           sketch_epsilon=sketch_epsilon,
           estimate_epsilon=estimate_epsilon),
       sketch_factory=bloom_filters.LogarithmicBloomFilter.get_sketch_factory(
-          length=10**5),
+          length=length),
       estimator=bloom_filters.FirstMomentEstimator(
           method=bloom_filters.FirstMomentEstimator.METHOD_LOG,
           denoiser=sketch_denoiser),
@@ -631,11 +653,11 @@ def _log_bloom_filter_1e5_first_moment_log(sketch_epsilon=None,
   )
 
 
-def _geo_bloom_filter_1e4_first_moment_geo(sketch_epsilon=None,
-                                           estimate_epsilon=None):
+def _geo_bloom_filter_first_moment_geo(sketch_epsilon=None,
+                                       estimate_epsilon=None):
   """Generate a SketchEstimatorConfig for Geometric Bloom Filters.
 
-  The length of the Geometric Bloom Filters sketch will be set to 10**5 and the
+  The length of the Geometric Bloom Filters sketch will be set to 10**4 and the
   geometric distribution probability will be set to 0.0012.
 
   Args:
@@ -676,14 +698,14 @@ def _geo_bloom_filter_1e4_first_moment_geo(sketch_epsilon=None,
   )
 
 
-def _bloom_filter_3e6_union_estimator(sketch_epsilon=None,
-                                      estimate_epsilon=None):
+def _bloom_filter_union_estimator(length, sketch_epsilon=None,
+                                  estimate_epsilon=None):
   """Generate a SketchEstimatorConfig for Bloom Filters.
 
-  The length of the Bloom Filters sketch will be set to 3 * 10**6, and use
-  8 hash functions.
+  The bloom filter uses 8 hash functions.
 
   Args:
+    length: the length of the bloom filter.
     sketch_epsilon: a differential private parameter for the sketch.
     estimate_epsilon: a differential private parameter for the estimated
       cardinality.
@@ -703,29 +725,30 @@ def _bloom_filter_3e6_union_estimator(sketch_epsilon=None,
   else:
     estimate_noiser = None
 
+  length = int(length)
+
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='bloom_filter',
-          sketch_config='3e6_hash8',
+          sketch_config=str(length) + '_hash8',
           estimator_name='union_estimator',
           sketch_epsilon=sketch_epsilon,
           estimate_epsilon=estimate_epsilon),
-      sketch_factory=bloom_filters.BloomFilter.get_sketch_factory(
-          3*10**6, 8),
+      sketch_factory=bloom_filters.BloomFilter.get_sketch_factory(length, 8),
       estimator=bloom_filters.UnionEstimator(),
       sketch_noiser=sketch_noiser,
       estimate_noiser=estimate_noiser
   )
 
 
-def _exp_bloom_filter_1e4_first_moment_exp(sketch_epsilon=None,
-                                           estimate_epsilon=None):
+def _exp_bloom_filter_first_moment_exp(length, sketch_epsilon=None,
+                                       estimate_epsilon=None):
   """Generate a SketchEstimatorConfig for Exponential Bloom Filters.
 
-  The length of the Exponential Bloom Filters sketch will be set to 10**5 and
-  the decay rate will be set to 10.
+  The decay rate is 10.
 
   Args:
+    length: the length of the exponential bloom filters.
     sketch_epsilon: a differential private parameter for the sketch.
     estimate_epsilon: a differential private parameter for the estimated
       cardinality.
@@ -746,15 +769,17 @@ def _exp_bloom_filter_1e4_first_moment_exp(sketch_epsilon=None,
   else:
     estimate_noiser = None
 
+  length = int(length)
+
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='exp_bloom_filter',
-          sketch_config='1e5_10',
+          sketch_config=str(length) + '_10',
           estimator_name='first_moment_exp',
           sketch_epsilon=sketch_epsilon,
           estimate_epsilon=estimate_epsilon),
       sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
-          length=10**5, decay_rate=10),
+          length=length, decay_rate=10),
       estimator=bloom_filters.FirstMomentEstimator(
           method=bloom_filters.FirstMomentEstimator.METHOD_EXP,
           denoiser=sketch_denoiser),
@@ -823,18 +848,44 @@ def _generate_cardinality_estimator_configs():
   Returns:
     A tuple of cardinality estimator configs.
   """
+  configs = []
+
+  # Construct configs for ADBFs with different lengths, sketch epsilon
+  # and estimate epsilon.
+  adbf_config_constructors = [
+      _log_bloom_filter_first_moment_log,
+      _exp_bloom_filter_first_moment_exp,
+  ]
+  for config_constructor in adbf_config_constructors:
+    for length in ADBF_LENGTH_LIST:
+      for sketch_epsilon in SKETCH_EPSILON_VALUES:
+        for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
+          configs.append(config_constructor(length, sketch_epsilon,
+                                            estimate_epsilon))
+
+  # Construct configs for bloom filters with different lengths, sketch epsilon
+  # and estimate epsilon.
+  for length in BLOOM_FILTERS_LENGTH_LIST:
+    for sketch_epsilon in SKETCH_EPSILON_VALUES:
+      for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
+        configs.append(_bloom_filter_union_estimator(length, sketch_epsilon,
+                                                     estimate_epsilon))
+
+  # Construct configs for sketch/estimators with fixed length, and variable
+  # sketch_epsilon and estimate epsilon.
   config_constructors = [
-      _log_bloom_filter_1e5_first_moment_log,
-      _geo_bloom_filter_1e4_first_moment_geo,
-      _bloom_filter_3e6_union_estimator,
-      _exp_bloom_filter_1e4_first_moment_exp,
+      _geo_bloom_filter_first_moment_geo,
       _vector_of_counts_4096_sequential
   ]
-
-  configs = []
   for config_constructor in config_constructors:
-    for sketch_epsilon, estimate_epsilon in EPSILON_VALUES:
-      configs.append(config_constructor(sketch_epsilon, estimate_epsilon))
+    for sketch_epsilon in SKETCH_EPSILON_VALUES:
+      for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
+        configs.append(config_constructor(sketch_epsilon, estimate_epsilon))
+
+  # Configs of which only global noise is considered.
+  for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
+    configs.append(_independent_set_estimator(estimate_epsilon))
+
   return tuple(configs)
 
 

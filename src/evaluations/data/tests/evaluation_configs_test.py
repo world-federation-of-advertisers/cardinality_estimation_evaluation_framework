@@ -325,8 +325,11 @@ class EvaluationConfigTest(parameterized.TestCase):
           sketch_name, sketch_config, estimator_name)
 
   @parameterized.parameters(
-      (['log_bloom_filter-1e5-first_moment_log-0.2747-infty'],),
+      (['log_bloom_filter-100000-first_moment_log-infty-0.2747'],),
+      (['exp_bloom_filter-250000_10-first_moment_exp-0.1099-0.2747'],),
       (['vector_of_counts-4096-sequential-1.0986-infty'],),
+      (['exact_set-None-independent_estimator_universe100000-infty-0.2747'],),
+      (['bloom_filter-5000000_hash8-union_estimator-infty-0.2747'],),
   )
   def test_get_estimator_configs_return_configs(self, estimator_names):
     sketch_estimator_configs = evaluation_configs.get_estimator_configs(
