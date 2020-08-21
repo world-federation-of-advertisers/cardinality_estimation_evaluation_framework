@@ -486,4 +486,3 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
       yield set_ids_list[i]
     return self
 
-
