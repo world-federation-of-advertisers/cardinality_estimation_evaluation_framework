@@ -573,6 +573,21 @@ def construct_sketch_estimator_config_name(sketch_name, sketch_config,
 
 
 # Document the estimators.
+def _independent_set_estimator(estimate_epsilon=None):
+  """Generate a SketchEstimatorConfig for the independent set estimator.
+
+  Use the ExactMultiSet as the underlying sketch.
+
+  Args:
+    estimate_epsilon: a differential private parameter for the estimated
+      cardinality.
+
+  Returns:
+    A SketchEstimatorConfig for the independent estimator.
+  """
+  pass
+
+
 def _log_bloom_filter_1e5_first_moment_log(sketch_epsilon=None,
                                            estimate_epsilon=None):
   """Generate a SketchEstimatorConfig for Log Bloom Filters.
