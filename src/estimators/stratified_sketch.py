@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl import logging
 import copy
 import functools
 import numpy as np
-import warnings
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimatorBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
@@ -68,6 +68,8 @@ class StratifiedSketch(SketchBase):
     )
 
   def create_sketches(self):
+    if(self.sketches != {}):
+      return
     reversedict = {}
     for k, v in self.underlying_set.ids().items():
       reversedict.setdefault(min(v, self.max_freq), []).append(k)
@@ -83,13 +85,13 @@ class StratifiedSketch(SketchBase):
     if (self.max_freq in reversedict):
       self.sketches[max_key].add_ids(reversedict[self.max_freq])
 
-  def destroy_sketches(self):
+  def _destroy_sketches(self):
     self.sketches = {}
 
   def add(self, x):
     if (self.sketches != {}):
-      self.destroy_sketches()
-      warnings.warn(
+      self._destroy_sketches()
+      logging.warn(
           """Tried to add ids after sketch creation, sketches are destroyed.""",
           RuntimeWarning)
     self.underlying_set.add(x)
@@ -191,6 +193,11 @@ class PairwiseEstimator(EstimatorBase):
       A merged StratifiedSketch from the input.
     """
     assert isinstance(this, StratifiedSketch)
+    assert isinstance(that, StratifiedSketch)
+
+    this.create_sketches()
+    that.create_sketches()
+
     this.assert_compatible(that)
     max_freq = this.max_freq
     max_key = str(max_freq) + '+'

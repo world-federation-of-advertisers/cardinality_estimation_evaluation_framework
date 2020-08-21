@@ -52,8 +52,7 @@ flags.DEFINE_integer('exponential_bloom_filter_decay_rate', 10,
                      'The decay rate in exponential bloom filter')
 flags.DEFINE_integer('num_bloom_filter_hashes', 3,
                      'The number of hashes for the bloom filter to use')
-flags.DEFINE_integer('stratified_max_freq', 3,
-                     'Maximum frequency for stratified sketch')
+flags.DEFINE_integer('max_frequency', 2, 'Maximum frequency to be analyzed.')
 flags.DEFINE_float('geometric_bloom_filter_probability', 0.0015,
                    'probability of geometric distribution')
 
@@ -109,9 +108,9 @@ def main(argv):
 
   estimator_config_stratified = SketchEstimatorConfig(
       name='stratified',
-      max_frequency=FLAGS.stratified_max_freq,
+      max_frequency=FLAGS.max_frequency,
       sketch_factory=StratifiedSketch.get_sketch_factory(
-          max_freq=FLAGS.stratified_max_freq,
+          max_freq=FLAGS.max_frequency,
           cardinality_sketch_factory=ExactMultiSet.get_sketch_factory()),
       estimator=stratified_sketch.SequentialEstimator(
           sketch_operator=ExactSetOperator(),
