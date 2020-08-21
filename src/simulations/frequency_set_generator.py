@@ -121,7 +121,7 @@ class HomogeneousMultiSetGenerator(HomogeneousPmfMultiSetGenerator):
     return f
 
   def _truncated_poisson_pmf(self, mu, max_freq):
-    """Probability mass function values of the truncated and shifted poisson
+    """Probability mass function values of the truncated poisson.
 
     The PMF of the poisson distribution with parameter mu is given by:
 
@@ -135,7 +135,7 @@ class HomogeneousMultiSetGenerator(HomogeneousPmfMultiSetGenerator):
       max_freq: int, truncation point
 
     Returns:
-      A list of floats of length max_freq+1, representing the values of the
+      A list of floats of length max_freq, representing the values of the
       truncating poisson PMF.
     """
     assert mu > 0, "Invalid rate parameter"

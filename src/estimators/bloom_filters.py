@@ -167,7 +167,8 @@ class GeometricBloomFilter(AnyDistributionBloomFilter):
     super().__init__(
         any_sketch.SketchConfig([
             any_sketch.IndexSpecification(
-                any_sketch.GeometricDistribution(length, probability), "geometric")
+                any_sketch.GeometricDistribution(length, probability),
+                "geometric")
         ], num_hashes=1, value_functions=[any_sketch.BitwiseOrFunction()]),
         random_seed)
 
@@ -456,6 +457,19 @@ class FixedProbabilityBitFlipNoiser(SketchNoiserBase):
     return new_filter
 
 
+def get_probability_of_flip(epsilon, num_hashes):
+  """Get the flipping probability from the privacy epsilon.
+
+  Args:
+    epsilon: the differential privacy parameter.
+    num_hashes: the number of hash functions used by the bloom filter.
+
+  Returns:
+    The flipping probability.
+  """
+  return 1 / (1 + math.exp(epsilon / num_hashes))
+
+
 class BlipNoiser(SketchNoiserBase):
   """This class applies "Blip" noise to a BloomFilter.
 
@@ -468,27 +482,25 @@ class BlipNoiser(SketchNoiserBase):
     """Creates a Blip Perturbator.
 
     Args:
-       epsilon: the privacy parameter
-       random_state: a numpy.random.RandomState used to draw random numbers
+      epsilon: the privacy parameter
+      random_state: a numpy.random.RandomState used to draw random numbers
     """
     SketchNoiserBase.__init__(self)
     self._epsilon = epsilon
     self.random_state = random_state
 
-  def get_probability_of_flip(self, num_hashes):
-    return 1 / (1 + math.exp(self._epsilon / num_hashes))
-
   def __call__(self, bloom_filter):
     """Returns a copy of a BloomFilter with possibly flipped bits.
 
     Args:
-      bloom_filter: The BloomFilter
+      bloom_filter: The BloomFilter.
 
     Returns:
-      Bit flipped BloomFilter
+      Bit flipped BloomFilter.
     """
     fixed_noiser = FixedProbabilityBitFlipNoiser(
-        probability=self.get_probability_of_flip(bloom_filter.num_hashes()),
+        probability=get_probability_of_flip(self._epsilon,
+                                            bloom_filter.num_hashes()),
         random_state=self.random_state)
     return fixed_noiser(bloom_filter)
 
@@ -510,15 +522,19 @@ class DenoiserBase(object):
 class SurrealDenoiser(DenoiserBase):
   """A closed form denoiser for a list of Any Distribution Bloom Filter."""
 
-  def __init__(self, probability=None, flip_one_probability=None,
-               flip_zero_probability=None):
+  def __init__(self, epsilon=None, probability=None):
+    """Construct a denoiser.
+
+    Args:
+      epsilon: a non-negative differential privacy parameter.
+    """
+    assert epsilon is not None or probability is not None, (
+      "Either epsilon or probability must be given")
     if probability is not None:
-      self._probability = (probability, probability)
-    elif flip_one_probability is not None and flip_zero_probability is not None:
-      self._probability = (flip_zero_probability, flip_one_probability)
-    else:
-      raise ValueError("Should provide probability or both "
-                       "flip_one_probability and flip_zero_probability.")
+      self._probability = probability
+    elif epsilon is not None:
+      # Currently only support one hash function.
+      self._probability = get_probability_of_flip(epsilon, 1)
 
   def  __call__(self, sketch_list):
     return self._denoise(sketch_list)
@@ -538,10 +554,13 @@ class SurrealDenoiser(DenoiserBase):
     Returns:
       A denoised Any Distribution Bloom Filter.
     """
+    assert sketch.num_hashes() == 1, (
+        "Currently only support one hash function. "
+        "Will extend to multiple hash functions later.")
     denoised_sketch = copy.deepcopy(sketch)
     expected_zeros = (
-        - denoised_sketch.sketch * self._probability[1]
-        + (1 - denoised_sketch.sketch) * (1 - self._probability[1]))
+        - denoised_sketch.sketch * self._probability
+        + (1 - denoised_sketch.sketch) * (1 - self._probability))
     denoised_sketch.sketch = 1 - expected_zeros / (
-        1 - self._probability[1] - self._probability[0])
+        1 - self._probability - self._probability)
     return denoised_sketch
