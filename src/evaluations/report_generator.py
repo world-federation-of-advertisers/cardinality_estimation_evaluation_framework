@@ -227,7 +227,7 @@ class ReportGenerator:
           row[evaluation_configs.SKETCH] + ', '
           + row[evaluation_configs.ESTIMATOR]  + '<br>'
           + 'sketch_config: ' + row[evaluation_configs.SKETCH_CONFIG] + '<br>'
-          + 'sketch_epsilon: ' + row[SKETCH_EPSILON]
+          + 'sketch_epsilon: ' + row[SKETCH_EPSILON] + '<br>'
           + 'estimate_epsilon: ' + row[ESTIMATE_EPSILON])
 
       return (
