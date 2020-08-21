@@ -19,6 +19,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_le
 from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import EvaluationConfig
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import ScenarioConfig
+from wfa_cardinality_estimation_evaluation_framework.simulations import frequency_set_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
 
@@ -94,6 +95,44 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE):
                       shared_prop=0.5))),
           )
       )
+
+
+def _frequency_smoke_test(num_runs=NUM_RUNS_VALUE):
+  """Smoke test frequency evaluation configurations.
+
+  Args:
+    num_runs: the number of runs per scenario.
+
+  Returns:
+    An EvaluationConfig.
+  """
+  return EvaluationConfig(
+      name='frequency_smoke_test',
+      num_runs=num_runs,
+      scenario_config_list=(
+          ScenarioConfig(
+              name='homogeneous',
+              set_generator_factory=(
+                frequency_set_generator.HomogeneousMultiSetGenerator.
+                get_generator_factory_with_num_and_size(
+                    universe_size=2e5, num_sets=10, set_size=2e4,
+                    freq_rates=[1]*20, freq_cap=3))),
+          ScenarioConfig(
+              name='heterogeneous',
+              set_generator_factory=(
+                frequency_set_generator.HeterogeneousMultiSetGenerator.
+                get_generator_factory_with_num_and_size(
+                    universe_size=2e5, num_sets=10, set_size=2e4,
+                    gamma_params=[[1,1]]*20, freq_cap=3))),
+          ScenarioConfig(
+              name='publisher_constant',
+              set_generator_factory=(
+                frequency_set_generator.PublisherConstantFrequencySetGenerator.
+                get_generator_factory_with_num_and_size(
+                    universe_size=2e5, num_sets=10, set_size=2e4,
+                    frequency=3))),
+      )
+    )
 
 
 def _get_default_name_to_choices_of_set_size_list(
@@ -441,6 +480,7 @@ def _complete_test_with_selected_parameters(
 EVALUATION_CONFIGS_TUPLE = (
     _smoke_test,
     _complete_test_with_selected_parameters,
+    _frequency_smoke_test,
 )
 
 
