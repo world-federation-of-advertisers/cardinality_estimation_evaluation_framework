@@ -49,24 +49,31 @@ from wfa_cardinality_estimation_evaluation_framework.simulations.simulator impor
 FLAGS = flags.FLAGS
 
 
-flags.DEFINE_integer('universe_size', 1000000,
-                     'The number of unique possible user-ids')
+flags.DEFINE_list(
+    'universe_size', 
+    [100000, 200000, 500000, 1000000, 2000000], 
+    'The number of unique possible user-ids')
 flags.DEFINE_integer(
-    'number_of_sets', 50,
+    'number_of_sets', 20,
     'The number of sets to depulicate across, AKA the number of publishers')
-flags.DEFINE_integer('number_of_trials', 50,
+flags.DEFINE_integer('number_of_trials', 100,
                      'The number of times to run the experiment')
-flags.DEFINE_integer('set_size', 50000, 'The size of all generated sets')
-flags.DEFINE_list('sketch_size', [1000, 10000], 'The size of sketches')
+flags.DEFINE_integer('set_size', 20000, 'The size of all generated sets')
+flags.DEFINE_list(
+    'sketch_size', 
+    [1000, 2000, 5000, 10000, 20000], 
+    'The size of sketches')
 flags.DEFINE_integer('exponential_bloom_filter_decay_rate', 10,
                      'The decay rate in exponential bloom filter')
 flags.DEFINE_integer('num_bloom_filter_hashes', 3,
                      'The number of hashes for the bloom filter to use')
 flags.DEFINE_float('geometric_bloom_filter_probability', 0.0015,
                     'probability of geometric distribution')
-flags.DEFINE_list("noiser_epsilon", 
-                  [np.log(19), np.log(9), np.sqrt(3), np.log(4), np.log(3)],
-                  "target privacy parameter in noiser")
+flags.DEFINE_list(
+    "noiser_epsilon", 
+    [np.log(19), np.log(9), np.sqrt(3), np.log(4), np.log(3)],
+    "target privacy parameter in noiser"
+)
 
 def main(argv):
     if len(argv) > 1:
@@ -89,18 +96,20 @@ def main(argv):
             estimator_config_list += [estimator_config_exponential_bloom_filter]
 
     # config evaluation
-    scenario_config_list = [
-        configs.ScenarioConfig(
-            name="independent",
-            set_generator_factory=(
-                set_generator.IndependentSetGenerator
-                .get_generator_factory_with_num_and_size(
-                    universe_size=FLAGS.universe_size, 
-                    num_sets=FLAGS.number_of_sets, 
-                    set_size=FLAGS.set_size)))
-    ]
+    scenario_config_list = []
+    for universe_size in FLAGS.universe_size:
+        scenario_config_list += [
+            configs.ScenarioConfig(
+                name="{:.1f}".format(universe_size / 1000000),
+                set_generator_factory=(
+                    set_generator.IndependentSetGenerator
+                    .get_generator_factory_with_num_and_size(
+                        universe_size=universe_size, 
+                        num_sets=FLAGS.number_of_sets, 
+                        set_size=FLAGS.set_size)))
+        ]
     evaluation_config = configs.EvaluationConfig(
-        name='4_vary_num_sets',
+        name='4_various',
         num_runs=FLAGS.number_of_trials,
         scenario_config_list=scenario_config_list)
 

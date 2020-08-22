@@ -13,7 +13,7 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations import analyzer
 evaluation_file_dirs = evaluator.load_directory_tree(
     out_dir=".",
     run_name="eval_adbf_result",
-    evaluation_name="vary_flip_prob")
+    evaluation_name="1_vary_flip_prob")
 raw_df = (
     analyzer.CardinalityEstimatorEvaluationAnalyzer
     .read_evaluation_results(evaluation_file_dirs))
@@ -21,9 +21,9 @@ raw_df["flipping probabaility"] = \
     raw_df["sketch_estimator"].str.replace(".*_", "", regex=True)
 raw_df["bloom filter"] = pd.Categorical(
     raw_df["sketch_estimator"].str.replace("_.*", "", regex=True), 
-    categories=["exp", "log", "geo", "unif"], ordered=False)
+    categories=["exp", "log", "geo"], ordered=False)
 
-df = raw_df.query('num_sets == 3')
+df = raw_df.query('num_sets == 10')
 # print(df)
 plt.figure(figsize=(6,4))
 plt.hlines(0, -1, 4, colors="grey", linestyles="dashed")
@@ -41,7 +41,7 @@ plt.close()
 evaluation_file_dirs = evaluator.load_directory_tree(
     out_dir=".",
     run_name="eval_adbf_result",
-    evaluation_name="vary_set_size")
+    evaluation_name="2_vary_set_size")
 raw_df = (
     analyzer.CardinalityEstimatorEvaluationAnalyzer
     .read_evaluation_results(evaluation_file_dirs))
@@ -72,7 +72,7 @@ plt.close()
 evaluation_file_dirs = evaluator.load_directory_tree(
     out_dir=".",
     run_name="eval_adbf_result",
-    evaluation_name="vary_decay_rate_10k")
+    evaluation_name="3_vary_decay_rate_10k")
 raw_df = (
     analyzer.CardinalityEstimatorEvaluationAnalyzer
     .read_evaluation_results(evaluation_file_dirs))
@@ -102,7 +102,7 @@ plt.close()
 evaluation_file_dirs = evaluator.load_directory_tree(
     out_dir=".",
     run_name="eval_adbf_result",
-    evaluation_name="vary_decay_rate_1k")
+    evaluation_name="3_vary_decay_rate_1k")
 raw_df_1k = (
     analyzer.CardinalityEstimatorEvaluationAnalyzer
     .read_evaluation_results(evaluation_file_dirs))
@@ -110,7 +110,7 @@ raw_df_1k["sketch size"] = "1000"
 evaluation_file_dirs = evaluator.load_directory_tree(
     out_dir=".",
     run_name="eval_adbf_result",
-    evaluation_name="vary_decay_rate_10k")
+    evaluation_name="3_vary_decay_rate_10k")
 raw_df_10k = (
     analyzer.CardinalityEstimatorEvaluationAnalyzer
     .read_evaluation_results(evaluation_file_dirs))

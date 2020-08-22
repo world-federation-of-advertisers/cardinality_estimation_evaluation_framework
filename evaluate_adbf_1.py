@@ -51,7 +51,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_integer('universe_size', 1000000,
                      'The number of unique possible user-ids')
 flags.DEFINE_integer(
-    'number_of_sets', 3,
+    'number_of_sets', 10,
     'The number of sets to depulicate across, AKA the number of publishers')
 flags.DEFINE_integer('number_of_trials', 100,
                      'The number of times to run the experiment')
@@ -77,12 +77,12 @@ def main(argv):
         ## flipping prob
         noiser_flip_probability = 1 / (1 + np.exp(epsilon))
 
-        estimator_config_bloom_filter = SketchEstimatorConfig(
-            name='unif_BF_' + "{:.2f}".format(noiser_flip_probability),
-            sketch_factory=BloomFilter.get_sketch_factory(
-                FLAGS.sketch_size, FLAGS.num_bloom_filter_hashes),
-            estimator=UnionEstimator(),
-            sketch_noiser=BlipNoiser(epsilon))
+        # estimator_config_bloom_filter = SketchEstimatorConfig(
+        #     name='unif_BF_' + "{:.2f}".format(noiser_flip_probability),
+        #     sketch_factory=BloomFilter.get_sketch_factory(
+        #         FLAGS.sketch_size, FLAGS.num_bloom_filter_hashes),
+        #     estimator=UnionEstimator(),
+        #     sketch_noiser=BlipNoiser(epsilon))
 
         estimator_config_geometric_bloom_filter = SketchEstimatorConfig(
             name='geo_BF_' + "{:.2f}".format(noiser_flip_probability),
@@ -90,7 +90,7 @@ def main(argv):
                 FLAGS.sketch_size, FLAGS.geometric_bloom_filter_probability),
             estimator=FirstMomentEstimator(
                 method='geo',
-                denoiser=SurrealDenoiser(probability=noiser_flip_probability)), 
+                denoiser=SurrealDenoiser(epsilon)), 
             sketch_noiser=BlipNoiser(epsilon))
 
         estimator_config_logarithmic_bloom_filter = SketchEstimatorConfig(
@@ -99,7 +99,7 @@ def main(argv):
                 FLAGS.sketch_size),
             estimator=FirstMomentEstimator(
                 method='log',
-                denoiser=SurrealDenoiser(probability=noiser_flip_probability)), 
+                denoiser=SurrealDenoiser(epsilon)), 
             sketch_noiser=BlipNoiser(epsilon))
 
         estimator_config_exponential_bloom_filter = SketchEstimatorConfig(
@@ -108,11 +108,11 @@ def main(argv):
                 FLAGS.sketch_size, FLAGS.exponential_bloom_filter_decay_rate),
             estimator=FirstMomentEstimator(
                 method='exp',
-                denoiser=SurrealDenoiser(probability=noiser_flip_probability)), 
+                denoiser=SurrealDenoiser(epsilon)), 
             sketch_noiser=BlipNoiser(epsilon))
     
         estimator_config_list += [
-            estimator_config_bloom_filter,
+            # estimator_config_bloom_filter,
             estimator_config_geometric_bloom_filter,
             estimator_config_logarithmic_bloom_filter,
             estimator_config_exponential_bloom_filter,
