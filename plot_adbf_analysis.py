@@ -48,7 +48,7 @@ df["flip_prob"] = (
 df = df.query('num_sets % 5 == 0')
 df["num_sets"] = df["num_sets"].astype(int)
 # df = df.drop(["sketch_estimator", "scenario"], axis=1)
-# print(df)
+print(df)
 
 ## pairs
 sns.pairplot(
