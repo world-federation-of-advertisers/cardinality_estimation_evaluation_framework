@@ -25,6 +25,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters im
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import ExponentialBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentEstimator
+from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentGlobalNoiseEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FixedProbabilityBitFlipNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import GeometricBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import get_probability_of_flip
@@ -258,8 +259,41 @@ class FirstMomentEstimatorTest(parameterized.TestCase):
         sketch_list.append(sketch)
       estimate = estimator(sketch_list)
       results.append(estimate)
-    print(np.mean(results))
     self.assertAlmostEqual(truth, np.mean(results), delta=truth * 0.1)
+
+class FirstMomentGlobalNoiseEstimatorTest(absltest.TestCase):
+
+  def test_estimation_with_one(self):
+    rs = np.random.RandomState(100)
+    estimator = FirstMomentGlobalNoiseEstimator(
+        epsilon=math.log(3),
+        method=FirstMomentEstimator.METHOD_EXP,
+        random_state=rs)
+    bf1 = ExponentialBloomFilter(
+        length=100, decay_rate=1, random_seed=1)
+    bf1.add(1)
+    # add elements
+    estimate = estimator([bf1])
+    self.assertEqual(estimate, 1)
+
+  def test_estimation_with_two(self):
+    rs = np.random.RandomState(22)
+    estimator = FirstMomentGlobalNoiseEstimator(
+        epsilon=math.log(3),
+        method=FirstMomentEstimator.METHOD_EXP,
+        random_state=rs)
+
+    bf1 = ExponentialBloomFilter(
+        length=100, decay_rate=1, random_seed=1)
+    bf1.add(1)
+
+    bf2 = ExponentialBloomFilter(
+        length=100, decay_rate=1, random_seed=1)
+    bf2.add(2)
+    bf2.add(3)
+
+    estimate = estimator([bf1, bf2])
+    self.assertEqual(estimate, 2)
 
 
 class FixedProbabilityBitFlipNoiserTest(absltest.TestCase):
