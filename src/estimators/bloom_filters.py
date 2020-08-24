@@ -446,10 +446,6 @@ class FirstMomentGlobalNoiseEstimator(EstimatorBase):
     noiser = GeometricEstimateNoiser(
         self.epsilon, random_state=self.random_state)
     noise = noiser(0.)
-    print(noiser(0.0))
-    print(noiser(0.0))
-    print(noiser(0.0))
-    print(noiser(0.0))
 
     a = union.decay_rate
     def _expected_num_bits(reach):
@@ -462,7 +458,6 @@ class FirstMomentGlobalNoiseEstimator(EstimatorBase):
     def _clip(x, lower_bound, upper_bound):
       return max(min(x, upper_bound), lower_bound)
 
-    print("******** noise: %d" % noise)
     x = sum(union.sketch) + noise
     if x < 0:
         x = 0
