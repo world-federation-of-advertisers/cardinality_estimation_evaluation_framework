@@ -467,7 +467,7 @@ def _frequency_end_to_end_test(num_runs=NUM_RUNS_VALUE):
                         freq_cap=freq_cap)))]
     )
 
-  
+
 def _generate_evaluation_configs():
   return (
       _smoke_test,
@@ -475,7 +475,7 @@ def _generate_evaluation_configs():
       _frequency_end_to_end_test
   )
 
-  
+
 def get_evaluation_config(config_name):
   """Returns the evaluation config with the specified config_name."""
   configs = _generate_evaluation_configs()
@@ -563,6 +563,14 @@ EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(
     estimator=bloom_filters.FirstMomentEstimator(
         method=bloom_filters.FirstMomentEstimator.METHOD_EXP))
 
+EXP_BLOOM_FILTER_1E5_10_LN3GLOBAL_FIRST_MOMENT_LOG = SketchEstimatorConfig(
+    name='exp_bloom_filter-1e5_10-ln3global-first_moment_exp',
+    sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
+        length=10**5, decay_rate=10),
+    estimator=bloom_filters.FirstMomentGlobalNoiseEstimator(
+        epsilon=math.log(3),
+        method=bloom_filters.FirstMomentEstimator.METHOD_EXP))
+
 LIQUID_LEGIONS_1E5_10_LN3_SEQUENTIAL = SketchEstimatorConfig(
     name='liquid_legions-1e5_10-ln3-sequential',
     sketch_factory=liquid_legions.LiquidLegions.get_sketch_factory(
@@ -634,4 +642,3 @@ def get_estimator_configs(estimator_names, max_frequency):
   raise ValueError('Invalid estimator(s): {}\nSupported estimators: {}'.
                    format(','.join(invalid_estimator_names),
                           ','.join(all_estimators.keys())))
-
