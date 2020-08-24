@@ -43,7 +43,6 @@ class FrequencySetGeneratorTest(parameterized.TestCase):
   def test_homogeneous_pmf_multiset_generator_multiple_sets(self):
       pmfgen = HomogeneousPmfMultiSetGenerator(
           100, [2,1,2], [[1], [0,1], [0,0,1]], np.random.RandomState())
-      sets = [s for s in pmfgen]
       hists = []
       for s in pmfgen:
           e = ExactMultiSet()
@@ -120,15 +119,13 @@ class FrequencySetGeneratorTest(parameterized.TestCase):
       f = HomogeneousMultiSetGenerator.get_generator_factory_with_num_and_size(
           100, 3, 5, [1, 2, 3], 10)
       gen = f(np.random.RandomState(1))
-      sets = [s for s in gen]
-      self.assertLen(sets, 3)
+      self.assertLen(list(gen), 3)
 
   def test_homogeneous_multiset_generator_factory_with_set_size_list(self):
       f = HomogeneousMultiSetGenerator.get_generator_factory_with_set_size_list(
           100, [1, 2, 3], [1, 2, 3], 10)
       gen = f(np.random.RandomState(1))
-      sets = [s for s in gen]
-      self.assertLen(sets, 3)
+      self.assertLen(list(gen), 3)
 
   def test_heterogeneous_multi_set_generator_with_frequency_cap(self):
     g = HeterogeneousMultiSetGenerator(
@@ -153,15 +150,13 @@ class FrequencySetGeneratorTest(parameterized.TestCase):
       f = HeterogeneousMultiSetGenerator.get_generator_factory_with_num_and_size(
           100, 3, 5, [(1,2), (3,4), (5,6)], 10)
       gen = f(np.random.RandomState(1))
-      sets = [s for s in gen]
-      self.assertLen(sets, 3)
+      self.assertLen(list(gen), 3)
 
   def test_heterogeneous_multiset_generator_factory_with_set_size_list(self):
       f = HeterogeneousMultiSetGenerator.get_generator_factory_with_set_size_list(
           100, [1, 2, 3], [(1,2), (3,4), (5,6)], 10)
       gen = f(np.random.RandomState(1))
-      sets = [s for s in gen]
-      self.assertLen(sets, 3)
+      self.assertLen(list(gen), 3)
 
   def test_publisher_constant_frequency_set_generator(self):
       gen = PublisherConstantFrequencySetGenerator(
@@ -180,15 +175,13 @@ class FrequencySetGeneratorTest(parameterized.TestCase):
       f = PublisherConstantFrequencySetGenerator.get_generator_factory_with_num_and_size(
           100, 3, 3, 3)
       gen = f(np.random.RandomState(1))
-      sets = [s for s in gen]
-      self.assertLen(sets, 3)
+      self.assertLen(list(gen), 3)
 
   def test_publisher_constant_frequency_factory_with_set_size_list(self):
       f = PublisherConstantFrequencySetGenerator.get_generator_factory_with_set_size_list(
           100, [1, 2, 3], 3)
       gen = f(np.random.RandomState(1))
-      sets = [s for s in gen]
-      self.assertLen(sets, 3)
+      self.assertLen(list(gen), 3)
 
       
 if __name__ == '__main__':
