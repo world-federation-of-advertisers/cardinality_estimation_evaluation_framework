@@ -421,6 +421,8 @@ class FirstMomentEstimator(EstimatorBase):
         union, self._weights)]
 
 
+# TODO(kungfucraig): Refactor this class and make it part of the
+# FirstMomentEstimator above.
 class FirstMomentGlobalNoiseEstimator(EstimatorBase):
   """This estimator unions the input sketches, generate geometric noise,
      appends that many fake buckets to the sketch union and calls the
@@ -428,10 +430,11 @@ class FirstMomentGlobalNoiseEstimator(EstimatorBase):
   """
 
   # TODO(kungfucraig): Figure out how to get the framework to pass
-  # a random state.
+  # a random state. Do this as part of larger refactor.
   def __init__(self, epsilon, method, random_state=None):
     self.epsilon = epsilon
-    assert method == FirstMomentEstimator.METHOD_EXP, "only METHOD_EXP is supported."
+    assert method == FirstMomentEstimator.METHOD_EXP, (
+        "only METHOD_EXP is supported.")
     self.estimator = FirstMomentEstimator(method=method)
     self.random_state = random_state
 
