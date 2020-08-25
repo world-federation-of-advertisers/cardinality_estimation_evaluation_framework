@@ -16,6 +16,7 @@ from absl import app
 from absl import flags
 import numpy as np
 
+from wfa_cardinality_estimation_evaluation_framework.estimators import stratified_sketch
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import ExponentialBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentEstimator
@@ -28,6 +29,8 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log import HllCardinality
 from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log import HyperLogLogPlusPlus
+from wfa_cardinality_estimation_evaluation_framework.estimators.stratified_sketch import StratifiedSketch
+from wfa_cardinality_estimation_evaluation_framework.estimators.stratified_sketch import ExactSetOperator
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import SequentialEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import VectorOfCounts
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
@@ -49,8 +52,10 @@ flags.DEFINE_integer('exponential_bloom_filter_decay_rate', 10,
                      'The decay rate in exponential bloom filter')
 flags.DEFINE_integer('num_bloom_filter_hashes', 3,
                      'The number of hashes for the bloom filter to use')
+flags.DEFINE_integer('max_frequency', 1, 'Maximum frequency to be analyzed.')
 flags.DEFINE_float('geometric_bloom_filter_probability', 0.0015,
-                     'probability of geometric distribution')
+                   'probability of geometric distribution')
+
 
 def main(argv):
   if len(argv) > 1:
@@ -101,6 +106,16 @@ def main(argv):
       sketch_factory=ExactMultiSet.get_sketch_factory(),
       estimator=LosslessEstimator())
 
+  estimator_config_stratified = SketchEstimatorConfig(
+      name='exact-stratified',
+      max_frequency=FLAGS.max_frequency,
+      sketch_factory=StratifiedSketch.get_sketch_factory(
+          max_freq=FLAGS.max_frequency,
+          cardinality_sketch_factory=ExactMultiSet.get_sketch_factory()),
+      estimator=stratified_sketch.SequentialEstimator(
+          sketch_operator=ExactSetOperator(),
+          cardinality_estimator=LosslessEstimator()))
+
   estimator_config_list = [
       estimator_config_bloom_filter,
       estimator_config_logarithmic_bloom_filter,
@@ -110,6 +125,7 @@ def main(argv):
       estimator_config_exact,
       estimator_config_hll,
       estimator_config_voc,
+      estimator_config_stratified,
   ]
 
   name_to_estimator_config = {
@@ -121,10 +137,11 @@ def main(argv):
       'exact_set': estimator_config_exact,
       'hll++': estimator_config_hll,
       'vector_of_counts': estimator_config_voc,
+      estimator_config_stratified.name: estimator_config_stratified,
   }
   set_generator_factory = (
-      set_generator.IndependentSetGenerator.
-      get_generator_factory_with_num_and_size(
+      set_generator.IndependentSetGenerator
+      .get_generator_factory_with_num_and_size(
           universe_size=FLAGS.universe_size,
           num_sets=FLAGS.number_of_sets,
           set_size=FLAGS.set_size))
