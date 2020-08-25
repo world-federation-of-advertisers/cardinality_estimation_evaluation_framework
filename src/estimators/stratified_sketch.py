@@ -68,7 +68,7 @@ class StratifiedSketch(SketchBase):
     )
 
   def create_sketches(self):
-    if(self.sketches != {}):
+    if (self.sketches != {}):
       return
     reversedict = {}
     for k, v in self.underlying_set.ids().items():
@@ -154,6 +154,11 @@ class StratifiedSketch(SketchBase):
     assert self.max_freq == other.max_freq, (
         'The frequency targets are different: '
         f'{self.max_freq} != {other.max_freq}')
+    assert isinstance(self.cardinality_sketch_factory, type(
+        other.cardinality_sketch_factory))
+    if (self.sketches != {} and other.sketches != {}):
+      assert isinstance(list(self.sketches.values())[0], type(
+          list(other.sketches.values())[0]))
 
 
 class PairwiseEstimator(EstimatorBase):
@@ -252,8 +257,8 @@ class PairwiseEstimator(EstimatorBase):
     for k in range(1, max_freq):
       merged_one_plus = self.sketch_union(merged_one_plus,
                                           merged_sketch.sketches[k])
-      merged_one_plus = self.sketch_union(merged_one_plus,
-                                          merged_sketch.sketches[max_key])
+    merged_one_plus = self.sketch_union(merged_one_plus,
+                                        merged_sketch.sketches[max_key])
     merged_sketch.sketches[ONE_PLUS] = merged_one_plus
     return merged_sketch
 
@@ -285,9 +290,10 @@ class PairwiseEstimator(EstimatorBase):
       result.append(freq_count_histogram[0])
 
     max_key = str(stratified_sketch.max_freq) + '+'
+
     max_freq_count_histogram = self.cardinality_estimator(
         [stratified_sketch.sketches[max_key]])
-    assert (len(freq_count_histogram) == 1), (
+    assert (len(max_freq_count_histogram) == 1), (
         'cardinality sketch has more than 1 freq bucket for max_freq.')
     result.append(max_freq_count_histogram[0])
     result = list(np.cumsum(list(reversed(result))))
