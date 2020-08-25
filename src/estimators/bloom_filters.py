@@ -427,8 +427,6 @@ class FirstMomentEstimator(EstimatorBase):
         "Expected an AnyDistributionBloomFilter.")
     union = self.union_sketches(sketch_list)
 
-    # n.b. the __init__ function ensures that the noiser is None if
-    # method == METHOD_ANY or method == METHOD_GEO
     if self._method == FirstMomentEstimator.METHOD_LOG:
       return [FirstMomentEstimator._estimate_cardinality_log(union, self._noiser)]
     if self._method == FirstMomentEstimator.METHOD_EXP:
@@ -437,7 +435,7 @@ class FirstMomentEstimator(EstimatorBase):
       return [FirstMomentEstimator._estimate_cardinality_uniform(union, self._noiser)]
     if self._method == FirstMomentEstimator.METHOD_GEO:
       return [FirstMomentEstimator._estimate_cardinality_geo(
-          union, self._weights)]
+        union, self._weights)]
     return [FirstMomentEstimator._estimate_cardinality_any(
         union, self._weights)]
 
