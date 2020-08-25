@@ -294,11 +294,28 @@ class FirstMomentEstimator(EstimatorBase):
 
   def __init__(self, method, denoiser=None, noiser=None, weights=None):
     EstimatorBase.__init__(self)
+
+    # The METHOD_ANY and METHOD_GEO estimators both require bucket
+    # weights. However, the global noise scenario is supposed to
+    # simulate an MPC protocol, which cannot know any bucket
+    # weights as this would undo the effects of shuffling.
+    if ((method == FirstMomentEstimator.METHOD_ANY
+         or method == FirstMomentEstimator.METHOD_GEO)
+        and noiser is not None):
+      raise ValueError(
+          "METHOD_ANY and METHOD_GEO are both incompatible with a noiser.")
+
     if denoiser is None:
       self._denoiser = copy.deepcopy
     else:
       self._denoiser = denoiser
-    self._noiser = noiser
+
+    if noiser is None:
+      # This saves some "None" checks in a few functions below
+      self._noiser = lambda x: x
+    else:
+      self._noiser = noiser
+
     self._weights = weights
     assert method in (
         FirstMomentEstimator.METHOD_UNIFORM,
@@ -308,16 +325,6 @@ class FirstMomentEstimator(EstimatorBase):
         FirstMomentEstimator.METHOD_ANY), f"method={method} not supported."
     self._method = method
 
-    # This basic idea here is that the METHOD_ANY and METHOD_GEO
-    # estimators both require bucket weights. However, the global
-    # noise scenario is supposed to simulate an MPC protocol, which
-    # cannot know any bucket weights as this would undo the effects
-    # of shuffling.
-    if ((self._method == FirstMomentEstimator.METHOD_ANY
-         or self._method == FirstMomentEstimator.METHOD_GEO)
-        and noiser is not None):
-      raise ValueError(
-          "METHOD_ANY and METHOD_GEO are both incompatible with a noiser.")
 
   @classmethod
   def _check_compatibility(cls, sketch_list):
@@ -338,18 +345,14 @@ class FirstMomentEstimator(EstimatorBase):
   @classmethod
   def _estimate_cardinality_uniform(cls, sketch, noiser):
     """Estimate cardinality of a Uniform Bloom Filter."""
-    x = sum(sketch.sketch)
-    if noiser:
-      x = int(noiser(x))
+    x = noiser(sum(sketch.sketch))
     m = len(sketch.sketch)
     return - m * math.log(1 - x / m)
 
   @classmethod
   def _estimate_cardinality_log(cls, sketch, noiser):
     """Estimate cardinality of an Log Bloom Filter."""
-    x = sum(sketch.sketch)
-    if noiser:
-      x = int(noiser(x))
+    x = int(noiser(sum(sketch.sketch)))
     m = len(sketch.sketch)
     return x / (1 - x / m)
 
@@ -374,9 +377,7 @@ class FirstMomentEstimator(EstimatorBase):
     def _clip(x, lower_bound, upper_bound):
       return max(min(x, upper_bound), lower_bound)
 
-    x = sum(sketch.sketch)
-    if noiser:
-      x = int(noiser(x))
+    x = int(noiser(sum(sketch.sketch)))
     m = len(sketch.sketch)
     p = _clip(x / m, 0, 1)
     result = invert_monotonic(_expected_num_bits, epsilon=1e-7)(p) * m
