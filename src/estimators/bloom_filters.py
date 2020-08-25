@@ -442,56 +442,6 @@ class FirstMomentEstimator(EstimatorBase):
         union, self._weights)]
 
 
-# TODO(kungfucraig): Refactor this class and make it part of the
-# FirstMomentEstimator above.
-class FirstMomentGlobalNoiseEstimator(EstimatorBase):
-  """This estimator unions the input sketches, generate geometric noise,
-     appends that many fake buckets to the sketch union and calls the
-     FirstMomentEstimator.
-  """
-
-  # TODO(kungfucraig): Figure out how to get the framework to pass
-  # a random state. Do this as part of larger refactor.
-  def __init__(self, epsilon, method, random_state=None):
-    self.epsilon = epsilon
-    assert method == FirstMomentEstimator.METHOD_EXP, (
-        "only METHOD_EXP is supported.")
-    self.estimator = FirstMomentEstimator(method=method)
-    self.random_state = random_state
-
-  def __call__(self, sketch_list):
-    if not sketch_list:
-      return 0
-    union = sketch_list[0]
-    for cur_sketch in sketch_list[1:]:
-      union.assert_compatible(cur_sketch)
-      union.sketch = 1 - (1 - union.sketch) * (1 - cur_sketch.sketch)
-
-    noiser = GeometricEstimateNoiser(
-        self.epsilon, random_state=self.random_state)
-    noise = noiser(0.)
-
-    a = union.decay_rate
-    def _expected_num_bits(reach):
-      """Expected number of bits activated for cardinality."""
-      if reach <= 0:
-        return 0
-      return 1 - (- special.expi(- a * reach / (np.exp(a) - 1)) +
-                  special.expi(- a * np.exp(a) * reach / (np.exp(a) - 1))) / a
-
-    def _clip(x, lower_bound, upper_bound):
-      return max(min(x, upper_bound), lower_bound)
-
-    x = sum(union.sketch) + noise
-    if x < 0:
-        x = 0
-    m = len(union.sketch)
-    p = _clip(x / m, 0, 1)
-    result = invert_monotonic(_expected_num_bits, epsilon=1e-7)(p) * m
-    assert result >= 0, "Negative estimate should never happen."
-    return int(result)
-
-
 class FixedProbabilityBitFlipNoiser(SketchNoiserBase):
   """This class flips the bit of a bloom filter with a fixed probability."""
 
