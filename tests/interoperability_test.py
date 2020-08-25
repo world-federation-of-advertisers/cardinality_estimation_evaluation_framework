@@ -32,6 +32,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters im
 from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legions import CascadingLegions
 from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legions import Estimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legions import Noiser
+from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import GeometricEstimateNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import AddRandomElementsNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
@@ -123,6 +124,16 @@ class InteroperabilityTest(absltest.TestCase):
         sketch_factory=HyperLogLogPlusPlus.get_sketch_factory(self.sketch_size),
         estimator=HllCardinality())
 
+    estimator_config_expadbf_first_moment_global_dp = SketchEstimatorConfig(
+        name='estimator_config_expadbf_first_moment_global_d',
+        sketch_factory=ExponentialBloomFilter.get_sketch_factory(
+            length=10**5, decay_rate=10),
+        estimator=FirstMomentEstimator(
+            method=FirstMomentEstimator.METHOD_EXP,
+            noiser = GeometricEstimateNoiser(
+            epsilon=math.log(3))))
+
+
     config_list = [
         estimator_config_exact,
         estimator_config_cascading_legions,
@@ -132,6 +143,7 @@ class InteroperabilityTest(absltest.TestCase):
         estimator_config_geometric_bloom_filter,
         estimator_config_voc,
         estimator_config_hll,
+        estimator_config_expadbf_first_moment_global_dp,
     ]
 
     self.name_to_non_noised_estimator_config = {

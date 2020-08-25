@@ -33,6 +33,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters im
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import SurrealDenoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import UniformBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import UnionEstimator
+from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import GeometricEstimateNoiser
 
 
 class BloomFilterTest(absltest.TestCase):
@@ -258,8 +259,22 @@ class FirstMomentEstimatorTest(parameterized.TestCase):
         sketch_list.append(sketch)
       estimate = estimator(sketch_list)
       results.append(estimate)
-    print(np.mean(results))
     self.assertAlmostEqual(truth, np.mean(results), delta=truth * 0.1)
+
+  @parameterized.parameters(
+      (UniformBloomFilter, {}, 'uniform', 1.151),
+      (LogarithmicBloomFilter, {}, 'log', 1.333),
+      (ExponentialBloomFilter, {'decay_rate': 1}, 'exp', 1.1645),
+  )
+  def test_estimate_cardinality_with_global_noise(
+      self, bf, bf_kwargs, method, truth):
+    noiser = GeometricEstimateNoiser(
+        epsilon=0.5, random_state=np.random.RandomState(2))
+    adbf = bf(length=4, random_seed=0, **bf_kwargs)
+    adbf.add_ids([1])
+    estimator = FirstMomentEstimator(method=method, noiser=noiser)
+    estimate = estimator([adbf])[0]
+    self.assertAlmostEqual(estimate, truth, 1, msg=method)
 
 
 class FixedProbabilityBitFlipNoiserTest(absltest.TestCase):

@@ -22,6 +22,8 @@ import numpy as np
 from scipy import special
 
 from wfa_cardinality_estimation_evaluation_framework.estimators import any_sketch
+from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import GeometricEstimateNoiser
+from wfa_cardinality_estimation_evaluation_framework.common import noisers
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimatorBase
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchNoiserBase
 
@@ -290,12 +292,30 @@ class FirstMomentEstimator(EstimatorBase):
   METHOD_EXP = "exp"
   METHOD_ANY = "any"
 
-  def __init__(self, method, denoiser=None, weights=None):
+  def __init__(self, method, denoiser=None, noiser=None, weights=None):
     EstimatorBase.__init__(self)
+
+    # The METHOD_ANY and METHOD_GEO estimators both require bucket
+    # weights. However, the global noise scenario is supposed to
+    # simulate an MPC protocol, which cannot know any bucket
+    # weights as this would undo the effects of shuffling.
+    if ((method == FirstMomentEstimator.METHOD_ANY
+         or method == FirstMomentEstimator.METHOD_GEO)
+        and noiser is not None):
+      raise ValueError(
+          "METHOD_ANY and METHOD_GEO are both incompatible with a noiser.")
+
     if denoiser is None:
       self._denoiser = copy.deepcopy
     else:
       self._denoiser = denoiser
+
+    if noiser is None:
+      # This saves some "None" checks in a few functions below
+      self._noiser = lambda x: x
+    else:
+      self._noiser = noiser
+
     self._weights = weights
     assert method in (
         FirstMomentEstimator.METHOD_UNIFORM,
@@ -304,6 +324,7 @@ class FirstMomentEstimator(EstimatorBase):
         FirstMomentEstimator.METHOD_EXP,
         FirstMomentEstimator.METHOD_ANY), f"method={method} not supported."
     self._method = method
+
 
   @classmethod
   def _check_compatibility(cls, sketch_list):
@@ -322,21 +343,21 @@ class FirstMomentEstimator(EstimatorBase):
     return union
 
   @classmethod
-  def _estimate_cardinality_uniform(cls, sketch):
+  def _estimate_cardinality_uniform(cls, sketch, noiser):
     """Estimate cardinality of a Uniform Bloom Filter."""
-    x = sum(sketch.sketch)
+    x = noiser(sum(sketch.sketch))
     m = len(sketch.sketch)
     return - m * math.log(1 - x / m)
 
   @classmethod
-  def _estimate_cardinality_log(cls, sketch):
+  def _estimate_cardinality_log(cls, sketch, noiser):
     """Estimate cardinality of an Log Bloom Filter."""
-    x = sum(sketch.sketch)
+    x = int(noiser(sum(sketch.sketch)))
     m = len(sketch.sketch)
     return x / (1 - x / m)
 
   @classmethod
-  def _estimate_cardinality_exp(cls, sketch):
+  def _estimate_cardinality_exp(cls, sketch, noiser):
     """Estimate cardinality of an Exp Bloom Filter a.k.a. Liquid Legions.
 
     Args:
@@ -356,7 +377,7 @@ class FirstMomentEstimator(EstimatorBase):
     def _clip(x, lower_bound, upper_bound):
       return max(min(x, upper_bound), lower_bound)
 
-    x = sum(sketch.sketch)
+    x = int(noiser(sum(sketch.sketch)))
     m = len(sketch.sketch)
     p = _clip(x / m, 0, 1)
     result = invert_monotonic(_expected_num_bits, epsilon=1e-7)(p) * m
@@ -406,12 +427,13 @@ class FirstMomentEstimator(EstimatorBase):
     assert isinstance(sketch_list[0], AnyDistributionBloomFilter), (
         "Expected an AnyDistributionBloomFilter.")
     union = self.union_sketches(sketch_list)
+
     if self._method == FirstMomentEstimator.METHOD_LOG:
-      return [FirstMomentEstimator._estimate_cardinality_log(union)]
+      return [FirstMomentEstimator._estimate_cardinality_log(union, self._noiser)]
     if self._method == FirstMomentEstimator.METHOD_EXP:
-      return [FirstMomentEstimator._estimate_cardinality_exp(union)]
+      return [FirstMomentEstimator._estimate_cardinality_exp(union, self._noiser)]
     if self._method == FirstMomentEstimator.METHOD_UNIFORM:
-      return [FirstMomentEstimator._estimate_cardinality_uniform(union)]
+      return [FirstMomentEstimator._estimate_cardinality_uniform(union, self._noiser)]
     if self._method == FirstMomentEstimator.METHOD_GEO:
       return [FirstMomentEstimator._estimate_cardinality_geo(
         union, self._weights)]
