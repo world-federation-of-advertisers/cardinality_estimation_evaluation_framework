@@ -549,28 +549,17 @@ class SurrealDenoiser(DenoiserBase):
 
 
 class SketchOperator(object):
-  """Sketch operations for supporting local DP frequency dedupe."""
+  """Sketch operators for supporting local DP frequency dedupe."""
 
-  BAYESIAN_APPROXIMATION = "bayesian"
-  EXPECTATION_APPROXIMATION = "expectation"
-
-  def __init__(self, estimation_method, approximation_method, threshold=1e-6):
+  def __init__(self, estimation_method, threshold=1e-6):
     """Construct an AnyDistributionBloomFilter sketch operator.
 
     Args:
       estimation_method: distribution of bit probabilities in ADBF. That is,
         method to specify in FirstMomentEstimator.
-      approximation_method: method used in approximating the intersection and
-        difference operations between two AnyDistributionBloomFilters.
       threshold: a threshold to avoid numerical errors.
     """
-    self.estimation_method = estimation_method
     self.estimator = FirstMomentEstimator(method=estimation_method)
-    assert approximation_method in (
-        SketchOperator.BAYESIAN_APPROXIMATION,
-        SketchOperator.EXPECTATION_APPROXIMATION
-        ), f"{approximation_method} not supported."
-    self.approximation_method = approximation_method
     self.threshold = threshold
 
   def union(self, this, that):
@@ -600,6 +589,33 @@ class SketchOperator(object):
     """A common function used in the intersection and difference operators."""
     return 1 - np.power(1 - register_probs, cardinality)
 
+  def _obtain_two_way_venn_diagram(self, this, that):
+    self.this_cardinality = self.estimator([this])[0]
+    self.that_cardinality = self.estimator([that])[0]
+    union_cardinality = self.estimator([this, that])[0]
+    self.intersection_cardinality = max(
+        self.this_cardinality + self.that_cardinality - union_cardinality, 0)
+
+  def intersection(self, this, that):
+    raise NotImplementedError()
+
+  def difference(self, this, that):
+    raise NotImplementedError()
+
+
+class BayesianApproximationSketchOperator(SketchOperator):
+  """Sketch operators based on the Bayesian method."""
+
+  def __init__(self, estimation_method, threshold=1e-6):
+    """Construct an AnyDistributionBloomFilter sketch operator.
+
+    Args:
+      estimation_method: distribution of bit probabilities in ADBF. That is,
+        method to specify in FirstMomentEstimator.
+      threshold: a threshold to avoid numerical errors.
+    """
+    SketchOperator.__init__(self, estimation_method, threshold)
+
   def intersection(self, this, that):
     """Generate the intersection sketch of the input sketches.
 
@@ -616,28 +632,94 @@ class SketchOperator(object):
       return None
     this.assert_compatible(that)
     result = copy.deepcopy(this)
-    this_cardinality = self.estimator([this])[0]
-    that_cardinality = self.estimator([that])[0]
-    union_cardinality = self.estimator([this, that])[0]
-    intersection_cardinality = max(
-        this_cardinality + that_cardinality - union_cardinality, 0)
-    register_probs = SketchOperator._get_register_probs(this)
-    if self.approximation_method == SketchOperator.BAYESIAN_APPROXIMATION:
-      hc11 = SketchOperator._predict_registers(
-          register_probs=register_probs, cardinality=intersection_cardinality)
-      hc10 = SketchOperator._predict_registers(
-          register_probs=register_probs,
-          cardinality=this_cardinality - intersection_cardinality)
-      hc01 = SketchOperator._predict_registers(
-          register_probs=register_probs,
-          cardinality=that_cardinality - intersection_cardinality)
-      y = hc11 / np.maximum(self.threshold, hc10 * hc01 * (1 - hc11) + hc11)
-    if self.approximation_method == SketchOperator.EXPECTATION_APPROXIMATION:
-      x = max(np.sum(register_probs * this.sketch * that.sketch),
-              self.threshold, np.min(register_probs))
-      y = SketchOperator._predict_registers(
-          register_probs=register_probs / x,
-          cardinality=intersection_cardinality)
+    self._obtain_two_way_venn_diagram(this, that)
+    register_probs = self._get_register_probs(this)
+    hc11 = self._predict_registers(
+        register_probs=register_probs,
+        cardinality=self.intersection_cardinality)
+    hc10 = self._predict_registers(
+        register_probs=register_probs,
+        cardinality=self.this_cardinality - self.intersection_cardinality)
+    hc01 = self._predict_registers(
+        register_probs=register_probs,
+        cardinality=self.that_cardinality - self.intersection_cardinality)
+    y = hc11 / np.maximum(self.threshold, hc10 * hc01 * (1 - hc11) + hc11)
+    result.sketch = this.sketch * that.sketch * y
+    return result
+
+  def difference(self, this, that):
+    """Generate the difference sketch of the input sketches.
+
+    Args:
+      this: an AnyDistributionBloomFilter.
+      that: an AnyDistributionBloomFilter with the same config as this. Both
+        this and that can be either raw ADBFs or denoised ADBFs.
+
+    Returns:
+      An AnyDistributionBloomFilter representing the difference of this - that.
+    """
+    if this is None:
+      return None
+    if that is None:
+      return this
+    this.assert_compatible(that)
+    result = copy.deepcopy(this)
+    self._obtain_two_way_venn_diagram(this, that)
+    register_probs = self._get_register_probs(this)
+    hc11 = self._predict_registers(
+        register_probs=register_probs,
+        cardinality=self.intersection_cardinality)
+    hc10 = self._predict_registers(
+        register_probs=register_probs,
+        cardinality=self.this_cardinality - self.intersection_cardinality)
+    hc01 = self._predict_registers(
+        register_probs=register_probs,
+        cardinality=self.that_cardinality - self.intersection_cardinality)
+    denominator = np.maximum(self.threshold, hc10 * hc01 * (1 - hc11) + hc11)
+    numerator = (hc10 * hc01 * hc11 + hc10 * (1 - hc01) * hc11
+                 + hc10 * hc01 * (1 - hc11))
+    y = numerator / denominator
+    result.sketch = (this.sketch * (1 - that.sketch)
+                     + this.sketch * that.sketch * y)
+    return result
+
+
+class ExpectationApproximationSketchOperator(SketchOperator):
+  """Sketch operators based on the Expectation method."""
+
+  def __init__(self, estimation_method, threshold=1e-6):
+    """Construct an AnyDistributionBloomFilter sketch operator.
+
+    Args:
+      estimation_method: distribution of bit probabilities in ADBF. That is,
+        method to specify in FirstMomentEstimator.
+      threshold: a threshold to avoid numerical errors.
+    """
+    SketchOperator.__init__(self, estimation_method, threshold)
+
+  def intersection(self, this, that):
+    """Generate the intersection sketch of the input sketches.
+
+    Args:
+      this: an AnyDistributionBloomFilter.
+      that: an AnyDistributionBloomFilter with the same config as this. Both
+        this and that can be either raw ADBFs or denoised ADBFs.
+
+    Returns:
+      An AnyDistributionBloomFilter representing the intersection of this and
+        that.
+    """
+    if this is None or that is None:
+      return None
+    this.assert_compatible(that)
+    result = copy.deepcopy(this)
+    self._obtain_two_way_venn_diagram(this, that)
+    register_probs = self._get_register_probs(this)
+    x = max(np.sum(register_probs * this.sketch * that.sketch),
+            self.threshold, np.min(register_probs))
+    y = SketchOperator._predict_registers(
+        register_probs=register_probs / x,
+        cardinality=self.intersection_cardinality)
     result.sketch = this.sketch * that.sketch * y
     return result
 
@@ -656,33 +738,15 @@ class SketchOperator(object):
       return None
     this.assert_compatible(that)
     result = copy.deepcopy(this)
-    this_cardinality = self.estimator([this])[0]
-    that_cardinality = self.estimator([that])[0]
-    union_cardinality = self.estimator([this, that])[0]
-    intersection_cardinality = max(
-        this_cardinality + that_cardinality - union_cardinality, 0)
-    register_probs = SketchOperator._get_register_probs(this)
-    if self.approximation_method == SketchOperator.BAYESIAN_APPROXIMATION:
-      hc11 = SketchOperator._predict_registers(
-          register_probs=register_probs, cardinality=intersection_cardinality)
-      hc10 = SketchOperator._predict_registers(
-          register_probs=register_probs,
-          cardinality=this_cardinality - intersection_cardinality)
-      hc01 = SketchOperator._predict_registers(
-          register_probs=register_probs,
-          cardinality=that_cardinality - intersection_cardinality)
-      denominator = np.maximum(self.threshold, hc10 * hc01 * (1 - hc11) + hc11)
-      numerator = (hc10 * hc01 * hc11 + hc10 * (1 - hc01) * hc11
-                   + hc10 * hc01 * (1 - hc11))
-      y = numerator / denominator
-    if self.approximation_method == SketchOperator.EXPECTATION_APPROXIMATION:
-      x = max(np.sum(register_probs * this.sketch),
-              self.threshold, np.min(register_probs))
-      s = (this_cardinality - intersection_cardinality
-           - np.dot(this.sketch, 1 - that.sketch))
-      s = max(0, min(this_cardinality - intersection_cardinality, s))
-      y = SketchOperator._predict_registers(
-          register_probs=register_probs / x, cardinality=s)
+    self._obtain_two_way_venn_diagram(this, that)
+    register_probs = self._get_register_probs(this)
+    x = max(np.sum(register_probs * this.sketch),
+            self.threshold, np.min(register_probs))
+    s = (self.this_cardinality - self.intersection_cardinality
+         - np.dot(this.sketch, 1 - that.sketch))
+    s = max(0, min(self.this_cardinality - self.intersection_cardinality, s))
+    y = SketchOperator._predict_registers(
+        register_probs=register_probs / x, cardinality=s)
     result.sketch = (this.sketch * (1 - that.sketch)
                      + this.sketch * that.sketch * y)
     return result
