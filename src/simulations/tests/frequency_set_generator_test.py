@@ -31,7 +31,7 @@ class FrequencySetGeneratorTest(parameterized.TestCase):
 
   def test_homogeneous_pmf_multiset_generator_single_set(self):
       pmfgen = HomogeneousPmfMultiSetGenerator(
-          100, [2], [[1]], np.random.RandomState())
+          100, [2], [[1]], np.random.RandomState(1))
       hists = []
       for s in pmfgen:
           e = ExactMultiSet()
@@ -42,7 +42,7 @@ class FrequencySetGeneratorTest(parameterized.TestCase):
 
   def test_homogeneous_pmf_multiset_generator_multiple_sets(self):
       pmfgen = HomogeneousPmfMultiSetGenerator(
-          100, [2,1,2], [[1], [0,1], [0,0,1]], np.random.RandomState())
+          100, [2,1,2], [[1], [0,1], [0,0,1]], np.random.RandomState(1))
       hists = []
       for s in pmfgen:
           e = ExactMultiSet()
@@ -54,7 +54,7 @@ class FrequencySetGeneratorTest(parameterized.TestCase):
       self.assertEqual(hists[2], [2,2,2])
 
   def test_truncated_poisson_pmf(self):
-      h = HomogeneousMultiSetGenerator(10, [1], [1], np.random.RandomState())
+      h = HomogeneousMultiSetGenerator(10, [1], [1], np.random.RandomState(1))
       e = np.exp(1)
       self.assertEqual(h._truncated_poisson_pmf(1, 1), [1])
       pmf1 = h._truncated_poisson_pmf(1,4)
@@ -91,7 +91,7 @@ class FrequencySetGeneratorTest(parameterized.TestCase):
           set_sizes=[1, 1],
           freq_rates=[1],
           freq_cap=3,
-          random_state=np.random.RandomState())
+          random_state=np.random.RandomState(1))
 
   def test_homogeneous_multiset_generator_raise_invalid_freq_rate(self):
     # Test if raise error when freq_rate is invalid.
@@ -101,7 +101,7 @@ class FrequencySetGeneratorTest(parameterized.TestCase):
           set_sizes=[1, 1],
           freq_rates=[-1, 1],
           freq_cap=3,
-          random_state=np.random.RandomState())
+          random_state=np.random.RandomState(1))
 
   @parameterized.parameters(0, -1)
   def test_homogeneous_multiset_generator_raise_invalid_freq_cap(self,
@@ -113,7 +113,7 @@ class FrequencySetGeneratorTest(parameterized.TestCase):
           set_sizes=[1, 1],
           freq_rates=[1, 1],
           freq_cap=freq_cap,
-          random_state=np.random.RandomState())
+          random_state=np.random.RandomState(1))
 
   def test_homogeneous_multiset_generator_factory_with_num_and_size(self):
       f = HomogeneousMultiSetGenerator.get_generator_factory_with_num_and_size(
@@ -160,7 +160,7 @@ class FrequencySetGeneratorTest(parameterized.TestCase):
 
   def test_publisher_constant_frequency_set_generator(self):
       gen = PublisherConstantFrequencySetGenerator(
-          100, [1, 2, 3], 3, np.random.RandomState())
+          100, [1, 2, 3], 3, np.random.RandomState(1))
       hists = []
       for s in gen:
           e = ExactMultiSet()
