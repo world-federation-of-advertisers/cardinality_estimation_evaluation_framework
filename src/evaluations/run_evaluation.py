@@ -58,7 +58,7 @@ flags.DEFINE_string('evaluation_run_name', None,
 flags.DEFINE_integer('num_runs', None,
                      'The number of runs per scenario.', lower_bound=1)
 flags.DEFINE_integer(
-    'num_workers', 0, 
+    'num_workers', 0,
     'The number of processes to use in parallel. If 1, runs serially.'
     'If 0 or less, use as many processes as cores.')
 
@@ -83,7 +83,8 @@ flags.DEFINE_integer('max_frequency', 10, 'Maximum frequency to be analyzed.')
 
 
 required_flags = ('evaluation_config', 'sketch_estimator_configs',
-                  'evaluation_run_name', 'num_runs', 'evaluation_out_dir')
+                  'evaluation_run_name', 'num_runs', 'evaluation_out_dir',
+                  'analysis_out_dir')
 
 
 def main(argv):
