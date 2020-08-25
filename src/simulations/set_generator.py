@@ -570,11 +570,11 @@ class HomogeneousMultiSetGenerator(SetGeneratorBase):
 
   @classmethod
   def get_generator_factory_with_set_size_list(cls, universe_size,
-                                               set_sizes, freq_rate_list,
+                                               set_size_list, freq_rate_list,
                                                freq_cap):
 
     def f(random_state):
-      return cls(universe_size, set_sizes, freq_rate_list, random_state,
+      return cls(universe_size, set_size_list, freq_rate_list, random_state,
                  freq_cap)
 
     return f
@@ -622,6 +622,106 @@ class HomogeneousMultiSetGenerator(SetGeneratorBase):
         freq_per_id = np.minimum(freq_per_id, self.freq_cap)
       multiset_ids = []
       for i, freq in zip(set_ids, freq_per_id):
+        multiset_ids += [i] * freq
+      self.random_state.shuffle(multiset_ids)
+      yield multiset_ids
+    return self
+
+class HeterogeneousMultiSetGenerator(SetGeneratorBase):
+  """Heterogeneous multiset generator.
+
+  This generator returns the multisets as described in section
+  Frequency scenario 2: Heterogeneous user frequency of this doc:
+
+  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#frequency-scenario-2-heterogeneous-user-frequency
+
+  Heterogeneous means that the reached ID's have different frequency
+  distribution.
+
+  As a reached ID may appear one or more times in the returned set,
+  to differentiate with a normal set whose elements can only appear once, we
+  use the term multiset.
+
+  The frequency distribution is defined as a shifted-Poisson distribution.
+  I.e., freq ~ Poission(freq_rate) + 1.
+  """
+
+  @classmethod
+  def get_generator_factory_with_num_and_size(cls, universe_size, num_sets,
+                                              set_size, gamma_params,
+                                              freq_cap):
+
+    assert num_sets == len(gamma_params), (
+        'num_sets not equal to len(gamma_params)')
+
+    def f(random_state):
+      return cls(universe_size, list(_SetSizeGenerator(num_sets, set_size)),
+                 gamma_params, random_state, freq_cap)
+
+    return f
+
+  @classmethod
+  def get_generator_factory_with_set_size_list(cls, universe_size,
+                                               set_size_list, gamma_params,
+                                               freq_cap):
+
+    assert len(set_size_list) == len(gamma_params), (
+        'set_size_list and gamma_params do not have equal length.')
+
+    def f(random_state):
+      return cls(universe_size, set_size_list, gamma_params, random_state,
+                 freq_cap)
+
+    return f
+
+  def __init__(self, universe_size, set_sizes, gamma_params, random_state,
+               freq_cap=None):
+    """Create a heterogeneous multiset generator.
+
+    Args:
+      universe_size: An integer value that specifies the size of the whole
+        universe from which the ids will be sampled.
+      set_sizes: An iterable specifying the size of each set, aka, the number of
+        reached IDs.
+      gamma_params: An iterable of the same size as set_sizes, specifying the
+        shape and scale parameters of the gamma distributions.
+      random_state: a numpy random state.
+      freq_cap: An optional positive integer which represents the maximum number
+        of times an ID can be seen in the returned set. If not set, will not
+        apply this capping.
+
+    Raises: AssertionError when (1) set_sizes and gamma_params do not
+      have equal length, (2) elements of gamma_params are not all
+      non-negative, or (3) freq_cap is not None or positive.
+    """
+    self.set_sizes = list(set_sizes)
+    self.gamma_params = list(gamma_params)
+
+    assert len(self.set_sizes) == len(self.gamma_params), (
+        'set_sizes and gamma_params do not have equal length.')
+    assert all([params[0] > 0 for params in self.gamma_params]), (
+        'Gamma shape parameters must be positive.')
+    assert all([params[1] > 0 for params in self.gamma_params]), (
+        'Gamma scale parameters must be positive.')
+    assert freq_cap is None or freq_cap > 0, (
+        'freq_cap should be None or positive.')
+
+    self.universe_size = universe_size
+    self.freq_cap = freq_cap
+    self.random_state = random_state
+
+  def __iter__(self):
+    for set_size, gamma_params in zip(self.set_sizes, self.gamma_params):
+      set_ids = choice_fast(self.universe_size, set_size, self.random_state)
+      rate_parameters = self.random_state.gamma(shape=gamma_params[0],
+                                                scale=gamma_params[1],
+                                                size=set_size)
+      frequencies = self.random_state.poisson(lam=rate_parameters,
+                                              size=set_size) + 1
+      if self.freq_cap:
+        frequencies = np.minimum(frequencies, self.freq_cap)
+      multiset_ids = []
+      for i, freq in zip(set_ids, frequencies):
         multiset_ids += [i] * freq
       self.random_state.shuffle(multiset_ids)
       yield multiset_ids
