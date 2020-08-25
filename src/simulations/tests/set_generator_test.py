@@ -18,8 +18,10 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 from wfa_cardinality_estimation_evaluation_framework.common.analysis import relative_error
+import wfa_cardinality_estimation_evaluation_framework.common.random
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
+from wfa_cardinality_estimation_evaluation_framework.simulations import frequency_set_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 
 
@@ -27,22 +29,6 @@ TEST_UNIVERSE_SIZE = 200
 TEST_NUM_SETS = 3
 TEST_SET_SIZE = 50
 TEST_SET_SIZE_LIST = [TEST_SET_SIZE] * TEST_NUM_SETS
-
-
-def fake_choice_fast(n, m, random_state=None):
-  _ = random_state
-  if isinstance(n, int):
-    return np.arange(m)
-  return n[:m]
-
-
-class FakeRandomState:
-
-  def poisson(self, lam, size):
-    return lam * np.ones(size, dtype=int)
-
-  def shuffle(self, l):
-    l.reverse()
 
 
 class SetGeneratorTest(parameterized.TestCase):
@@ -68,10 +54,10 @@ class SetGeneratorTest(parameterized.TestCase):
        {'order': 'reversed', 'correlated_sets': 'one', 'shared_prop': 0.2}),
       (set_generator.SequentiallyCorrelatedSetGenerator,
        {'order': 'random', 'correlated_sets': 'one', 'shared_prop': 0.2}),
-      (set_generator.HomogeneousMultiSetGenerator,
+      (frequency_set_generator.HomogeneousMultiSetGenerator,
        {'universe_size': TEST_UNIVERSE_SIZE,
-        'freq_rate_list': np.ones_like(TEST_SET_SIZE_LIST), 'freq_cap': 2}),
-      (set_generator.HeterogeneousMultiSetGenerator,
+        'freq_rates': np.ones_like(TEST_SET_SIZE_LIST), 'freq_cap': 2}),
+      (frequency_set_generator.HeterogeneousMultiSetGenerator,
        {'universe_size': TEST_UNIVERSE_SIZE,
         'gamma_params': [(1,1) for i in range(TEST_NUM_SETS)],
         'freq_cap': 2})
@@ -159,10 +145,10 @@ class SetGeneratorTest(parameterized.TestCase):
        {'order': 'original', 'correlated_sets': 'all', 'shared_prop': 0.2}),
       (set_generator.SequentiallyCorrelatedSetGenerator,
        {'order': 'original', 'correlated_sets': 'one', 'shared_prop': 0.2}),
-      (set_generator.HomogeneousMultiSetGenerator,
+      (frequency_set_generator.HomogeneousMultiSetGenerator,
        {'universe_size': TEST_UNIVERSE_SIZE,
-        'freq_rate_list': np.ones_like(TEST_SET_SIZE_LIST), 'freq_cap': 2}),
-      (set_generator.HeterogeneousMultiSetGenerator,
+        'freq_rates': np.ones_like(TEST_SET_SIZE_LIST), 'freq_cap': 2}),
+      (frequency_set_generator.HeterogeneousMultiSetGenerator,
        {'universe_size': TEST_UNIVERSE_SIZE,
         'gamma_params': [(1,1) for i in range(TEST_NUM_SETS)],
         'freq_cap': 2})
@@ -472,83 +458,6 @@ class SetGeneratorTest(parameterized.TestCase):
                    1,
                    f'{correlation_type}: Overlap set size not correct.')
 
-  @parameterized.parameters(
-      (None, [[0, 0, 0, 0, 0, 0], [1, 1, 0, 0]]),
-      (3, [[0, 0, 0], [1, 1, 0, 0]]))
-  def test_homogeneous_multiset_generator_freq_cap(
-      self, freq_cap, expected_multiset_ids_list):
-    set_sizes = [1, 2]
-    freq_rate_list = [5, 1]
-    rs = FakeRandomState()
-    gen = set_generator.HomogeneousMultiSetGenerator(
-        universe_size=4,
-        set_sizes=set_sizes,
-        freq_rate_list=freq_rate_list,
-        freq_cap=freq_cap,
-        random_state=rs)
-    with mock.patch.object(gen, 'choice', autospec=True) as mock_choice:
-      mock_choice.side_effect = fake_choice_fast
-      output_multiset_ids_list = [multiset_ids for multiset_ids in gen]
-      self.assertCountEqual(
-          expected_multiset_ids_list,
-          output_multiset_ids_list,
-          'Multiset doesn\'t contain the correct IDs with freq cap:'
-          f'{freq_cap}.')
-
-  def test_homogeneous_multiset_generator_raise_unequal_length_input(self):
-    # Test if raise error when set_sizes and freq_rate_list do not have
-    # equal length.
-    with self.assertRaises(AssertionError):
-      _ = set_generator.HomogeneousMultiSetGenerator(
-          universe_size=4,
-          set_sizes=[1, 1],
-          freq_rate_list=[1],
-          freq_cap=3,
-          random_state=np.random.RandomState())
-
-  def test_homogeneous_multiset_generator_raise_invalid_freq_rate(self):
-    # Test if raise error when freq_rate is invalid.
-    with self.assertRaises(AssertionError):
-      _ = set_generator.HomogeneousMultiSetGenerator(
-          universe_size=4,
-          set_sizes=[1, 1],
-          freq_rate_list=[-1, 1],
-          freq_cap=3,
-          random_state=np.random.RandomState())
-
-  @parameterized.parameters(0, -1)
-  def test_homogeneous_multiset_generator_raise_invalid_freq_cap(self,
-                                                                 freq_cap):
-    # Test if raise error when freq_cap is invalid.
-    with self.assertRaises(AssertionError):
-      _ = set_generator.HomogeneousMultiSetGenerator(
-          universe_size=4,
-          set_sizes=[1, 1],
-          freq_rate_list=[1, 1],
-          freq_cap=freq_cap,
-          random_state=np.random.RandomState())
-
-  def test_heterogeneous_multi_set_generator_with_frequency_cap(self):
-    g = set_generator.HeterogeneousMultiSetGenerator(1000, [100],
-                                                     [(1,1)],
-                                                     np.random.RandomState(1),
-                                                     freq_cap=1)
-    e = ExactMultiSet()
-    for ids in g:
-      e.add_ids(ids)
-    h = LosslessEstimator()([e])
-    self.assertEqual(h, [100])
-
-  def test_heterogeneous_multi_set_generator_test_impression_count(self):
-    g = set_generator.HeterogeneousMultiSetGenerator(1000, [10],
-                                                     [(1,1)],
-                                                     np.random.RandomState(1))
-    e = ExactMultiSet()
-    for ids in g:
-      e.add_ids(ids)
-    h = LosslessEstimator()([e])
-    self.assertEqual(h[0], 10)
-    self.assertGreater(len(h), 1)
 
 if __name__ == '__main__':
   absltest.main()
