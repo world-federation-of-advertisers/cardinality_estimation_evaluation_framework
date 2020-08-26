@@ -30,6 +30,9 @@ class StratifiedSketch(SketchBase):
   def get_sketch_factory(cls,
                          max_freq,
                          cardinality_sketch_factory,
+                         noiser_class=None,
+                         epsilon=0,
+                         epsilon_split=0.5,
                          underlying_set=None):
 
     def f(random_seed):
@@ -37,6 +40,9 @@ class StratifiedSketch(SketchBase):
           random_seed=random_seed,
           max_freq=max_freq,
           underlying_set=underlying_set,
+          noiser_class=noiser_class,
+          epsilon=epsilon,
+          epsilon_split=epsilon_split,
           cardinality_sketch_factory=cardinality_sketch_factory)
 
     return f
@@ -45,6 +51,9 @@ class StratifiedSketch(SketchBase):
                max_freq,
                cardinality_sketch_factory,
                random_seed,
+               noiser_class=None,
+               epsilon=0,
+               epsilon_split=0.5,
                underlying_set=None):
     """Construct a Stratified sketch.
 
@@ -55,21 +64,38 @@ class StratifiedSketch(SketchBase):
       random_seed: This arg exists in order to conform to
         simulator.EstimatorConfig.sketch_factory.
       cardinality_sketch_factory: A cardinality sketch factory.
+      noiser : A noiser instance of base.EstimateNoiserBase.
+      epsilon : Total privacy budget to spend for noising this sketch.
+      epsilon_split : Ratio of privacy budget to spend to noise 1+ sketch.
     """
     SketchBase.__init__(self)
     # A dictionary that contains multiple sketches, which include:
     # (1) sketches with frequency equal to k, where k < max_freq;
     # (2) a sketch with frequency greater than or equal to max_freq;
+    assert (epsilon_split >= 0 and
+            epsilon_split < 1), ('epsilon split is not between 0 and 1')
+
     self.sketches = {}
     self.seed = random_seed
     self.max_freq = max_freq
     self.cardinality_sketch_factory = cardinality_sketch_factory
     self.underlying_set = underlying_set if underlying_set is not None else ExactMultiSet(
     )
+    self.epsilon_split = epsilon_split
+    self.epsilon = epsilon
+    self.one_plus_noiser = None
+    self.rest_noiser = None
+    if noiser_class is not None:
+      self.rest_noiser = noiser_class(epsilon=epsilon * (1 - epsilon_split))
+      if epsilon_split == 0:
+        self.one_plus_noiser = noiser_class(epsilon=epsilon)
+      else:
+        self.one_plus_noiser = noiser_class(epsilon=epsilon * epsilon_split)
 
   def create_sketches(self):
-    if (self.sketches != {}):
+    if self.sketches != {}:
       return
+
     reversedict = {}
     for k, v in self.underlying_set.ids().items():
       reversedict.setdefault(min(v, self.max_freq), []).append(k)
@@ -85,6 +111,55 @@ class StratifiedSketch(SketchBase):
     if (self.max_freq in reversedict):
       self.sketches[max_key].add_ids(reversedict[self.max_freq])
 
+  def noise(self):
+    max_key = str(self.max_freq) + '+'
+    if self.rest_noiser is not None:
+      for i in range(1, self.max_freq):
+        self.sketches[i] = self.rest_noiser(self.sketches[i])
+      self.sketches[max_key] = self.rest_noiser(self.sketches[max_key])
+
+    if self.one_plus_noiser is not None:
+      self.sketches[ONE_PLUS] = self.one_plus_noiser(self.sketches[ONE_PLUS])
+
+  def create_one_plus_with_merge(self, sketch_union):
+    one_plus = self.cardinality_sketch_factory(self.seed)
+    max_key = str(self.max_freq) + '+'
+    for k in range(1, self.max_freq):
+      one_plus = sketch_union(one_plus, self.sketches[k])
+    one_plus = sketch_union(one_plus, self.sketches[max_key])
+    return one_plus
+
+  def create_one_plus_from_underlying(self):
+    one_plus = self.cardinality_sketch_factory(self.seed)
+    for k, v in self.underlying_set.ids().items():
+      one_plus.add_ids([k])
+    return one_plus
+
+  def create_one_plus_sketch(self, sketch_union):
+    """Create the 1+ sketch for this stratified sketch.
+
+       We support creation of 1+ sketch for 2 scenerios :
+         1) 1+ sketch is created from the underlying exact set directly. Here we
+         noise 1+ sketch with epsilon = (self.epsilon * self.epsilon_split).
+
+         2) 1+ sketch is created from the union of all other frequencies. Here
+         we noise 1+ sketch with epsilon = self.epsilon
+
+      These two scenerios are controlled with the epsilon_split parameter. If
+      epsilon_split = 0, then do scenerio 1 otherwise do scenerio 2.
+    """
+
+    if ONE_PLUS in self.sketches:
+      return
+
+    assert (self.epsilon_split >= 0 and self.epsilon_split < 1), (
+        'epsilon split is not between 0 and 1 for ONE_PLUS sketch creation')
+
+    if (self.epsilon_split == 0):
+      self.sketches[ONE_PLUS] = self.create_one_plus_with_merge(sketch_union)
+    else:
+      self.sketches[ONE_PLUS] = self.create_one_plus_from_underlying()
+
   def _destroy_sketches(self):
     self.sketches = {}
 
@@ -97,8 +172,14 @@ class StratifiedSketch(SketchBase):
     self.underlying_set.add(x)
 
   @classmethod
-  def init_from_exact_multi_set(cls, max_freq, exact_multi_set,
-                                cardinality_sketch_factory, random_seed):
+  def init_from_exact_multi_set(cls,
+                                max_freq,
+                                exact_multi_set,
+                                cardinality_sketch_factory,
+                                random_seed,
+                                noiser_class=None,
+                                epsilon=0,
+                                epsilon_split=0.5):
     """Initialize a Stratified sketch from one ExactMultiSet.
 
     Args:
@@ -112,14 +193,23 @@ class StratifiedSketch(SketchBase):
         max_freq=max_freq,
         underlying_set=exact_multi_set,
         cardinality_sketch_factory=cardinality_sketch_factory,
-        random_seed=random_seed)
+        random_seed=random_seed,
+        noiser_class=noiser_class,
+        epsilon=epsilon,
+        epsilon_split=epsilon_split)
     stratified_sketch.create_sketches()
 
     return stratified_sketch
 
   @classmethod
-  def init_from_set_generator(cls, max_freq, set_generator,
-                              cardinality_sketch_factory, random_seed):
+  def init_from_set_generator(cls,
+                              max_freq,
+                              set_generator,
+                              cardinality_sketch_factory,
+                              random_seed,
+                              noiser_class=None,
+                              epsilon=0,
+                              epsilon_split=0.5):
     """Initialize a Stratified sketch from a Set Generator.
 
     Args:
@@ -132,9 +222,14 @@ class StratifiedSketch(SketchBase):
     exact_multi_set = ExactMultiSet()
     for generated_set in set_generator:
       exact_multi_set.add_ids(generated_set)
-    return cls.init_from_exact_multi_set(max_freq, exact_multi_set,
-                                         cardinality_sketch_factory,
-                                         random_seed)
+    return cls.init_from_exact_multi_set(
+        max_freq,
+        exact_multi_set,
+        cardinality_sketch_factory,
+        random_seed,
+        noiser_class=noiser_class,
+        epsilon=epsilon,
+        epsilon_split=epsilon_split)
 
   def assert_compatible(self, other):
     """"Check if the two StratifiedSketch are comparable.
@@ -154,17 +249,21 @@ class StratifiedSketch(SketchBase):
     assert self.max_freq == other.max_freq, (
         'The frequency targets are different: '
         f'{self.max_freq} != {other.max_freq}')
-    assert isinstance(self.cardinality_sketch_factory, type(
-        other.cardinality_sketch_factory))
+    assert isinstance(self.cardinality_sketch_factory,
+                      type(other.cardinality_sketch_factory))
     if (self.sketches != {} and other.sketches != {}):
-      assert isinstance(list(self.sketches.values())[0], type(
-          list(other.sketches.values())[0]))
+      assert isinstance(
+          list(self.sketches.values())[0],
+          type(list(other.sketches.values())[0]))
 
 
 class PairwiseEstimator(EstimatorBase):
   """Merge and estimate two StratifiedSketch."""
 
-  def __init__(self, sketch_operator, cardinality_estimator):
+  def __init__(self,
+               sketch_operator,
+               cardinality_estimator,
+               denoiser_class=None):
     """Create an estimator for two Stratified sketches.
 
     Args:
@@ -177,10 +276,68 @@ class PairwiseEstimator(EstimatorBase):
     self.sketch_union = sketch_operator.union
     self.sketch_difference = sketch_operator.difference
     self.sketch_intersection = sketch_operator.intersection
+    self.denoiser_class = denoiser_class
 
   def __call__(self, this, that):
-    merged = self.merge_sketches(this, that)
+    merged = self.merge(this, that)
     return self.estimate_cardinality(merged)
+
+  def merge(self, this, that):
+    [denoised_this, denoised_that] = self.prepare_sketches(this, that)
+    merged = self.merge_sketches(denoised_this, denoised_that)
+    return merged
+
+  def prepare_sketches(self, this, that):
+    assert isinstance(this, StratifiedSketch)
+    assert isinstance(that, StratifiedSketch)
+
+    this.create_sketches()
+    that.create_sketches()
+    this.create_one_plus_sketch(self.sketch_union)
+    that.create_one_plus_sketch(self.sketch_union)
+
+    this.assert_compatible(that)
+
+    if self.denoiser_class is not None:
+      return [self.denoise_sketch(this), self.denoise_sketch(that)]
+
+    return [copy.deepcopy(this), copy.deepcopy(that)]
+
+  def denoise_sketch(self, stratified_sketch):
+    """Denoise a StratifiedSketch.
+
+    Args:
+       stratified_sketch: a StratifiedSketch.
+
+    Returns:
+      A denoised StratifiedSketch.
+    """
+    # Make a copy of the Stratified Sketch to make sure it is still compatible
+    # with other sketches.
+    denoised_stratified_sketch = copy.deepcopy(stratified_sketch)
+    epsilon = stratified_sketch.epsilon
+    epsilon_split = stratified_sketch.epsilon_split
+    max_key = str(stratified_sketch.max_freq) + '+'
+
+    one_plus_epsilon = epsilon if epsilon_split == 0 else epsilon * epsilon_split
+
+    rest_epsilon = stratified_sketch.epsilon * (1 -
+                                                stratified_sketch.epsilon_split)
+
+    one_plus_denoiser = self.denoiser_class(epsilon=one_plus_epsilon)
+    rest_denoiser = self.denoiser_class(epsilon=rest_epsilon)
+
+    for freq in range(1, denoised_stratified_sketch.max_freq):
+      denoised_stratified_sketch.sketches[freq] = rest_denoiser(
+          denoised_stratified_sketch.sketches[freq])
+
+    denoised_stratified_sketch.sketches[max_key] = rest_denoiser(
+        denoised_stratified_sketch.sketches[max_key])
+
+    denoised_stratified_sketch.sketches[ONE_PLUS] = one_plus_denoiser(
+        denoised_stratified_sketch.sketches[ONE_PLUS])
+
+    return denoised_stratified_sketch
 
   def merge_sketches(self, this, that):
     """Merge two StratifiedSketch.
@@ -197,25 +354,14 @@ class PairwiseEstimator(EstimatorBase):
     Returns:
       A merged StratifiedSketch from the input.
     """
-    assert isinstance(this, StratifiedSketch)
-    assert isinstance(that, StratifiedSketch)
 
-    this.create_sketches()
-    that.create_sketches()
+    this_one_plus = this.sketches[ONE_PLUS]
+    that_one_plus = that.sketches[ONE_PLUS]
 
-    this.assert_compatible(that)
     max_freq = this.max_freq
     max_key = str(max_freq) + '+'
+
     merged_sketch = copy.deepcopy(this)
-
-    this_one_plus = this.cardinality_sketch_factory(0)
-    that_one_plus = that.cardinality_sketch_factory(0)
-    for k in range(1, max_freq):
-      this_one_plus = self.sketch_union(this_one_plus, this.sketches[k])
-      that_one_plus = self.sketch_union(that_one_plus, that.sketches[k])
-
-    this_one_plus = self.sketch_union(this_one_plus, this.sketches[max_key])
-    that_one_plus = self.sketch_union(that_one_plus, that.sketches[max_key])
 
     for k in range(1, max_freq):
       # Calculate A(k) & B(0) = A(k) - (A(k) & B(1+))
@@ -309,15 +455,11 @@ class SequentialEstimator(EstimatorBase):
                                                 cardinality_estimator)
 
   def __call__(self, sketches_list):
-    for sketch in sketches_list:
-      if (sketch.sketches == {}):
-        sketch.create_sketches()
     merged = self.merge_sketches(sketches_list)
     return self.pairwise_estimator.estimate_cardinality(merged)
 
   def merge_sketches(self, sketches_list):
-    return functools.reduce(self.pairwise_estimator.merge_sketches,
-                            sketches_list)
+    return functools.reduce(self.pairwise_estimator.merge, sketches_list)
 
 
 class ExactSetOperator(object):
