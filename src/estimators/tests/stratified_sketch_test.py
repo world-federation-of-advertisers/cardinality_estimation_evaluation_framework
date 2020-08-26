@@ -362,64 +362,66 @@ class PairwiseEstimatorTest(absltest.TestCase):
     expected = [6, 4, 3]
     self.assertEqual(estimated, expected)
 
-#   def test_end_to_end_noise_with_oneplus_budget(self):
-#     max_freq = 3
-#     this_multi_set = generate_multi_set([(1, 2), (2, 3), (3, 1), (10, 1)])
-#     that_multi_set = generate_multi_set([(1, 1), (3, 1), (4, 5), (5, 1)])
-#     this_noised_sketch = stratified_sketch.StratifiedSketch.init_from_exact_multi_set(
-#         max_freq,
-#         this_multi_set,
-#         epsilon=0.8,
-#         epsilon_split=0.5,
-#         noiser_class=PlusNoiser,
-#         cardinality_sketch_factory=ExactMultiSet.get_sketch_factory(),
-#         random_seed=1)
-#     that_noised_sketch = stratified_sketch.StratifiedSketch.init_from_exact_multi_set(
-#         max_freq,
-#         that_multi_set,
-#         epsilon=0.8,
-#         epsilon_split=0.5,
-#         noiser_class=PlusNoiser,
-#         cardinality_sketch_factory=ExactMultiSet.get_sketch_factory(),
-#         random_seed=1)
-#     estimator = stratified_sketch.PairwiseEstimator(
-#         denoiser_class=MinusDenoiser,
-#         sketch_operator=stratified_sketch.ExactSetOperator,
-#         cardinality_estimator=LosslessEstimator())
+  def test_end_to_end_noise_with_oneplus_budget(self):
+    max_freq = 3
+    this_multi_set = generate_multi_set([(1, 2), (2, 3), (3, 1), (10, 1)])
+    that_multi_set = generate_multi_set([(1, 1), (3, 1), (4, 5), (5, 1)])
+    this_noised_sketch = stratified_sketch.StratifiedSketch.init_from_exact_multi_set(
+        max_freq,
+        this_multi_set,
+        epsilon=0.8,
+        epsilon_split=0.5,
+        noiser_class=PlusNoiser,
+        cardinality_sketch_factory=ExactMultiSet.get_sketch_factory(),
+        random_seed=1)
+    that_noised_sketch = stratified_sketch.StratifiedSketch.init_from_exact_multi_set(
+        max_freq,
+        that_multi_set,
+        epsilon=0.8,
+        epsilon_split=0.5,
+        noiser_class=PlusNoiser,
+        cardinality_sketch_factory=ExactMultiSet.get_sketch_factory(),
+        random_seed=1)
+    estimator = stratified_sketch.PairwiseEstimator(
+        denoiser_class=MinusDenoiser,
+        sketch_operator=stratified_sketch.ExactSetOperator,
+        cardinality_estimator=LosslessEstimator())
 
-#     estimated = estimator(this_noised_sketch, that_noised_sketch)
-#     expected = [6, 4, 3]
-#     self.assertEqual(estimated, expected)
+    estimated = estimator(this_noised_sketch, that_noised_sketch)
+    expected = [6, 4, 3]
+    self.assertEqual(estimated, expected)
 
 
-#   def test_end_to_end_noise_without_oneplus_budget(self):
-#     max_freq = 3
-#     this_multi_set = generate_multi_set([(1, 2), (2, 3), (3, 1), (10, 1)])
-#     that_multi_set = generate_multi_set([(1, 1), (3, 1), (4, 5), (5, 1)])
-#     this_noised_sketch = stratified_sketch.StratifiedSketch.init_from_exact_multi_set(
-#         max_freq,
-#         this_multi_set,
-#         epsilon=0.8,
-#         epsilon_split=0,
-#         noiser_class=PlusNoiser,
-#         cardinality_sketch_factory=ExactMultiSet.get_sketch_factory(),
-#         random_seed=1)
-#     that_noised_sketch = stratified_sketch.StratifiedSketch.init_from_exact_multi_set(
-#         max_freq,
-#         that_multi_set,
-#         epsilon=0.8,
-#         epsilon_split=0,
-#         noiser_class=PlusNoiser,
-#         cardinality_sketch_factory=ExactMultiSet.get_sketch_factory(),
-#         random_seed=1)
-#     estimator = stratified_sketch.PairwiseEstimator(
-#         denoiser_class=MinusDenoiser,
-#         sketch_operator=stratified_sketch.ExactSetOperator,
-#         cardinality_estimator=LosslessEstimator())
+  def test_end_to_end_noise_without_oneplus_budget(self):
+    max_freq = 3
+    this_multi_set = generate_multi_set([(1, 2), (2, 3), (3, 1), (10, 1)])
+    that_multi_set = generate_multi_set([(1, 1), (3, 1), (4, 5), (5, 1)])
+    this_noised_sketch = stratified_sketch.StratifiedSketch.init_from_exact_multi_set(
+        max_freq,
+        this_multi_set,
+        epsilon=0.8,
+        epsilon_split=0,
+        noiser_class=PlusNoiser,
+        union=stratified_sketch.ExactSetOperator.union,
+        cardinality_sketch_factory=ExactMultiSet.get_sketch_factory(),
+        random_seed=1)
+    that_noised_sketch = stratified_sketch.StratifiedSketch.init_from_exact_multi_set(
+        max_freq,
+        that_multi_set,
+        epsilon=0.8,
+        epsilon_split=0,
+        noiser_class=PlusNoiser,
+        union=stratified_sketch.ExactSetOperator.union,
+        cardinality_sketch_factory=ExactMultiSet.get_sketch_factory(),
+        random_seed=1)
+    estimator = stratified_sketch.PairwiseEstimator(
+        denoiser_class=MinusDenoiser,
+        sketch_operator=stratified_sketch.ExactSetOperator,
+        cardinality_estimator=LosslessEstimator())
 
-#     estimated = estimator(this_noised_sketch, that_noised_sketch)
-#     expected = [6, 4, 3]
-#     self.assertEqual(estimated, expected)
+    estimated = estimator(this_noised_sketch, that_noised_sketch)
+    expected = [6, 4, 3]
+    self.assertEqual(estimated, expected)
 
 class SequentialEstimatorTest(absltest.TestCase):
   """Test SequentialEstimator merge and frequency estimation."""
