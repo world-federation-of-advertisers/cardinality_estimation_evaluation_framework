@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs."""
+import math
 from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -64,6 +65,7 @@ class EvaluationConfigTest(parameterized.TestCase):
     }
 
     self.assertEqual(result, expected)
+
   @parameterized.parameters(
       (set_generator.USER_ACTIVITY_ASSOCIATION_INDEPENDENT),
       (set_generator.USER_ACTIVITY_ASSOCIATION_IDENTICAL),
@@ -288,6 +290,49 @@ class EvaluationConfigTest(parameterized.TestCase):
     eval_configs = _complete_test_with_selected_parameters(num_runs=1)
     for scenario_config in eval_configs.scenario_config_list:
       self.assertIsInstance(scenario_config, configs.ScenarioConfig)
+
+  @parameterized.parameters(
+      (None, evaluation_configs.INFINITY_STR),
+      (math.log(3), '1.0986'),
+      ('1.09861', '1.0986'),
+      (0, '0.0000'),
+  )
+  def test_format_epsilon_correct(self, epsilon, expected):
+    self.assertEqual(evaluation_configs._format_epsilon(epsilon), expected)
+
+  def test_construct_sketch_estimator_config_name(self):
+    name = evaluation_configs.construct_sketch_estimator_config_name(
+        sketch_name='vector_of_counts',
+        sketch_config='4096',
+        estimator_name='sequential',
+        sketch_epsilon=None,
+        estimate_epsilon=1,
+    )
+    expected = (
+        'vector_of_counts-4096-sequential-'
+        f'{evaluation_configs.INFINITY_STR}-1.0000')
+    self.assertEqual(name, expected)
+
+  @parameterized.parameters(
+      ('vector-of_counts', '4096', 'sequential'),
+      ('vector_of_counts', '4096-0', 'sequential'),
+      ('vector_of_counts', '4096', 'pairwise-sequential')
+  )
+  def test_construct_sketch_estimator_config_raise_invalid_input(
+      self, sketch_name, sketch_config, estimator_name):
+    with self.assertRaises(AssertionError):
+      evaluation_configs.construct_sketch_estimator_config_name(
+          sketch_name, sketch_config, estimator_name)
+
+  def test_get_estimator_configs_return_configs(self):
+    expected_sketch_estimator_configs = [conf.name for conf in (
+        evaluation_configs._generate_cardinality_estimator_configs())]
+    sketch_estimator_configs = evaluation_configs.get_estimator_configs(
+        expected_sketch_estimator_configs, 1)
+    self.assertLen(sketch_estimator_configs,
+                   len(expected_sketch_estimator_configs))
+    for conf in sketch_estimator_configs:
+      self.assertIn(conf.name, expected_sketch_estimator_configs)
 
 
 if __name__ == '__main__':
