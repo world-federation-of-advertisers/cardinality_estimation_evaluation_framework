@@ -15,88 +15,14 @@
 
 Under the independence assumption, the cardinality of the union of two
 sketches representing sets A and B is equal to
-
+   
   |A| + |B| - |A| * |B| / N,
 
 where N is the size of the universe from which A and B are drawn.
 """
-import copy
+
 from itertools import accumulate
-from wfa_cardinality_estimation_evaluation_framework.common import noisers
 from wfa_cardinality_estimation_evaluation_framework.estimators.base import EstimatorBase
-from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchBase
-from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchNoiserBase
-from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
-from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
-
-
-class Reach(SketchBase):
-  """Reach of a campaign."""
-
-  @classmethod
-  def get_sketch_factory(cls):
-
-    def f(random_seed):
-      return cls(random_seed=random_seed)
-
-    return f
-
-  def __init__(self, random_seed=None):
-    """Construct reach sketch.
-
-    Args:
-      random_seed: This arg exists in order to conform to
-        simulator.EstimatorConfig.sketch_factory.
-    """
-    SketchBase.__init__(self)
-    self._cardinality = 0
-    self._estimator = LosslessEstimator()
-    self._exact_set = ExactMultiSet(random_seed)
-
-  def add_ids(self, ids):
-    for x in ids:
-      self._exact_set.add(x)
-    self._cardinality = self._estimator([self._exact_set])
-
-  @property
-  def cardinality(self):
-    return self._cardinality
-
-  @cardinality.setter
-  def cardinality(self, new_cardinality):
-    assert len(new_cardinality) == len(self.cardinality)
-    for i, x in enumerate(new_cardinality):
-      self._cardinality[i] = max(0, new_cardinality[i])
-
-
-class ReachEstimator(EstimatorBase):
-  """Reach of a single campaign."""
-
-  def __call__(self, sketch_list):
-    """Get the reach."""
-    assert len(sketch_list) == 1, 'The input should be a list of one element.'
-    return sketch_list[0].cardinality
-
-
-class ReachNoiser(SketchNoiserBase):
-  """Reach noiser."""
-
-  def __init__(self, epsilon, random_state=None):
-    """Instantiates the noiser object.
-
-    Args:
-      epsilon: The differential privacy level.
-      random_state:  Optional instance of numpy.random.RandomState that is used
-        to seed the random number generator.
-    """
-    self._noiser = noisers.GeometricMechanism(lambda x: x, 1.0, epsilon,
-                                              random_state)
-
-  def __call__(self, sketch):
-    """Returns a noised reach sketch."""
-    new_sketch = copy.deepcopy(sketch)
-    new_sketch.cardinality = [self._noiser(x) for x in sketch.cardinality]
-    return new_sketch
 
 
 class IndependentSetEstimator(EstimatorBase):
