@@ -26,8 +26,8 @@ from pathos.multiprocessing import ProcessPool, cpu_count
 from tqdm import tqdm
 
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import EvaluationConfig
+from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import SketchEstimatorConfig
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
-from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
 
 # Pickle filenames for saving the configurations.
 SCENARIO_SEED_FILE = 'set_generator_seed.p'

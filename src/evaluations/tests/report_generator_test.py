@@ -27,20 +27,19 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations import evaluato
 from wfa_cardinality_estimation_evaluation_framework.evaluations import report_generator
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data import evaluation_configs
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
-from wfa_cardinality_estimation_evaluation_framework.simulations import simulator
 
 
 class ReportGeneratorTest(absltest.TestCase):
 
   def setUp(self):
     super(ReportGeneratorTest, self).setUp()
-    exact_set_lossless = simulator.SketchEstimatorConfig(
+    exact_set_lossless = configs.SketchEstimatorConfig(
         name='exact_set-infty-infty-lossless',
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LosslessEstimator(),
         sketch_noiser=None,
         estimate_noiser=None)
-    exact_set_less_one = simulator.SketchEstimatorConfig(
+    exact_set_less_one = configs.SketchEstimatorConfig(
         name='exact_set-infty-infty-less_one',
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LessOneEstimator(),
@@ -87,14 +86,14 @@ class ReportGeneratorTest(absltest.TestCase):
 
     self.run_evaluation_and_simulation = _run_evaluation_and_simulation
 
-    exact_set_lossless_freq3 = simulator.SketchEstimatorConfig(
+    exact_set_lossless_freq3 = configs.SketchEstimatorConfig(
         name='exact_set-infty-infty-lossless',
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LosslessEstimator(),
         sketch_noiser=None,
         estimate_noiser=None,
         max_frequency=3)
-    exact_set_less_one_freq3 = simulator.SketchEstimatorConfig(
+    exact_set_less_one_freq3 = configs.SketchEstimatorConfig(
         name='exact_set-infty-infty-less_one',
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LessOneEstimator(),
