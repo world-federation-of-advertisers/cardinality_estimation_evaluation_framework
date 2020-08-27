@@ -23,6 +23,46 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import
 ONE_PLUS = '1+'
 
 
+class ExactSetOperator(object):
+  """Set operations for ExactSet."""
+
+  @classmethod
+  def union(cls, this, that):
+    """Union operation for ExactSet."""
+    if this is None:
+      return copy.deepcopy(that)
+    if that is None:
+      return copy.deepcopy(this)
+    result = copy.deepcopy(this)
+    result_key_set = set(result.ids().keys())
+    that_key_set = set(that.ids().keys())
+    result._ids = {x: 1 for x in result_key_set.union(that_key_set)}
+    return result
+
+  @classmethod
+  def intersection(cls, this, that):
+    """Intersection operation for ExactSet."""
+    if this is None or that is None:
+      return None
+    result = copy.deepcopy(this)
+    result_key_set = set(result.ids().keys())
+    that_key_set = set(that.ids().keys())
+    result._ids = {x: 1 for x in result_key_set.intersection(that_key_set)}
+    return result
+
+  @classmethod
+  def difference(cls, this, that):
+    """Difference operation for ExactSet."""
+    if this is None:
+      return None
+    if that is None:
+      return copy.deepcopy(this)
+    result = copy.deepcopy(this)
+    result_key_set = set(result.ids().keys())
+    that_key_set = set(that.ids().keys())
+    result._ids = {x: 1 for x in result_key_set.difference(that_key_set)}
+    return result
+
 class StratifiedSketch(SketchBase):
   """A frequency sketch that contains cardinality sketches per frequency bucket."""
 
@@ -34,7 +74,7 @@ class StratifiedSketch(SketchBase):
                          epsilon=0,
                          epsilon_split=0.5,
                          underlying_set=None,
-                         union=None):
+                         union=ExactSetOperator.union):
 
     def f(random_seed):
       return cls(
@@ -57,7 +97,7 @@ class StratifiedSketch(SketchBase):
                epsilon=0,
                epsilon_split=0.5,
                underlying_set=None,
-               union=None):
+               union=ExactSetOperator.union):
     """Construct a Stratified sketch.
 
     Args:
@@ -117,21 +157,6 @@ class StratifiedSketch(SketchBase):
     if (self.max_freq in reversedict):
       self.sketches[max_key].add_ids(reversedict[self.max_freq])
 
-  def create_sketches(self):
-    self.create_frequency_sketches()
-    self.create_one_plus_sketch()
-    self.noise()
-
-  def noise(self):
-    max_key = str(self.max_freq) + '+'
-    if self.rest_noiser is not None:
-      for i in range(1, self.max_freq):
-        self.sketches[i] = self.rest_noiser(self.sketches[i])
-      self.sketches[max_key] = self.rest_noiser(self.sketches[max_key])
-
-    if self.one_plus_noiser is not None:
-      self.sketches[ONE_PLUS] = self.one_plus_noiser(self.sketches[ONE_PLUS])
-
   def create_one_plus_with_merge(self):
     assert (self.union is not None), (
         '1+ cannot be calculated because union operation is not known')
@@ -173,6 +198,21 @@ class StratifiedSketch(SketchBase):
     else:
       self.sketches[ONE_PLUS] = self.create_one_plus_from_underlying()
 
+  def create_sketches(self):
+    self.create_frequency_sketches()
+    self.create_one_plus_sketch()
+    self.noise()
+
+  def noise(self):
+    max_key = str(self.max_freq) + '+'
+    if self.rest_noiser is not None:
+      for i in range(1, self.max_freq):
+        self.sketches[i] = self.rest_noiser(self.sketches[i])
+      self.sketches[max_key] = self.rest_noiser(self.sketches[max_key])
+
+    if self.one_plus_noiser is not None:
+      self.sketches[ONE_PLUS] = self.one_plus_noiser(self.sketches[ONE_PLUS])
+
   def _destroy_sketches(self):
     self.sketches = {}
 
@@ -193,7 +233,7 @@ class StratifiedSketch(SketchBase):
                                 noiser_class=None,
                                 epsilon=0,
                                 epsilon_split=0.5,
-                                union=None):
+                                union=ExactSetOperator.union):
     """Initialize a Stratified sketch from one ExactMultiSet.
 
     Args:
@@ -225,7 +265,7 @@ class StratifiedSketch(SketchBase):
                               noiser_class=None,
                               epsilon=0,
                               epsilon_split=0.5,
-                              union=None):
+                              union=ExactSetOperator.union):
     """Initialize a Stratified sketch from a Set Generator.
 
     Args:
@@ -300,22 +340,20 @@ class PairwiseEstimator(EstimatorBase):
     return self.estimate_cardinality(merged)
 
   def merge(self, this, that):
-    [denoised_this, denoised_that] = self.prepare_sketches(this, that)
+    denoised_this = self.prepare_sketch(this)
+    denoised_that = self.prepare_sketch(that)
     merged = self.merge_sketches(denoised_this, denoised_that)
     return merged
 
-  def prepare_sketches(self, this, that):
+  def prepare_sketch(self, this):
     assert isinstance(this, StratifiedSketch)
-    assert isinstance(that, StratifiedSketch)
 
     this.create_sketches()
-    that.create_sketches()
-    this.assert_compatible(that)
 
     if self.denoiser_class is not None:
-      return [self.denoise_sketch(this), self.denoise_sketch(that)]
+      return self.denoise_sketch(this)
 
-    return [copy.deepcopy(this), copy.deepcopy(that)]
+    return copy.deepcopy(this)
 
   def denoise_sketch(self, stratified_sketch):
     """Denoise a StratifiedSketch.
@@ -326,9 +364,12 @@ class PairwiseEstimator(EstimatorBase):
     Returns:
       A denoised StratifiedSketch.
     """
-    # Make a copy of the Stratified Sketch to make sure it is still compatible
-    # with other sketches.
+
     denoised_stratified_sketch = copy.deepcopy(stratified_sketch)
+
+    if self.denoiser_class is None:
+      return denoised_stratified_sketch
+
     epsilon = stratified_sketch.epsilon
     epsilon_split = stratified_sketch.epsilon_split
     max_key = str(stratified_sketch.max_freq) + '+'
@@ -343,13 +384,13 @@ class PairwiseEstimator(EstimatorBase):
 
     for freq in range(1, denoised_stratified_sketch.max_freq):
       denoised_stratified_sketch.sketches[freq] = rest_denoiser(
-          denoised_stratified_sketch.sketches[freq])
+          stratified_sketch.sketches[freq])
 
     denoised_stratified_sketch.sketches[max_key] = rest_denoiser(
-        denoised_stratified_sketch.sketches[max_key])
+        stratified_sketch.sketches[max_key])
 
     denoised_stratified_sketch.sketches[ONE_PLUS] = one_plus_denoiser(
-        denoised_stratified_sketch.sketches[ONE_PLUS])
+        stratified_sketch.sketches[ONE_PLUS])
 
     return denoised_stratified_sketch
 
@@ -369,6 +410,7 @@ class PairwiseEstimator(EstimatorBase):
       A merged StratifiedSketch from the input.
     """
 
+    this.assert_compatible(that)
     this_one_plus = this.sketches[ONE_PLUS]
     that_one_plus = that.sketches[ONE_PLUS]
 
@@ -450,7 +492,6 @@ class PairwiseEstimator(EstimatorBase):
       result.append(freq_count_histogram[0])
 
     max_key = str(stratified_sketch.max_freq) + '+'
-
     max_freq_count_histogram = self.cardinality_estimator(
         [stratified_sketch.sketches[max_key]])
     assert (len(max_freq_count_histogram) == 1), (
@@ -464,54 +505,18 @@ class PairwiseEstimator(EstimatorBase):
 class SequentialEstimator(EstimatorBase):
   """Sequential frequency estimator."""
 
-  def __init__(self, sketch_operator, cardinality_estimator):
-    self.pairwise_estimator = PairwiseEstimator(sketch_operator,
-                                                cardinality_estimator)
+  def __init__(self,
+               sketch_operator,
+               cardinality_estimator,
+               denoiser_class=None):
+    self.pairwise_estimator = PairwiseEstimator(
+        sketch_operator, cardinality_estimator, denoiser_class=denoiser_class)
 
   def __call__(self, sketches_list):
-    merged = self.merge_sketches(sketches_list)
+    for i, sketch in enumerate(sketches_list):
+      sketches_list[i] = self.pairwise_estimator.denoise_sketch(sketch)
+    merged = self.merge(sketches_list)
     return self.pairwise_estimator.estimate_cardinality(merged)
 
-  def merge_sketches(self, sketches_list):
-    return functools.reduce(self.pairwise_estimator.merge, sketches_list)
-
-
-class ExactSetOperator(object):
-  """Set operations for ExactSet."""
-
-  @classmethod
-  def union(cls, this, that):
-    """Union operation for ExactSet."""
-    if this is None:
-      return copy.deepcopy(that)
-    if that is None:
-      return copy.deepcopy(this)
-    result = copy.deepcopy(this)
-    result_key_set = set(result.ids().keys())
-    that_key_set = set(that.ids().keys())
-    result._ids = {x: 1 for x in result_key_set.union(that_key_set)}
-    return result
-
-  @classmethod
-  def intersection(cls, this, that):
-    """Intersection operation for ExactSet."""
-    if this is None or that is None:
-      return None
-    result = copy.deepcopy(this)
-    result_key_set = set(result.ids().keys())
-    that_key_set = set(that.ids().keys())
-    result._ids = {x: 1 for x in result_key_set.intersection(that_key_set)}
-    return result
-
-  @classmethod
-  def difference(cls, this, that):
-    """Difference operation for ExactSet."""
-    if this is None:
-      return None
-    if that is None:
-      return copy.deepcopy(this)
-    result = copy.deepcopy(this)
-    result_key_set = set(result.ids().keys())
-    that_key_set = set(that.ids().keys())
-    result._ids = {x: 1 for x in result_key_set.difference(that_key_set)}
-    return result
+  def merge(self, sketches_list):
+    return functools.reduce(self.pairwise_estimator.merge_sketches, sketches_list)
