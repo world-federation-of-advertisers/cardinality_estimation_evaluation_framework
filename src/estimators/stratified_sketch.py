@@ -63,6 +63,7 @@ class ExactSetOperator(object):
     result._ids = {x: 1 for x in result_key_set.difference(that_key_set)}
     return result
 
+
 class StratifiedSketch(SketchBase):
   """A frequency sketch that contains cardinality sketches per frequency bucket."""
 
@@ -78,14 +79,14 @@ class StratifiedSketch(SketchBase):
 
     def f(random_seed):
       return cls(
-          random_seed=random_seed,
           max_freq=max_freq,
+          cardinality_sketch_factory=cardinality_sketch_factory,
+          random_seed=random_seed,
           underlying_set=underlying_set,
           noiser_class=noiser_class,
           epsilon=epsilon,
           epsilon_split=epsilon_split,
-          union=union,
-          cardinality_sketch_factory=cardinality_sketch_factory)
+          union=union)
 
     return f
 
@@ -104,12 +105,14 @@ class StratifiedSketch(SketchBase):
       max_freq: the maximum targeting frequency level. For example, if it is set
         to 3, then the sketches will include frequency=1, 2, 3+ (frequency >=
         3).
+      cardinality_sketch_factory: A cardinality sketch factory.
       random_seed: This arg exists in order to conform to
         simulator.EstimatorConfig.sketch_factory.
-      cardinality_sketch_factory: A cardinality sketch factory.
-      noiser : A noiser instance of base.EstimateNoiserBase.
+      noiser : A noiser class that is a subclass of base.EstimateNoiserBase.
       epsilon : Total privacy budget to spend for noising this sketch.
       epsilon_split : Ratio of privacy budget to spend to noise 1+ sketch.
+      underlying_set : ExactMultiSet object that holds the frequency for each
+        item for this Stratified Sketch.
       union : Function to be used to calculate the 1+ sketch as the union of the
         others.
     """
@@ -519,4 +522,5 @@ class SequentialEstimator(EstimatorBase):
     return self.pairwise_estimator.estimate_cardinality(merged)
 
   def merge(self, sketches_list):
-    return functools.reduce(self.pairwise_estimator.merge_sketches, sketches_list)
+    return functools.reduce(self.pairwise_estimator.merge_sketches,
+                            sketches_list)
