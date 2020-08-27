@@ -18,39 +18,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import math
-
 from absl.testing import absltest
 import numpy as np
+
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.independent_set_estimator import IndependentSetEstimator
-from wfa_cardinality_estimation_evaluation_framework.estimators.independent_set_estimator import Reach
-from wfa_cardinality_estimation_evaluation_framework.estimators.independent_set_estimator import ReachEstimator
-from wfa_cardinality_estimation_evaluation_framework.estimators.independent_set_estimator import ReachNoiser
-
-
-class ReachEstimatorTest(absltest.TestCase):
-
-  def test_reach_sketch(self):
-    sketch = Reach()
-    sketch.add_ids([1, 1, 2])
-    self.assertEqual(sketch.cardinality, [2, 1])
-
-  def test_reach_estimator(self):
-    sketch = Reach()
-    sketch.add_ids([1, 1, 2])
-    estimator = ReachEstimator()
-    self.assertEqual(estimator([sketch]), [2, 1])
-
-  def test_reach_noiser(self):
-    sketch = Reach()
-    sketch.add_ids([1, 1, 2])
-    noiser = ReachNoiser(epsilon=math.log(3),
-                         random_state=np.random.RandomState(0))
-    noised_sketch = noiser(sketch)
-    self.assertEqual(noised_sketch.cardinality, [2.0, 2.0])
-
 
 class IndependentSetEstimatorTest(absltest.TestCase):
 
@@ -89,16 +62,7 @@ class IndependentSetEstimatorTest(absltest.TestCase):
     sketch.add_ids(range(11))
     estimator = IndependentSetEstimator(LosslessEstimator(), 10)
     with self.assertRaises(AssertionError):
-      _ = estimator([sketch])
-
-  def test_reach_sketch_estimator_work_with_independent_estimator(self):
-    reach_list = [50, 40, 30]
-    sketch_list = [Reach() for _ in range(3)]
-    for i, reach in enumerate(reach_list):
-      sketch_list[i].add_ids(list(range(reach)))
-    estimator = IndependentSetEstimator(ReachEstimator(), 100)
-    result = estimator(sketch_list)
-    self.assertEqual(result, [79.0, 35.0, 6.0])
+        result = estimator([sketch])
 
 if __name__ == '__main__':
   absltest.main()
