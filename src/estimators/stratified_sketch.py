@@ -179,15 +179,15 @@ class StratifiedSketch(SketchBase):
   def create_one_plus_sketch(self):
     """Create the 1+ sketch for this stratified sketch.
 
-       We support creation of 1+ sketch for 2 scenerios :
+       We support creation of 1+ sketch for 2 scenarios :
          1) 1+ sketch is created from the underlying exact set directly. Here we
          noise 1+ sketch with epsilon = (self.epsilon * self.epsilon_split).
 
          2) 1+ sketch is created from the union of all other frequencies. Here
          we noise 1+ sketch with epsilon = self.epsilon
 
-      These two scenerios are controlled with the epsilon_split parameter. If
-      epsilon_split = 0, then do scenerio 1 otherwise do scenerio 2.
+      These two scenarios are controlled with the epsilon_split parameter. If
+      epsilon_split = 0, then do scenario 1 otherwise do scenario 2.
     """
 
     if ONE_PLUS in self.sketches:
