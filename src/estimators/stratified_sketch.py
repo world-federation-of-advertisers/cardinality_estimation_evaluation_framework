@@ -514,7 +514,7 @@ class SequentialEstimator(EstimatorBase):
 
   def __call__(self, sketches_list):
     for i, sketch in enumerate(sketches_list):
-      sketches_list[i] = self.pairwise_estimator.denoise_sketch(sketch)
+      sketches_list[i] = self.pairwise_estimator.prepare_sketch(sketch)
     merged = self.merge(sketches_list)
     return self.pairwise_estimator.estimate_cardinality(merged)
 
