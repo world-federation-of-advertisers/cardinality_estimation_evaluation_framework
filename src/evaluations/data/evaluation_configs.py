@@ -584,8 +584,7 @@ def _independent_set_estimator(sketch_epsilon=None, estimate_epsilon=None):
     A SketchEstimatorConfig for the independent estimator.
   """
   if sketch_epsilon:
-    sketch_noiser = independent_set_estimator.ReachNoiser(
-        epsilon=sketch_epsilon)
+    sketch_noiser = vector_of_counts.LaplaceNoiser(epsilon=sketch_epsilon)
   else:
     sketch_noiser = None
 
@@ -597,14 +596,15 @@ def _independent_set_estimator(sketch_epsilon=None, estimate_epsilon=None):
 
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
-          sketch_name='reach',
-          sketch_config='None',
+          sketch_name='reach_using_voc',
+          sketch_config='1',
           estimator_name=f'independent_estimator_universe{UNIVERSE_SIZE_VALUE}',
           sketch_epsilon=sketch_epsilon,
           estimate_epsilon=estimate_epsilon),
-      sketch_factory=independent_set_estimator.Reach.get_sketch_factory(),
+      sketch_factory=vector_of_counts.VectorOfCounts.get_sketch_factory(
+          num_buckets=1),
       estimator=independent_set_estimator.IndependentSetEstimator(
-          independent_set_estimator.ReachEstimator(), UNIVERSE_SIZE_VALUE),
+          vector_of_counts.SequentialEstimator(), UNIVERSE_SIZE_VALUE),
       sketch_noiser=sketch_noiser,
       estimate_noiser=estimate_noiser
   )
