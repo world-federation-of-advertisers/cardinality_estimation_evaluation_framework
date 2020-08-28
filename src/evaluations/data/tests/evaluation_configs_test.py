@@ -334,6 +334,27 @@ class EvaluationConfigTest(parameterized.TestCase):
       evaluation_configs.construct_sketch_estimator_config_name(
           sketch_name, sketch_config, estimator_name)
 
+  def test_independent_set_estimator_estimate_correct(self):
+    """Test if the independent set estimator's reach estimate is correct."""
+    sketch_estimator_config = evaluation_configs._independent_set_estimator()
+    sketches = []
+    reach = 1000
+    for _ in range(2):
+      sketch = sketch_estimator_config.sketch_factory(1)
+      sketch.add_ids(list(range(reach)))
+      sketches.append(sketch)
+    estimated = sketch_estimator_config.estimator(sketches)
+
+    # Calculate the true reach.
+    reach_rate = reach / evaluation_configs.UNIVERSE_SIZE_VALUE
+    expected = [
+        (1 - (1 - reach_rate)**2),  # Reach percent of freq >= 1.
+        reach_rate**2,  # Reach percent of freq >= 2
+    ]
+    expected = [x * evaluation_configs.UNIVERSE_SIZE_VALUE for x in expected]
+    for x, y in zip(estimated, expected):
+      self.assertAlmostEqual(x, y)
+
   def test_get_estimator_configs_return_configs(self):
     expected_sketch_estimator_configs = [conf.name for conf in (
         evaluation_configs._generate_cardinality_estimator_configs())]
