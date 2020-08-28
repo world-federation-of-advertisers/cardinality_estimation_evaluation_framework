@@ -349,7 +349,7 @@ class EvaluationConfigTest(parameterized.TestCase):
     reach_rate = reach / evaluation_configs.UNIVERSE_SIZE_VALUE
     expected = [
         (1 - (1 - reach_rate)**2),  # Reach percent of freq >= 1.
-        reach_rate**2,  # Reach percent of freq >= 2
+        reach_rate**2,  # Reach percent of freq >= 2.
     ]
     expected = [x * evaluation_configs.UNIVERSE_SIZE_VALUE for x in expected]
     for x, y in zip(estimated, expected):
