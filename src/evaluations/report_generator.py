@@ -243,9 +243,11 @@ class ReportGenerator:
       plot_df = sketch_estimator_df.copy()
       plot_df[analyzer.SCENARIO_NAME] = scenario
       plot_df['link'] = plot_df.apply(_get_boxplot_html, axis=1)
+      plot_df['epsilon'] = (plot_df[SKETCH_EPSILON] + '<br>'
+                            + plot_df[ESTIMATE_EPSILON])
       plot_df = plot_df.pivot_table(
           values='link',
-          index=SKETCH_EPSILON,
+          index='epsilon',
           columns=evaluation_configs.SKETCH,
           aggfunc=''.join)
       plot_df_html_list.append(
@@ -294,7 +296,7 @@ class ReportGenerator:
           KEY_DESCRIPTION_TO_FILE_DIR][estimator].keys())
     plot_df_html = ReportGenerator.generate_boxplot_html(
         sketch_estimator_list=sketch_estimator_list,
-        scenario_list=scenario_list,
+        scenario_list=sorted(scenario_list),
         description_to_file_dir=self.analysis_results[
             KEY_DESCRIPTION_TO_FILE_DIR],
         out_dir=self.out_dir)
