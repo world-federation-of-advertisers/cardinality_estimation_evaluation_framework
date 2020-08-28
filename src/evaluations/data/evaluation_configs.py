@@ -44,7 +44,10 @@ LARGE_REACH_RATE_VALUE = 0.2
 SHARED_PROP_LIST_VALUE = (0.25, 0.5, 0.75)
 REMARKETING_RATE_VALUE = 0.2
 
-INFINITY_STR = 'infty'
+NO_GLOBAL_DP_STR = 'no_global_dp'
+GLOBAL_DP_STR = 'global_dp'
+NO_LOCAL_DP_STR = 'no_local_dp'
+LOCAL_DP_STR = 'local_dp'
 
 # The None in the epsilon value is used to tell the sketch estimator constructor
 # that we do not want to noise the sketch.
@@ -517,22 +520,31 @@ def get_evaluation_config(config_name):
   return config[0]
 
 
-def _format_epsilon(epsilon=None, decimals=4):
+def _format_epsilon(dp_type, epsilon=None, decimals=4):
   """Format epsilon value to string.
 
   Args:
+    dp_type: one of LOCAL_DP_STR and GLOBAL_DP_STR.
     epsilon: an optional differential private parameter. By default set to None.
     decimals: an integer value which set the number of decimal points of the
       epsilon to keep.
 
   Returns:
-    A string representation of epsilon. If epsilon is set to None, will treat
-    as not adding noise and return 'infty' (infinity). Otherwise, will keep
-    decimal points set by the decimals argument.
+    A string representation of epsilon.
+
+  Raises:
+    ValueError: if dp_type is not one of 'local' and 'global'.
   """
   if epsilon is None:
-    return INFINITY_STR
-  str_format = '{:0.' + str(decimals) + 'f}'
+    if dp_type == GLOBAL_DP_STR:
+      return NO_GLOBAL_DP_STR
+    elif dp_type == LOCAL_DP_STR:
+      return NO_LOCAL_DP_STR
+    else:
+      raise ValueError(f'dp_type should be one of "{GLOBAL_DP_STR}" and '
+                       f'"{LOCAL_DP_STR}".')
+
+  str_format = dp_type + '_' + '{:0.' + str(decimals) + 'f}'
   return str_format.format(float(epsilon))
 
 
@@ -562,8 +574,8 @@ def construct_sketch_estimator_config_name(sketch_name, sketch_config,
   """
   for s in [sketch_name, sketch_config, estimator_name]:
     assert '-' not in s, f'Input should not contain "-", given {s}.'
-  sketch_epsilon = _format_epsilon(sketch_epsilon)
-  estimate_epsilon = _format_epsilon(estimate_epsilon)
+  sketch_epsilon = _format_epsilon(LOCAL_DP_STR, sketch_epsilon)
+  estimate_epsilon = _format_epsilon(GLOBAL_DP_STR, estimate_epsilon)
   return '-'.join([sketch_name, sketch_config, estimator_name, sketch_epsilon,
                    estimate_epsilon])
 
