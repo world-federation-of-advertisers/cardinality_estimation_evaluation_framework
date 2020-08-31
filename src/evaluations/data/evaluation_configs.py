@@ -441,39 +441,39 @@ def _complete_test_with_selected_parameters(
       scenario_config_list=scenario_config_list)
 
 
-def _frequency_end_to_end_test(num_runs=NUM_RUNS_VALUE):
-  """EvaluationConfig of end-to-end test of frequency evaluation code."""
-  num_sets=3
-  universe_size=10000
-  set_size=5000
-  freq_rate_list=[1,2,3]
-  freq_cap=5
-  return EvaluationConfig(
-      name='frequency_end_to_end_test',
-      num_runs=num_runs,
-      scenario_config_list=[
-        ScenarioConfig(
-            name='-'.join([
-                'subset',
-                'universe_size:' + str(universe_size),
-                'num_sets:' + str(num_sets)
-            ]),
-            set_generator_factory=(
-                set_generator.HomogeneousMultiSetGenerator
-                    .get_generator_factory_with_num_and_size(
-                        universe_size=universe_size,
-                        num_sets=num_sets,
-                        set_size=set_size,
-                        freq_rate_list=freq_rate_list,
-                        freq_cap=freq_cap)))]
-    )
+# def _frequency_end_to_end_test(num_runs=NUM_RUNS_VALUE):
+#   """EvaluationConfig of end-to-end test of frequency evaluation code."""
+#   num_sets=3
+#   universe_size=10000
+#   set_size=5000
+#   freq_rate_list=[1,2,3]
+#   freq_cap=5
+#   return EvaluationConfig(
+#       name='frequency_end_to_end_test',
+#       num_runs=num_runs,
+#       scenario_config_list=[
+#         ScenarioConfig(
+#             name='-'.join([
+#                 'subset',
+#                 'universe_size:' + str(universe_size),
+#                 'num_sets:' + str(num_sets)
+#             ]),
+#             set_generator_factory=(
+#                 set_generator.HomogeneousMultiSetGenerator
+#                     .get_generator_factory_with_num_and_size(
+#                         universe_size=universe_size,
+#                         num_sets=num_sets,
+#                         set_size=set_size,
+#                         freq_rate_list=freq_rate_list,
+#                         freq_cap=freq_cap)))]
+#     )
 
 
 def _generate_evaluation_configs():
   return (
       _smoke_test,
       _complete_test_with_selected_parameters,
-      _frequency_end_to_end_test
+    #   _frequency_end_to_end_test
   )
 
 
@@ -606,6 +606,10 @@ def _generate_cardinality_estimator_configs():
       EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG,
       EXP_BLOOM_FILTER_1E5_10_LN3GLOBAL_FIRST_MOMENT_LOG,
       EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG,
+      GEO_BLOOM_FILTER_1E4_INFTY_FIRST_MOMENT_GEO,
+      GEO_BLOOM_FILTER_1E4_LN3_FIRST_MOMENT_GEO,
+      BLOOM_FILTER_3E6_INFTY_UNION_ESTIMATOR,
+      BLOOM_FILTER_3E6_LN3_UNION_ESTIMATOR,
       LIQUID_LEGIONS_1E5_10_LN3_SEQUENTIAL,
       LIQUID_LEGIONS_1E5_10_INFTY_SEQUENTIAL,
       VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL,
