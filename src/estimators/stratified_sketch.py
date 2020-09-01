@@ -24,7 +24,11 @@ ONE_PLUS = '1+'
 
 
 class ExactSetOperator(object):
-  """Set operations for ExactSet."""
+  """Set operations for ExactSet.
+
+  The methods below all accept an ExactMultiSet object and returning an
+  ExactMultiSet object.
+  """
 
   @classmethod
   def union(cls, this, that):
@@ -134,12 +138,14 @@ class StratifiedSketch(SketchBase):
     self.union = union
     self.one_plus_noiser = None
     self.rest_noiser = None
+
     if noiser_class is not None:
-      self.rest_noiser = noiser_class(epsilon=epsilon * (1 - epsilon_split))
-      if epsilon_split == 0:
-        self.one_plus_noiser = noiser_class(epsilon=epsilon)
-      else:
+      if epsilon_split != 0:
         self.one_plus_noiser = noiser_class(epsilon=epsilon * epsilon_split)
+        self.rest_noiser = noiser_class(epsilon=epsilon * (1 - epsilon_split))
+      else:
+        self.one_plus_noiser = noiser_class(epsilon=epsilon)
+        self.rest_noiser = noiser_class(epsilon=epsilon)
 
   def create_frequency_sketches(self):
     if self.sketches != {}:
