@@ -161,7 +161,7 @@ random integers within the loop.
 
 We have now reached an efficient, deterministic, and vectorized form of our algorithm. We can now compare results with NumPy’s implementation.
 
-![Graph should be here.](images/choice_comparison.png "Comparison of choice methods.")
+![Graph should be here.](img/choice_comparison.png "Comparison of choice methods.")
 
 Note the log scale on the y-axis. Using Robert Floyd’s method of random sampling, we get a **nearly 120x speedup **in performance of choosing random numbers which only increases as the population size (_n_) gets larger (the largest test I was able to do produced speedups of **nearly 960x **with _n > 10^9_). When run in the simulation, this translates into a **nearly 60x speedup **for running the whole simulation (using Vector of Counts and a population size of 10^9).
 
