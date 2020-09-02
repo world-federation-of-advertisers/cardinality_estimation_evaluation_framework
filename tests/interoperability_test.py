@@ -19,7 +19,6 @@ estimator, set generator and simulator works with the evaluator, analyzer and
 report generator.
 """
 import math
-
 from absl.testing import absltest
 import numpy as np
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import BlipNoiser
@@ -43,9 +42,10 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import SequentialEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import VectorOfCounts
 from wfa_cardinality_estimation_evaluation_framework.evaluations import run_evaluation
+from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import SketchEstimatorConfig
+from wfa_cardinality_estimation_evaluation_framework.evaluations.data import evaluation_configs
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
-from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
 
 
 class InteroperabilityTest(absltest.TestCase):
@@ -404,6 +404,8 @@ class InteroperabilityTest(absltest.TestCase):
     the evaluation, analyzes results, and generates a report, which should not
     run into any error.
     """
+    sketch_estimator_configs = [conf.name for conf in (
+        evaluation_configs._generate_cardinality_estimator_configs())]
     run_evaluation._run(
         run_evaluation=True,
         run_analysis=True,
@@ -412,12 +414,7 @@ class InteroperabilityTest(absltest.TestCase):
         analysis_out_dir=self.create_tempdir('analyzer').full_path,
         report_out_dir=self.create_tempdir('report').full_path,
         evaluation_config='smoke_test',
-        sketch_estimator_configs=[
-            'log_bloom_filter-1e5-ln3-first_moment_log',
-            'geo_bloom_filter-1e4-infty-first_moment_geo',
-            'exp_bloom_filter-1e5_10-ln3-first_moment_exp',
-            'vector_of_counts-4096-ln3-sequential',
-        ],
+        sketch_estimator_configs=sketch_estimator_configs,
         evaluation_run_name='interoperability_test_for_evaluator',
         num_runs=1,
         num_workers=0,

@@ -24,6 +24,8 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations.analyzer import
 from wfa_cardinality_estimation_evaluation_framework.evaluations.analyzer import KEY_NUM_ESTIMABLE_SETS_STATS_DF
 from wfa_cardinality_estimation_evaluation_framework.evaluations.analyzer import KEY_RUNNING_TIME_DF
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data import evaluation_configs
+from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import ESTIMATE_EPSILON
+from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import SKETCH_EPSILON
 from wfa_cardinality_estimation_evaluation_framework.simulations import simulator
 
 pd.set_option('display.max_colwidth', None)
@@ -161,10 +163,10 @@ class ReportGenerator:
           df[analyzer.NUM_ESTIMABLE_SETS].astype('str')
           + '<br>relative_error: mean='
           + df[error_metric_column + '_mean'].round(
-            RELATIVE_ERROR_FORMAT_ACCURACY).astype('str')
+              RELATIVE_ERROR_FORMAT_ACCURACY).astype('str')
           + ', std='
           + df[error_metric_column + '_std'].round(
-            RELATIVE_ERROR_FORMAT_ACCURACY).astype('str')
+              RELATIVE_ERROR_FORMAT_ACCURACY).astype('str')
       )
       df[ESTIMABLE_CRITERIA_COLNAME] = (
           df[analyzer.PROPORTION_OF_RUNS_NAME].apply('{0:.0%}'.format)
@@ -225,7 +227,8 @@ class ReportGenerator:
           row[evaluation_configs.SKETCH] + ', '
           + row[evaluation_configs.ESTIMATOR]  + '<br>'
           + 'sketch_config: ' + row[evaluation_configs.SKETCH_CONFIG] + '<br>'
-          + 'epsilon: ' + row[evaluation_configs.EPSILON])
+          + f'{SKETCH_EPSILON}: ' + row[SKETCH_EPSILON] + '<br>'
+          + f'{ESTIMATE_EPSILON}: ' + row[ESTIMATE_EPSILON])
 
       return (
           '<figure>'
@@ -240,9 +243,11 @@ class ReportGenerator:
       plot_df = sketch_estimator_df.copy()
       plot_df[analyzer.SCENARIO_NAME] = scenario
       plot_df['link'] = plot_df.apply(_get_boxplot_html, axis=1)
+      plot_df['epsilon'] = (plot_df[SKETCH_EPSILON] + '<br>'
+                            + plot_df[ESTIMATE_EPSILON])
       plot_df = plot_df.pivot_table(
           values='link',
-          index=evaluation_configs.EPSILON,
+          index='epsilon',
           columns=evaluation_configs.SKETCH,
           aggfunc=''.join)
       plot_df_html_list.append(
@@ -252,18 +257,29 @@ class ReportGenerator:
 
   def generate_html_report(self):
     """Generate HTML report."""
-    # Generate the number of estimable sets html tables by epsilon.
-    epsilon_list = (
+    # Generate the number of estimable sets html tables by sketch epsilon
+    # and estimate epsilon pairs.
+    unique_epsilons = (
         self.analysis_results[KEY_NUM_ESTIMABLE_SETS_STATS_DF][
-            evaluation_configs.EPSILON].unique())
+            [SKETCH_EPSILON, ESTIMATE_EPSILON]].drop_duplicates())
     num_estimable_sets_stats_df_html_list = []
     df = self.analysis_results[KEY_NUM_ESTIMABLE_SETS_STATS_DF]
-    for epsilon in epsilon_list:
-      one_html = ReportGenerator.widen_num_estimable_sets_df(
-          df.loc[df['epsilon'] == epsilon], self.error_metric_column
+
+    def _generate_html_for_one_epsilon(row):
+      table_html = ReportGenerator.widen_num_estimable_sets_df(
+          df.loc[
+              (df[SKETCH_EPSILON] == row[SKETCH_EPSILON])
+              & (df[ESTIMATE_EPSILON] == row[ESTIMATE_EPSILON])],
+          self.error_metric_column
       ).to_html(escape=False)
-      one_html = f'<h4>epsilon={epsilon}</h4><p>' + one_html + '</p>'
-      num_estimable_sets_stats_df_html_list.append(one_html)
+      return (
+          f'<h4>sketch_epsilon={row[SKETCH_EPSILON]}, '
+          + f'estimate_epsilon={row[ESTIMATE_EPSILON]}</h4><p>'
+          + table_html + '</p>')
+
+    num_estimable_sets_stats_df_html_list = (
+        unique_epsilons.apply(_generate_html_for_one_epsilon, axis=1)
+        .tolist())
     num_estimable_sets_stats_df_html = '\n'.join(
         num_estimable_sets_stats_df_html_list)
 
@@ -280,7 +296,7 @@ class ReportGenerator:
           KEY_DESCRIPTION_TO_FILE_DIR][estimator].keys())
     plot_df_html = ReportGenerator.generate_boxplot_html(
         sketch_estimator_list=sketch_estimator_list,
-        scenario_list=scenario_list,
+        scenario_list=sorted(scenario_list),
         description_to_file_dir=self.analysis_results[
             KEY_DESCRIPTION_TO_FILE_DIR],
         out_dir=self.out_dir)
@@ -292,7 +308,7 @@ class ReportGenerator:
 
     return report_html
 
-  
+
 class CardinalityReportGenerator(ReportGenerator):
   """Generate HTML report for the cardinality estimator evaluation."""
 
@@ -307,4 +323,3 @@ class FrequencyReportGenerator(ReportGenerator):
   def __init__(self, *args, **kwargs):
     self.error_metric_column = simulator.SHUFFLE_DISTANCE
     super().__init__(*args, **kwargs)
-

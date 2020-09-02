@@ -31,11 +31,11 @@ class EvaluatorTest(absltest.TestCase):
   def setUp(self):
     super(EvaluatorTest, self).setUp()
 
-    exact_set_lossless = simulator.SketchEstimatorConfig(
+    exact_set_lossless = configs.SketchEstimatorConfig(
         name='exact_set_lossless',
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LosslessEstimator())
-    exact_set_less_one = simulator.SketchEstimatorConfig(
+    exact_set_less_one = configs.SketchEstimatorConfig(
         name='exact_set_less_one',
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LessOneEstimator(),
