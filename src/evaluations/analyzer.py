@@ -89,7 +89,8 @@ def get_num_estimable_sets(df, num_sets, relative_error, error_margin,
     return np.mean(np.abs(e) < error_margin) >= proportion_of_runs
 
   df_estimable = (
-      df.groupby(num_sets).agg({relative_error: count_estimable}))
+      df[df[num_sets] > 1].groupby(num_sets)
+      .agg({relative_error: count_estimable}))
   df_estimable = df_estimable.rename(
       columns={relative_error: 'is_estimable'})
 

@@ -18,6 +18,7 @@ import numpy as np
 from wfa_cardinality_estimation_evaluation_framework.estimators import bloom_filters
 from wfa_cardinality_estimation_evaluation_framework.estimators import estimator_noisers
 from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
+from wfa_cardinality_estimation_evaluation_framework.estimators import independent_set_estimator
 from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_legions
 from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import EvaluationConfig
@@ -583,6 +584,47 @@ def construct_sketch_estimator_config_name(sketch_name, sketch_config,
 
 
 # Document the estimators.
+def _independent_set_estimator(sketch_epsilon=None, estimate_epsilon=None):
+  """Generate a SketchEstimatorConfig for the independent set estimator.
+
+  Use the Reach sketch as the underlying sketch. Set the universe size to
+  UNIVERSE_SIZE_VALUE.
+
+  Args:
+    sketch_epsilon: a differential private parameter for the sketch.
+    estimate_epsilon: a differential private parameter for the estimated
+      cardinality.
+
+  Returns:
+    A SketchEstimatorConfig for the independent estimator.
+  """
+  if sketch_epsilon:
+    sketch_noiser = vector_of_counts.LaplaceNoiser(epsilon=sketch_epsilon)
+  else:
+    sketch_noiser = None
+
+  if estimate_epsilon:
+    estimate_noiser = estimator_noisers.LaplaceEstimateNoiser(
+        epsilon=estimate_epsilon)
+  else:
+    estimate_noiser = None
+
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='reach_using_voc',
+          sketch_config='1',
+          estimator_name=f'independent_estimator_universe{UNIVERSE_SIZE_VALUE}',
+          sketch_epsilon=sketch_epsilon,
+          estimate_epsilon=estimate_epsilon),
+      sketch_factory=vector_of_counts.VectorOfCounts.get_sketch_factory(
+          num_buckets=1),
+      estimator=independent_set_estimator.IndependentSetEstimator(
+          vector_of_counts.SequentialEstimator(), UNIVERSE_SIZE_VALUE),
+      sketch_noiser=sketch_noiser,
+      estimate_noiser=estimate_noiser
+  )
+
+
 def _log_bloom_filter_first_moment_log(length, sketch_epsilon=None,
                                        estimate_epsilon=None):
   """Generate a SketchEstimatorConfig for Log Bloom Filters.
@@ -831,6 +873,12 @@ def _generate_cardinality_estimator_configs():
     for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
       configs.append(_vector_of_counts_4096_sequential(sketch_epsilon,
                                                        estimate_epsilon))
+
+  # Configs of independent estimator.
+  for sketch_epsilon in SKETCH_EPSILON_VALUES:
+    for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
+      configs.append(_independent_set_estimator(sketch_epsilon,
+                                                estimate_epsilon))
 
   return tuple(configs)
 

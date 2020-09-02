@@ -96,6 +96,18 @@ class AnalyzerTest(absltest.TestCase):
     expected = 2
     self.assertEqual(result, expected)
 
+  def test_get_num_estimable_sets_function_ignore_one_set(self):
+    df = pd.DataFrame({
+        'run': list(itertools.chain(*[range(4)] * 4)),
+        'number_of_sets': [1] * 4 + [2] * 4 + [3] * 4 + [4] * 4,
+        'error': [1] * 4 + [0, 0, 1, -1] + [1, 1, -1, -1] + [0.5, -0.5, -1, 1],
+    })
+    result = analyzer.get_num_estimable_sets(
+        df, num_sets='number_of_sets', relative_error='error',
+        error_margin=0.5, proportion_of_runs=0.5)
+    expected = 2
+    self.assertEqual(result, expected)
+
   def test_read_evaluation_results_works(self):
     # Run evaluation.
     evaluation_out_dir = self.create_tempdir('evaluation').full_path
