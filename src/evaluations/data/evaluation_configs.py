@@ -584,7 +584,6 @@ def construct_sketch_estimator_config_name(sketch_name, sketch_config,
 
 
 # Document the estimators.
-
 def _independent_set_estimator(sketch_epsilon=None, estimate_epsilon=None):
   """Generate a SketchEstimatorConfig for the independent set estimator.
 

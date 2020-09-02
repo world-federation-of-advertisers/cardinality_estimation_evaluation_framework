@@ -1,10 +1,10 @@
-# Copyright 2020 The Private Cardinality Estimation Framework Authors
+# Copyright 2020 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -44,7 +44,7 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations import evaluato
 from wfa_cardinality_estimation_evaluation_framework.evaluations import report_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
-from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
+from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import SketchEstimatorConfig
 
 FLAGS = flags.FLAGS
 
@@ -55,7 +55,7 @@ flags.DEFINE_integer(
     'The number of sets to depulicate across, AKA the number of publishers')
 flags.DEFINE_integer('number_of_trials', 100,
                      'The number of times to run the experiment')
-flags.DEFINE_integer('set_size', 5000, 'The size of all generated sets')
+flags.DEFINE_integer('set_size', 50000, 'The size of all generated sets')
 flags.DEFINE_integer('sketch_size', 10000, 'The size of sketches')
 flags.DEFINE_integer('exponential_bloom_filter_decay_rate', 10,
                      'The decay rate in exponential bloom filter')
