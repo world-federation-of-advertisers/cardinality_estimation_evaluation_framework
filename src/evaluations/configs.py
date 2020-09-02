@@ -15,23 +15,37 @@
 import collections
 
 _SketchEstimatorConfig = collections.namedtuple(
-    'SketchEstimatorConfig',
-    ['name', 'sketch_factory', 'estimator', 'noiser'])
+    'EstimatorConfig', ['name', 'sketch_factory', 'estimator', 'sketch_noiser',
+                        'estimate_noiser', 'max_frequency'])
 
 
 # This class exists as a placeholder for a docstring.
 class SketchEstimatorConfig(_SketchEstimatorConfig):
-  """A subclass of namedtuple for providing a estimator config to the simulator.
+  """A subclass of namedtuple for providing a sketch and estimator config."""
 
-  The arguments to the named tuple are as follows:
-    name: A string representing the name of the estimator.
-    sketch_factory: A callable that takes as a single argument a
-      numpy.random.RandomState and returns a class that conforms to
-      cardinality_estimator_base.Sketch.
-    estimator: A class that conforms to cardinality_estimator_base.Estimator.
-    noiser: A class that conforms to cardinality_estimator_base.Noiser.
-  """
-  pass
+  def __new__(cls, name, sketch_factory, estimator, sketch_noiser=None,
+              estimate_noiser=None, max_frequency=1):
+    """Generate a sketch estimator configuration with default parameters.
+
+    Args:
+      name: A string that represents the name of the sketch and estimator.
+      sketch_factory: A callable that takes as a single argument a
+        numpy.random.RandomState and returns a class that conforms to
+        cardinality_estimator_base.Sketch.
+      estimator: A class that conforms to cardinality_estimator_base.Estimator.
+      sketch_noiser: A class that conforms to
+        cardinality_estimator_base.SketchNoiser.
+      estimate_noiser: A class that conforms to
+        cardinality_estimator_base.EstimateNoiser.
+      max_frequency: The maximum frequency for which estimates should be
+        produced.
+
+    Returns:
+      A namedtuple of sketch estimator configuration.
+    """
+    return super(cls, SketchEstimatorConfig).__new__(
+        cls, name, sketch_factory, estimator, sketch_noiser, estimate_noiser,
+        max_frequency)
 
 
 _ScenarioConfig = collections.namedtuple(
