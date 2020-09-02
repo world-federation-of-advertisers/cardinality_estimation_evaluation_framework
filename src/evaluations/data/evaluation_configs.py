@@ -19,6 +19,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators import bloom_fil
 from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
 from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_legions
 from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts
+from wfa_cardinality_estimation_evaluation_framework.estimators import estimator_noisers
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import EvaluationConfig
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import ScenarioConfig
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
@@ -467,7 +468,7 @@ def _frequency_end_to_end_test(num_runs=NUM_RUNS_VALUE):
                         freq_cap=freq_cap)))]
     )
 
-  
+
 def _generate_evaluation_configs():
   return (
       _smoke_test,
@@ -475,7 +476,7 @@ def _generate_evaluation_configs():
       _frequency_end_to_end_test
   )
 
-  
+
 def get_evaluation_config(config_name):
   """Returns the evaluation config with the specified config_name."""
   configs = _generate_evaluation_configs()
@@ -556,6 +557,15 @@ EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG = SketchEstimatorConfig(
         denoiser=bloom_filters.SurrealDenoiser(epsilon=math.log(3))),
     sketch_noiser=bloom_filters.BlipNoiser(epsilon=math.log(3)))
 
+EXP_BLOOM_FILTER_1E5_10_LN3GLOBAL_FIRST_MOMENT_LOG = SketchEstimatorConfig(
+    name='exp_bloom_filter-1e5_10-ln3global-first_moment_exp',
+    sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
+        length=10**5, decay_rate=10),
+    estimator=bloom_filters.FirstMomentEstimator(
+        method=bloom_filters.FirstMomentEstimator.METHOD_EXP,
+        noiser = estimator_noisers.GeometricEstimateNoiser(
+            epsilon=math.log(3))))
+
 EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(
     name='exp_bloom_filter-1e5_10-infty-first_moment_exp',
     sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
@@ -594,6 +604,7 @@ def _generate_cardinality_estimator_configs():
       LOG_BLOOM_FILTER_1E5_LN3_FIRST_MOMENT_LOG,
       LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG,
       EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG,
+      EXP_BLOOM_FILTER_1E5_10_LN3GLOBAL_FIRST_MOMENT_LOG,
       EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG,
       LIQUID_LEGIONS_1E5_10_LN3_SEQUENTIAL,
       LIQUID_LEGIONS_1E5_10_INFTY_SEQUENTIAL,
@@ -634,4 +645,3 @@ def get_estimator_configs(estimator_names, max_frequency):
   raise ValueError('Invalid estimator(s): {}\nSupported estimators: {}'.
                    format(','.join(invalid_estimator_names),
                           ','.join(all_estimators.keys())))
-

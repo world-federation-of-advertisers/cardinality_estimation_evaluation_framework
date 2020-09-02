@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Simulation data generators.
+"""Simulation data generators for cardinality estimation.
 
 We have implemented the following simulation data:
 * Independent sets.
@@ -26,6 +26,8 @@ import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.common.analysis import relative_error
 from wfa_cardinality_estimation_evaluation_framework.common.random import choice_fast
+from wfa_cardinality_estimation_evaluation_framework.simulations.set_generator_base import SetGeneratorBase
+from wfa_cardinality_estimation_evaluation_framework.simulations.set_generator_base import _SetSizeGenerator
 
 ORDER_ORIGINAL = 'original'
 ORDER_REVERSED = 'reversed'
@@ -39,59 +41,6 @@ CORRELATED_SETS_ONE = 'one'
 # see page 14, Table 1 of the paper https://research.google/pubs/pub48387/
 DIRAC_MIXTURE_OPTIMAL_ALPHA = [0.164, 0.388, 0.312, 0.136]
 DIRAC_MIXTURE_OPTIMAL_X = [0.065, 0.4274, 1.275, 3.140]
-
-
-class _SetSizeGenerator(object):
-  """Get set_size_list from set_size (fixed for each set) and num_sets."""
-
-  def __init__(self, num_sets, set_size):
-    self.num_sets = num_sets
-    self.set_size = set_size
-
-  def __iter__(self):
-    for _ in range(self.num_sets):
-      yield self.set_size
-
-
-class SetGeneratorBase(object):
-  """Base object for generating test sets."""
-
-  def __next__(self):
-    raise NotImplementedError()
-
-  @classmethod
-  def get_generator_factory_with_num_and_size(cls):
-    """Returns a function Handle which takes a np.random.RandomState as an arg.
-
-    This function handle, when called, will return a fully-formed SetGenerator
-    object, ready to generate sets.
-    """
-
-    def f(random_state):
-      _ = random_state
-      raise NotImplementedError()
-
-    _ = f
-    # In an implementation, you would return f here
-    # return f
-    raise NotImplementedError()
-
-  @classmethod
-  def get_generator_factory_with_set_size_list(cls):
-    """Returns a function Handle which takes a np.random.RandomState as an arg.
-
-    This function handle, when called, will return a fully-formed SetGenerator
-    object, ready to generate sets.
-    """
-
-    def f(random_state):
-      _ = random_state
-      raise NotImplementedError()
-
-    _ = f
-    # In an implementation, you would return f here
-    # return f
-    raise NotImplementedError()
 
 
 class IndependentSetGenerator(SetGeneratorBase):
@@ -535,94 +484,4 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
     set_ids_list = [set_ids for set_ids in self.generator]
     for i in self.set_indices:
       yield set_ids_list[i]
-    return self
-
-
-class HomogeneousMultiSetGenerator(SetGeneratorBase):
-  """Homogeneous multiset generator.
-
-  This generator returns the multisets as described in section
-  Frequency scenario 1: Homogeneous user activities within a publisher of this
-  doc:
-  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#frequency-scenario-1-homogeneous-user-activities-within-a-publisher
-
-  Homogeneous means that all the reached ID's have the same frequency
-  distribution.
-
-  As a reached ID may appear one or more times in the returned set,
-  to differentiate with a normal set whose elements can only appear once, we
-  use the term multiset.
-
-  The frequency distribution is defined as a shifted-Poisson distribution.
-  I.e., freq ~ Poission(freq_rate) + 1.
-  """
-
-  @classmethod
-  def get_generator_factory_with_num_and_size(cls, universe_size, num_sets,
-                                              set_size, freq_rate_list,
-                                              freq_cap):
-
-    def f(random_state):
-      return cls(universe_size, list(_SetSizeGenerator(num_sets, set_size)),
-                 freq_rate_list, random_state, freq_cap)
-
-    return f
-
-  @classmethod
-  def get_generator_factory_with_set_size_list(cls, universe_size,
-                                               set_sizes, freq_rate_list,
-                                               freq_cap):
-
-    def f(random_state):
-      return cls(universe_size, set_sizes, freq_rate_list, random_state,
-                 freq_cap)
-
-    return f
-
-  def __init__(self, universe_size, set_sizes, freq_rate_list, random_state,
-               freq_cap=None):
-    """Create a homogeneous multiset generator.
-
-    Args:
-      universe_size: An integer value that specifies the size of the whole
-        universe from which the ids will be sampled.
-      set_sizes: A list containing the size of each set, aka, the number of
-        reached IDs.
-      freq_rate_list: A list of the same size as set_sizes, specifying the
-        non-negative freq_rate parameter of the shifted-Possion distribution.
-      random_state: a numpy random state.
-      freq_cap: An optional positive integer which represents the maximum number
-        of times an ID can be seen in the returned set. If not set, will not
-        apply this capping.
-
-    Raises: AssertionError when (1) set_size_list and freq_rate_list do not
-      have equal length, (2) elements of freq_rate_list are not all
-      non-negative, or (3) freq_cap is not None or positive.
-    """
-    assert len(set_sizes) == len(freq_rate_list), (
-        'set_size_list and freq_rate_list do not have equal length.')
-    assert all([freq_rate >= 0 for freq_rate in freq_rate_list]), (
-        'Elements of freq_rate_list should be non-negative.')
-    assert freq_cap is None or freq_cap > 0, (
-        'freq_cap should be None or positive.')
-    self.universe_size = universe_size
-    self.set_sizes = set_sizes
-    self.freq_rate_list = freq_rate_list
-    self.freq_cap = freq_cap
-    self.random_state = random_state
-    self.choice = choice_fast  # For simple mock in unit testing.
-
-  def __iter__(self):
-    for set_size, freq_rate in zip(self.set_sizes, self.freq_rate_list):
-      set_ids = self.choice(
-          self.universe_size, set_size, self.random_state)
-      freq_per_id = self.random_state.poisson(
-          lam=freq_rate, size=len(set_ids)) + 1
-      if self.freq_cap is not None:
-        freq_per_id = np.minimum(freq_per_id, self.freq_cap)
-      multiset_ids = []
-      for i, freq in zip(set_ids, freq_per_id):
-        multiset_ids += [i] * freq
-      self.random_state.shuffle(multiset_ids)
-      yield multiset_ids
     return self
