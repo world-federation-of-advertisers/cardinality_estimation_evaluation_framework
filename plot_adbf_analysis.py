@@ -68,6 +68,16 @@ plt.close()
 
 ## transformed re vs prob
 sns.catplot(
+    x="flip_prob", y="re_std_log_cens", palette="GnBu",
+    kind="box", data=df)
+plt.savefig('4_various_3(1).pdf')
+plt.close()
+sns.catplot(
+    x="flip_prob", y="re_std_log_cens", hue="sketch_size", 
+    kind="box", data=df)
+plt.savefig('4_various_3(2).pdf')
+plt.close()
+sns.catplot(
     x="flip_prob", y="re_std_log_cens", hue="sketch_size", 
     col="num_sets", col_wrap=2, kind="box", data=df)
 plt.savefig('4_various_3.pdf')
@@ -82,7 +92,7 @@ plt.savefig('4_various_4.pdf')
 plt.close()
 
 ## transformed re vs universe size
-sns.swarmplot(x="universe_size", y="re_std_log_cens", hue="flip_prob", data=df)
+sns.swarmplot(x="universe_size", y="re_std_log_cens", data=df)
 plt.savefig('4_various_5.pdf')
 plt.close()
 
@@ -121,3 +131,32 @@ print(res.summary())
 # for i in top3.index:
 #     ax.annotate(i,xy=(fitted[i],sqrt_student_residuals[i]))
 # plt.show()
+
+
+# Get all the raw results.
+evaluation_file_dirs = evaluator.load_directory_tree(
+    out_dir=".",
+    run_name="eval_adbf_result",
+    evaluation_name="5_prediction")
+raw_df = (
+    analyzer.CardinalityEstimatorEvaluationAnalyzer
+    .read_evaluation_results(evaluation_file_dirs))
+
+raw_df.to_csv("raw_df.csv", index=False)
+
+df = raw_df.groupby(["num_sets", "sketch_estimator", "scenario"])\
+    .agg({'relative_error_1': ['mean', 'std']})
+df.columns = ['re_mean', 're_std']
+df = df.reset_index()
+df["sketch_size"] = (
+    1000 * df["sketch_estimator"]
+    .str.replace("k_.*", "", regex=True)
+    .astype(int)
+)
+df["flip_prob"] = (
+    df["sketch_estimator"]
+    .str.replace(".*_", "", regex=True)
+    .astype(float)
+)
+df = df.query('num_sets % 5 == 0 and scenario == "10.0" and sketch_size == 100000')
+print(df)

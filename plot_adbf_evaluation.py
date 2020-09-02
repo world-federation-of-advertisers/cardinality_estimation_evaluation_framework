@@ -98,7 +98,7 @@ plt.legend(loc='upper left')
 plt.savefig('3_re_vs_decay_rate_1.pdf')
 plt.close()
 
-# Get all the raw results.
+## Get all the raw results.
 evaluation_file_dirs = evaluator.load_directory_tree(
     out_dir=".",
     run_name="eval_adbf_result",
@@ -115,6 +115,14 @@ raw_df_10k = (
     analyzer.CardinalityEstimatorEvaluationAnalyzer
     .read_evaluation_results(evaluation_file_dirs))
 raw_df_10k["sketch size"] = "10000"
+evaluation_file_dirs = evaluator.load_directory_tree(
+    out_dir=".",
+    run_name="eval_adbf_result",
+    evaluation_name="3_vary_decay_rate_100k")
+raw_df_100k = (
+    analyzer.CardinalityEstimatorEvaluationAnalyzer
+    .read_evaluation_results(evaluation_file_dirs))
+raw_df_100k["sketch size"] = "100000"
 raw_df = pd.concat([raw_df_1k, raw_df_10k], axis=0, ignore_index=True)
 raw_df["scenario"] = pd.Categorical(
     raw_df["scenario"], 
@@ -127,7 +135,7 @@ plt.figure(figsize=(7,4))
 plt.hlines(0, -1, 5, colors="grey", linestyles="dashed")
 g = sns.catplot(
     x="scenario", y="relative_error_1", hue="decay rate", 
-    col="num_sets", row="sketch size", kind="box", data=df)
+    col="sketch size", row="num_sets", kind="box", data=df)
 (g.set_axis_labels(
     "set size / sketch size (ratio)", "relative error (50 trials)")
   .set(ylim=(-1.5, 1.5)))
