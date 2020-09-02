@@ -10,12 +10,12 @@ In this repo, various data structures are tested to their limits in various simu
 
 Simplistically, these simulation scenarios involve randomly choosing tens of thousands of random numbers from _0_ (inclusive) to _n_ (exclusive) without replacement, storing these random numbers in both a ground-truth (100% accurate) data structure and a probabilistic accurate data structure, and then evaluating the performance of the probabilistic data structure against the ground-truth. Each step of this process is not extremely complicated, but there is **large room for improvement in the step of choosing random numbers from _0_ to _n_ without replacement**, which is outlined in this document.
 
-In the end, we produce a nearly **60x speedup **in some simulations, greatly increasing the speed at which we can iterate on designs and saving lots of memory in the process.
+In the end, we produce a nearly **60x speedup** in some simulations, greatly increasing the speed at which we can iterate on designs and saving lots of memory in the process.
 
 
 ## <span>Choosing Random Numbers</span>
 
-**The following sections will cover design and methodology. To see the results, skip to <a href='#results'>Results and Conclusion</a>.
+**The following sections will cover design and methodology. To see the results, skip to <a href='#results'>Results and Conclusion</a>.**
 
 
 ### What’s in a Set?
@@ -52,7 +52,7 @@ How does _np.random.choice_ compare against the naive Python solution? Well it t
 already written in Python’s _random_ module so it’s quite easy to compare the naive Python to the NumPy version. 
 When the population _n_ is 1000 (quite small) and _m_ is 4 (also quite small), the naive Python version is **nearly 25x faster**.
 And unlike other NumPy methods where NumPy ends up surpassing Python as _n_ gets larger, in this case the NumPy method actually becomes significantly
-slower than the Python version as _n_ gets larger, getting up to **nearly** **35x slower** (before the NumPy method actually runs into a memory error 
+slower than the Python version as _n_ gets larger, getting up to **nearly 35x slower** (before the NumPy method actually runs into a memory error 
 on my testing machine).
 
 How could this be? Operations in C should be at least as efficient as Python operations if not much more performant. 
@@ -163,7 +163,7 @@ We have now reached an efficient, deterministic, and vectorized form of our algo
 
 ![Graph should be here.](img/choice_comparison.png "Comparison of choice methods.")
 
-Note the log scale on the y-axis. Using Robert Floyd’s method of random sampling, we get a **nearly 120x speedup **in performance of choosing random numbers which only increases as the population size (_n_) gets larger (the largest test I was able to do produced speedups of **nearly 960x **with _n > 10^9_). When run in the simulation, this translates into a **nearly 60x speedup **for running the whole simulation (using Vector of Counts and a population size of 10^9).
+Note the log scale on the y-axis. Using Robert Floyd’s method of random sampling, we get a **nearly 120x speedup** in performance of choosing random numbers which only increases as the population size (_n_) gets larger (the largest test I was able to do produced speedups of **nearly 960x** with _n > 10<sup>9</sup>_). When run in the simulation, this translates into a **nearly 60x speedup** for running the whole simulation (using Vector of Counts and a population size of 10<sup>9</sup>).
 
 
 ## <span>Other Notes</span>
