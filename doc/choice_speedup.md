@@ -207,3 +207,5 @@ is the [Euler-Mascheroni constant](https://en.wikipedia.org/wiki/Euler%E2%80%93M
 <img align="center" src="https://render.githubusercontent.com/render/math?math=n*(ln(n)%2B%5Cgamma-ln(n-m)-%5Cgamma)%3Dn*(ln(%5Cfrac%7Bn%7D%7Bn-m%7D))">
 </p>
 
+This also show that our approximation when _m_ << _n_ is correct. <a href="https://www.wolframalpha.com/input/?i=Series%5BLog%5Bn%2F%28n-m%29%5D%2C+%7Bm%2C+0%2C+2%7D%5D">As _m_ approaches 0, the first Taylor Series term is equal to _m_ over _n_.</a>
+
