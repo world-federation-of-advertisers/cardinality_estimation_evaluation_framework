@@ -227,8 +227,8 @@ class ReportGenerator:
           row[evaluation_configs.SKETCH] + ', '
           + row[evaluation_configs.ESTIMATOR]  + '<br>'
           + 'sketch_config: ' + row[evaluation_configs.SKETCH_CONFIG] + '<br>'
-          + 'sketch_epsilon: ' + row[SKETCH_EPSILON] + '<br>'
-          + 'estimate_epsilon: ' + row[ESTIMATE_EPSILON])
+          + f'{SKETCH_EPSILON}: ' + row[SKETCH_EPSILON] + '<br>'
+          + f'{ESTIMATE_EPSILON}: ' + row[ESTIMATE_EPSILON])
 
       return (
           '<figure>'
@@ -323,4 +323,3 @@ class FrequencyReportGenerator(ReportGenerator):
   def __init__(self, *args, **kwargs):
     self.error_metric_column = simulator.SHUFFLE_DISTANCE
     super().__init__(*args, **kwargs)
-
