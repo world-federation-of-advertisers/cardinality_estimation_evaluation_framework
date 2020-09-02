@@ -58,9 +58,12 @@ SKETCH_EPSILON_VALUES = (math.log(3), math.log(3) / 4, math.log(3) / 10, None)
 ESTIMATE_EPSILON_VALUES = (math.log(3), None)
 
 # The length of the Any Distribution Bloom Filters.
-ADBF_LENGTH_LIST = [2.5e5, 1e5]
+# We use the np.array with dtype so as to make sure that the lengths are all
+# integers.
+ADBF_LENGTH_LIST = np.array([1e5, 2.5e5], dtype=np.int64)
+
 # The length of the bloom filters.
-BLOOM_FILTERS_LENGTH_LIST = [5e6]
+BLOOM_FILTERS_LENGTH_LIST = np.array([5e6], dtype=np.int64)
 
 
 # Document the evaluation configurations.
@@ -605,8 +608,6 @@ def _log_bloom_filter_first_moment_log(length, sketch_epsilon=None,
   else:
     estimate_noiser = None
 
-  length = int(length)
-
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='log_bloom_filter',
@@ -685,8 +686,6 @@ def _bloom_filter_first_moment_estimator_uniform(length, sketch_epsilon=None,
   else:
     estimate_noiser = None
 
-  length = int(length)
-
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='bloom_filter',
@@ -731,8 +730,6 @@ def _exp_bloom_filter_first_moment_exp(length, sketch_epsilon=None,
         epsilon=estimate_epsilon)
   else:
     estimate_noiser = None
-
-  length = int(length)
 
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
