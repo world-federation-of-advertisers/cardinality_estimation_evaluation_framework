@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs."""
+import math
 from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -20,7 +21,10 @@ import numpy as np
 from wfa_cardinality_estimation_evaluation_framework.evaluations import configs
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data import evaluation_configs
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import _complete_test_with_selected_parameters
-from wfa_cardinality_estimation_evaluation_framework.simulations import frequency_set_generator
+from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import GLOBAL_DP_STR
+from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import LOCAL_DP_STR
+from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import NO_GLOBAL_DP_STR
+from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import NO_LOCAL_DP_STR
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 
 
@@ -77,6 +81,7 @@ class EvaluationConfigTest(parameterized.TestCase):
     }
 
     self.assertEqual(result, expected)
+
   @parameterized.parameters(
       (set_generator.USER_ACTIVITY_ASSOCIATION_INDEPENDENT),
       (set_generator.USER_ACTIVITY_ASSOCIATION_IDENTICAL),
@@ -301,6 +306,76 @@ class EvaluationConfigTest(parameterized.TestCase):
     eval_configs = _complete_test_with_selected_parameters(num_runs=1)
     for scenario_config in eval_configs.scenario_config_list:
       self.assertIsInstance(scenario_config, configs.ScenarioConfig)
+
+  @parameterized.parameters(
+      (LOCAL_DP_STR, None, NO_LOCAL_DP_STR),
+      (GLOBAL_DP_STR, None, NO_GLOBAL_DP_STR),
+      (LOCAL_DP_STR, math.log(3), LOCAL_DP_STR + '_1.0986'),
+      (GLOBAL_DP_STR, math.log(3), GLOBAL_DP_STR + '_1.0986'),
+      (LOCAL_DP_STR, '1.09861', LOCAL_DP_STR + '_1.0986'),
+      (GLOBAL_DP_STR, '1.09861', GLOBAL_DP_STR + '_1.0986'),
+      (LOCAL_DP_STR, 0, LOCAL_DP_STR + '_0.0000'),
+      (GLOBAL_DP_STR, 0, GLOBAL_DP_STR + '_0.0000'),
+  )
+  def test_format_epsilon_correct(self, dp_type, epsilon, expected):
+    self.assertEqual(evaluation_configs._format_epsilon(dp_type, epsilon),
+                     expected)
+
+  def test_construct_sketch_estimator_config_name(self):
+    name = evaluation_configs.construct_sketch_estimator_config_name(
+        sketch_name='vector_of_counts',
+        sketch_config='4096',
+        estimator_name='sequential',
+        sketch_epsilon=None,
+        estimate_epsilon=1,
+    )
+    expected = (
+        'vector_of_counts-4096-sequential'
+        f'-{NO_LOCAL_DP_STR}'
+        f'-{GLOBAL_DP_STR}_1.0000')
+    self.assertEqual(name, expected)
+
+  @parameterized.parameters(
+      ('vector-of_counts', '4096', 'sequential'),
+      ('vector_of_counts', '4096-0', 'sequential'),
+      ('vector_of_counts', '4096', 'pairwise-sequential')
+  )
+  def test_construct_sketch_estimator_config_raise_invalid_input(
+      self, sketch_name, sketch_config, estimator_name):
+    with self.assertRaises(AssertionError):
+      evaluation_configs.construct_sketch_estimator_config_name(
+          sketch_name, sketch_config, estimator_name)
+
+  def test_independent_set_estimator_estimate_correct(self):
+    """Test if the independent set estimator's reach estimate is correct."""
+    sketch_estimator_config = evaluation_configs._independent_set_estimator()
+    sketches = []
+    reach = 1000
+    for _ in range(2):
+      sketch = sketch_estimator_config.sketch_factory(1)
+      sketch.add_ids(list(range(reach)))
+      sketches.append(sketch)
+    estimated = sketch_estimator_config.estimator(sketches)
+
+    # Calculate the true reach.
+    reach_rate = reach / evaluation_configs.UNIVERSE_SIZE_VALUE
+    expected = [
+        (1 - (1 - reach_rate)**2),  # Reach percent of freq >= 1.
+        reach_rate**2,  # Reach percent of freq >= 2.
+    ]
+    expected = [x * evaluation_configs.UNIVERSE_SIZE_VALUE for x in expected]
+    for x, y in zip(estimated, expected):
+      self.assertAlmostEqual(x, y)
+
+  def test_get_estimator_configs_return_configs(self):
+    expected_sketch_estimator_configs = [conf.name for conf in (
+        evaluation_configs._generate_cardinality_estimator_configs())]
+    sketch_estimator_configs = evaluation_configs.get_estimator_configs(
+        expected_sketch_estimator_configs, 1)
+    self.assertLen(sketch_estimator_configs,
+                   len(expected_sketch_estimator_configs))
+    for conf in sketch_estimator_configs:
+      self.assertIn(conf.name, expected_sketch_estimator_configs)
 
 
 if __name__ == '__main__':

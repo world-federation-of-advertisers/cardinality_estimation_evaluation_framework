@@ -33,11 +33,11 @@ class AnalyzerTest(absltest.TestCase):
 
   def setUp(self):
     super(AnalyzerTest, self).setUp()
-    exact_set_lossless = simulator.SketchEstimatorConfig(
+    exact_set_lossless = configs.SketchEstimatorConfig(
         name='exact_set-infty-infty-lossless',
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LosslessEstimator())
-    exact_set_less_one = simulator.SketchEstimatorConfig(
+    exact_set_less_one = configs.SketchEstimatorConfig(
         name='exact_set-infty-infty-less_one',
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LessOneEstimator(),
@@ -89,6 +89,18 @@ class AnalyzerTest(absltest.TestCase):
         'run': list(itertools.chain(*[range(4)] * 4)),
         'number_of_sets': [1] * 4 + [2] * 4 + [3] * 4 + [4] * 4,
         'error': [0] * 4 + [0, 0, 1, -1] + [1, 1, -1, -1] + [0.5, -0.5, -1, 1],
+    })
+    result = analyzer.get_num_estimable_sets(
+        df, num_sets='number_of_sets', relative_error='error',
+        error_margin=0.5, proportion_of_runs=0.5)
+    expected = 2
+    self.assertEqual(result, expected)
+
+  def test_get_num_estimable_sets_function_ignore_one_set(self):
+    df = pd.DataFrame({
+        'run': list(itertools.chain(*[range(4)] * 4)),
+        'number_of_sets': [1] * 4 + [2] * 4 + [3] * 4 + [4] * 4,
+        'error': [1] * 4 + [0, 0, 1, -1] + [1, 1, -1, -1] + [0.5, -0.5, -1, 1],
     })
     result = analyzer.get_num_estimable_sets(
         df, num_sets='number_of_sets', relative_error='error',

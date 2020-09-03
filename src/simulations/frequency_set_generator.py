@@ -166,7 +166,6 @@ class HomogeneousMultiSetGenerator(HomogeneousPmfMultiSetGenerator):
       have equal length, (2) elements of freq_rate_list are not all
       non-negative, or (3) freq_cap is not None or positive.
     """
-
     set_size_list = list(set_sizes)
     freq_rate_list = list(freq_rates)
     
