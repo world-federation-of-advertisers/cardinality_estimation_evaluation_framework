@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for wfa_cardinality_estimation_evaluation_framework.evaluations.analyzer."""
+import collections
 import itertools
 import os
 
@@ -25,6 +26,8 @@ from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
 from wfa_cardinality_estimation_evaluation_framework.evaluations import analyzer
 from wfa_cardinality_estimation_evaluation_framework.evaluations import configs
 from wfa_cardinality_estimation_evaluation_framework.evaluations import evaluator
+from wfa_cardinality_estimation_evaluation_framework.evaluations.data import evaluation_configs
+from wfa_cardinality_estimation_evaluation_framework.simulations import frequency_set_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations import simulator
 
@@ -194,7 +197,6 @@ class AnalyzerTest(absltest.TestCase):
         out_dir=self.create_tempdir('analysis').full_path,
         evaluation_dir=evaluation_out_dir)
     a._save_plot_num_sets_vs_metric()
-    print(a.analysis_file_dirs[evaluator.KEY_ESTIMATOR_DIRS])
     for estimator in a.analysis_file_dirs[evaluator.KEY_ESTIMATOR_DIRS].keys():
       for scenario, directory in a.analysis_file_dirs[estimator].items():
         self.assertTrue(
@@ -252,6 +254,42 @@ class AnalyzerTest(absltest.TestCase):
       pd.testing.assert_frame_equal(df, expected)
     except AssertionError:
       self.fail('The number of estimable sets and stats is not correct.')
+
+
+class FrequencyEstimatorEvaluationAnalyzerTest(absltest.TestCase):
+
+  def test_convert_raw_df_to_long_format(self):
+    df = pd.DataFrame({
+        simulator.RUN_INDEX: [0, 0, 1, 1],
+        simulator.NUM_SETS: [1, 2, 1, 2],
+        simulator.TRUE_CARDINALITY_BASENAME + '1': [10, 20, 10, 20],
+        simulator.TRUE_CARDINALITY_BASENAME + '2': [5, 10, 5, 10],
+        simulator.ESTIMATED_CARDINALITY_BASENAME + '1': [11, 21, 12, 22],
+        simulator.ESTIMATED_CARDINALITY_BASENAME + '2': [4, 9, 3, 8],
+    })
+    fake_analyzer_class = collections.namedtuple(
+        'FrequencyAnalyzer', ['raw_df'])
+    fake_analyzer = fake_analyzer_class(raw_df=df)
+    df_long = (
+        analyzer.FrequencyEstimatorEvaluationAnalyzer
+        .convert_raw_df_to_long_format(fake_analyzer))
+
+    expected = pd.DataFrame({
+        simulator.RUN_INDEX: [0, 0, 1, 1] * 4,
+        simulator.NUM_SETS: [1, 2] * 8,
+        analyzer.CARDINALITY_VALUE: (
+            [10, 20, 10, 20, 5, 10, 5, 10]
+            + [11, 21, 12, 22, 4, 9, 3, 8]),
+        analyzer.CARDINALITY_SOURCE: (
+            [simulator.TRUE_CARDINALITY_BASENAME.rstrip('_')] * 8
+            + [simulator.ESTIMATED_CARDINALITY_BASENAME.rstrip('_')] * 8),
+        analyzer.FREQUENCY_LEVEL: ([1] * 4 + [2] * 4) * 2,
+    })
+
+    try:
+      pd.testing.assert_frame_equal(df_long, expected)
+    except AssertionError:
+      self.fail('The long format is not correct.')
 
 
 if __name__ == '__main__':
