@@ -415,7 +415,7 @@ class InteroperabilityTest(absltest.TestCase):
         report_out_dir=self.create_tempdir('report').full_path,
         evaluation_config='smoke_test',
         sketch_estimator_configs=sketch_estimator_configs,
-        evaluation_run_name='interoperability_test_for_evaluator',
+        evaluation_run_name='interoperability_test_for_evaluator_cardinality',
         num_runs=1,
         num_workers=0,
         error_margin=[0.05],
@@ -425,6 +425,40 @@ class InteroperabilityTest(absltest.TestCase):
         boxplot_size_height_inch=4,
         analysis_type='cardinality',
         max_frequency=10
+    )
+
+  def test_run_evaluation_for_frequency_estimator_workflow_compatible(self):
+    """Test the compatibility of evaluator, analyzer and report_generator.
+
+    This is a test to check if the evaluator, the analyzer and the
+    report_generator is compatible with the rest of the evaluation codebase,
+    eg, the estimators, the set generators, and the simulator. The test runs
+    the evaluation, analyzes results, and generates a report, which should not
+    run into any error.
+    """
+    max_frequency = 3
+    sketch_estimator_configs = [conf.name for conf in (
+        evaluation_configs._generate_frequency_estimator_configs(max_frequency)
+    )]
+    run_evaluation._run(
+        run_evaluation=True,
+        run_analysis=True,
+        generate_html_report=True,
+        evaluation_out_dir=self.create_tempdir('evaluator').full_path,
+        analysis_out_dir=self.create_tempdir('analyzer').full_path,
+        report_out_dir=self.create_tempdir('report').full_path,
+        evaluation_config='frequency_end_to_end_test',
+        sketch_estimator_configs=sketch_estimator_configs,
+        evaluation_run_name='interoperability_test_for_evaluator_frequency',
+        num_runs=1,
+        num_workers=0,
+        error_margin=[0.05],
+        proportion_of_runs=[0.95],
+        boxplot_xlabel_rotate=90,
+        boxplot_size_width_inch=6,
+        boxplot_size_height_inch=4,
+        analysis_type='frequency',
+        max_frequency=max_frequency,
     )
 
 if __name__ == '__main__':
