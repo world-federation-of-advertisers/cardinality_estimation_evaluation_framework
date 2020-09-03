@@ -309,7 +309,7 @@ class EvaluationConfigTest(parameterized.TestCase):
     self.assertEqual(evaluation_configs._format_epsilon(dp_type, epsilon),
                      expected)
 
-  def test_construct_sketch_estimator_config_name(self):
+  def test_construct_sketch_estimator_config_name_cardinality_estimator(self):
     name = evaluation_configs.construct_sketch_estimator_config_name(
         sketch_name='vector_of_counts',
         sketch_config='4096',
@@ -321,6 +321,20 @@ class EvaluationConfigTest(parameterized.TestCase):
         'vector_of_counts-4096-sequential'
         f'-{NO_LOCAL_DP_STR}'
         f'-{GLOBAL_DP_STR}_1.0000')
+    self.assertEqual(name, expected)
+
+  def test_construct_sketch_estimator_config_name_frequency_estimator(self):
+    name = evaluation_configs.construct_sketch_estimator_config_name(
+        sketch_name='exact_set',
+        sketch_config='1000',
+        estimator_name='lossless',
+        max_frequency=5,
+    )
+    expected = (
+        'exact_set-1000-lossless'
+        f'-{NO_LOCAL_DP_STR}'
+        f'-{NO_GLOBAL_DP_STR}'
+        '-5')
     self.assertEqual(name, expected)
 
   @parameterized.parameters(
