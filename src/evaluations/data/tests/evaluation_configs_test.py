@@ -34,6 +34,18 @@ class EvaluationConfigTest(parameterized.TestCase):
       'wfa_cardinality_estimation_evaluation_framework.evaluations.data.'
       + 'evaluation_configs.')
 
+  def test_smoke_test(self):
+    configs = evaluation_configs._smoke_test(4)
+    self.assertEqual(configs.name, 'smoke_test')
+    self.assertEqual(configs.num_runs, 4)
+    self.assertLen(configs.scenario_config_list, 5)
+
+  def test_frequency_smoke_test(self):
+    configs = evaluation_configs._frequency_smoke_test(4)
+    self.assertEqual(configs.name, 'frequency_smoke_test')
+    self.assertEqual(configs.num_runs, 4)
+    self.assertLen(configs.scenario_config_list, 3)
+
   @parameterized.parameters(
       (2000, None, 'independent-universe_size:2000'),
       (2000, 0.2, 'remarketing-remarketing_size:400-universe_size:2000'),

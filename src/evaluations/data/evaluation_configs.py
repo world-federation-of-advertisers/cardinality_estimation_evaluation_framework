@@ -125,6 +125,44 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE):
       )
 
 
+def _frequency_smoke_test(num_runs=NUM_RUNS_VALUE):
+  """Smoke test frequency evaluation configurations.
+
+  Args:
+    num_runs: the number of runs per scenario.
+
+  Returns:
+    An EvaluationConfig.
+  """
+  return EvaluationConfig(
+      name='frequency_smoke_test',
+      num_runs=num_runs,
+      scenario_config_list=(
+          ScenarioConfig(
+              name='homogeneous',
+              set_generator_factory=(
+                frequency_set_generator.HomogeneousMultiSetGenerator.
+                get_generator_factory_with_num_and_size(
+                    universe_size=int(2e5), num_sets=10, set_size=int(2e4),
+                    freq_rates=[1]*10, freq_cap=3))),
+          ScenarioConfig(
+              name='heterogeneous',
+              set_generator_factory=(
+                frequency_set_generator.HeterogeneousMultiSetGenerator.
+                get_generator_factory_with_num_and_size(
+                    universe_size=int(2e5), num_sets=10, set_size=int(2e4),
+                    gamma_params=[[1,1]]*10, freq_cap=3))),
+          ScenarioConfig(
+              name='publisher_constant',
+              set_generator_factory=(
+                frequency_set_generator.PublisherConstantFrequencySetGenerator.
+                get_generator_factory_with_num_and_size(
+                    universe_size=int(2e5), num_sets=10, set_size=int(2e4),
+                    frequency=3))),
+      )
+    )
+
+
 def _get_default_name_to_choices_of_set_size_list(
     small_set_size,
     large_set_size,
@@ -499,7 +537,8 @@ def _generate_evaluation_configs():
   return (
       _smoke_test,
       _complete_test_with_selected_parameters,
-      _frequency_end_to_end_test
+      _frequency_end_to_end_test,
+      _frequency_smoke_test,
   )
 
 
