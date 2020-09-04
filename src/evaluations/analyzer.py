@@ -282,10 +282,6 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
     super().__init__(out_dir, evaluation_directory, evaluation_run_name,
                      evaluation_name, estimable_criteria_list, plot_params)
 
-  @classmethod
-  def retrieve_max_frequency(cls):
-    pass
-
   def convert_raw_df_to_long_format(self):
     """Convert the raw DataFrame to a long format.
 
@@ -302,7 +298,8 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
         value_vars.append(col)
 
     df_long = self.raw_df.melt(
-        id_vars=[simulator.RUN_INDEX, simulator.NUM_SETS],
+        id_vars=[SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, simulator.RUN_INDEX,
+                 simulator.NUM_SETS],
         value_vars=value_vars,
         var_name=CARDINALITY_SOURCE,
         value_name=CARDINALITY_VALUE,
@@ -329,38 +326,15 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
     df_parsed_source_and_frequency = df_long[CARDINALITY_SOURCE].apply(
         _split_source_and_frequency)
 
+    # Add parsed cardinality source and frequency level columns to the table.
     df_long = pd.concat(
-        [df_long[[simulator.RUN_INDEX, simulator.NUM_SETS, CARDINALITY_VALUE]],
+        [df_long[[SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, simulator.RUN_INDEX,
+                  simulator.NUM_SETS, CARDINALITY_VALUE]],
          df_parsed_source_and_frequency],
         axis=1,
     )
 
     return df_long
-
-#   def _save_plot_frequency_distribution(self):
-#     """Make and save plots for estimated and true frequency distributions."""
-#     def plot_one_estimator_under_one_scenario(df):
-#       ax = plotting.barplot_frequency_distributions(
-#           df,
-#           frequency=1,
-#           cardinality=1,
-#           source=1,
-#       )
-#       scenario_name = df[SCENARIO_NAME].values[0]
-#       estimator_name = df[SKETCH_ESTIMATOR_NAME].values[0]
-#       ax.set_title(f'{scenario_name}\n{estimator_name}')
-#       # Save the plot to file.
-#       fig = ax.get_figure()
-#       plot_file = os.path.join(
-#           self.analysis_file_dirs[estimator_name][scenario_name],
-#           BARPLOT_FILENAME)
-#       # fig.set_size_inches(
-#       #     w=self.plot_params[BOXPLOT_SIZE_WIDTH_INCH],
-#       #     h=self.plot_params[BOXPLOT_SIZE_HEIGHT_INCH])
-#       fig.savefig(plot_file)
-
-#     self.raw_df.groupby([SKETCH_ESTIMATOR_NAME, SCENARIO_NAME]).apply(
-#         plot_one_estimator_under_one_scenario)
 
 
 def get_analysis_results(analysis_out_dir, evaluation_run_name,

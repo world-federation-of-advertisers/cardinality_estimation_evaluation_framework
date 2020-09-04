@@ -260,6 +260,8 @@ class FrequencyEstimatorEvaluationAnalyzerTest(absltest.TestCase):
 
   def test_convert_raw_df_to_long_format(self):
     df = pd.DataFrame({
+        analyzer.SKETCH_ESTIMATOR_NAME: ['some_sketch'] * 4,
+        analyzer.SCENARIO_NAME: ['some_scenario'] * 4,
         simulator.RUN_INDEX: [0, 0, 1, 1],
         simulator.NUM_SETS: [1, 2, 1, 2],
         simulator.TRUE_CARDINALITY_BASENAME + '1': [10, 20, 10, 20],
@@ -275,6 +277,8 @@ class FrequencyEstimatorEvaluationAnalyzerTest(absltest.TestCase):
         .convert_raw_df_to_long_format(fake_analyzer))
 
     expected = pd.DataFrame({
+        analyzer.SKETCH_ESTIMATOR_NAME: ['some_sketch'] * 16,
+        analyzer.SCENARIO_NAME: ['some_scenario'] * 16,
         simulator.RUN_INDEX: [0, 0, 1, 1] * 4,
         simulator.NUM_SETS: [1, 2] * 8,
         analyzer.CARDINALITY_VALUE: (
