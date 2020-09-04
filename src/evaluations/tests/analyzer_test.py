@@ -258,8 +258,63 @@ class AnalyzerTest(absltest.TestCase):
 
 class FrequencyEstimatorEvaluationAnalyzerTest(absltest.TestCase):
 
+  def setUp(self):
+    super(FrequencyEstimatorEvaluationAnalyzerTest, self).setUp()
+
+    self.sketch_estimator_config_list = [
+        configs.SketchEstimatorConfig(
+            name=evaluation_configs.construct_sketch_estimator_config_name(
+                sketch_name='exact_multi_set',
+                sketch_config='10000',
+                estimator_name='lossless'),
+            sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
+            estimator=exact_set.LosslessEstimator(),
+            max_frequency=2,
+        ),
+    ]
+
+    self.evaluation_config = configs.EvaluationConfig(
+        name='frequency_end_to_end_test',
+        num_runs=1,
+        scenario_config_list=[
+            configs.ScenarioConfig(
+                name='homogeneous',
+                set_generator_factory=(
+                    frequency_set_generator.HomogeneousMultiSetGenerator
+                    .get_generator_factory_with_num_and_size(
+                        universe_size=100,
+                        num_sets=3,
+                        set_size=50,
+                        freq_rates=[5] * 3,
+                        freq_cap=8,
+                    )))]
+    )
+
+    self.run_name = 'test_run'
+
+    def _get_test_evaluator(out_dir):
+      return evaluator.Evaluator(
+          evaluation_config=self.evaluation_config,
+          sketch_estimator_config_list=self.sketch_estimator_config_list,
+          run_name=self.run_name,
+          out_dir=out_dir)
+
+    self.get_test_evaluator = _get_test_evaluator
+
+    def _get_test_analyzer(out_dir, evaluation_dir):
+      return analyzer.FrequencyEstimatorEvaluationAnalyzer(
+          out_dir=out_dir,
+          evaluation_directory=evaluation_dir,
+          evaluation_run_name=self.run_name,
+          evaluation_name=self.evaluation_config.name,
+          estimable_criteria_list=[(0.05, 0.95), (1.01, 0.9)])
+
+    self.get_test_analyzer = _get_test_analyzer
+
   def test_convert_raw_df_to_long_format(self):
     df = pd.DataFrame({
+        analyzer.SKETCH_ESTIMATOR_NAME: ['some_sketch'] * 4,
+        analyzer.SCENARIO_NAME: ['some_scenario'] * 4,
         simulator.RUN_INDEX: [0, 0, 1, 1],
         simulator.NUM_SETS: [1, 2, 1, 2],
         simulator.TRUE_CARDINALITY_BASENAME + '1': [10, 20, 10, 20],
@@ -275,6 +330,8 @@ class FrequencyEstimatorEvaluationAnalyzerTest(absltest.TestCase):
         .convert_raw_df_to_long_format(fake_analyzer))
 
     expected = pd.DataFrame({
+        analyzer.SKETCH_ESTIMATOR_NAME: ['some_sketch'] * 16,
+        analyzer.SCENARIO_NAME: ['some_scenario'] * 16,
         simulator.RUN_INDEX: [0, 0, 1, 1] * 4,
         simulator.NUM_SETS: [1, 2] * 8,
         analyzer.CARDINALITY_VALUE: (
@@ -291,6 +348,28 @@ class FrequencyEstimatorEvaluationAnalyzerTest(absltest.TestCase):
     except AssertionError:
       self.fail('The long format is not correct.')
 
+  def test_save_plot_frequency_distribution_for_report(self):
+    evaluation_out_dir = self.create_tempdir('evaluation').full_path
+    # Run evaluation.
+    e = self.get_test_evaluator(evaluation_out_dir)
+    e()
+    # Get analyzer.
+    a = self.get_test_analyzer(
+        out_dir=self.create_tempdir('analysis').full_path,
+        evaluation_dir=evaluation_out_dir)
+    a._save_plot_frequency_distribution_for_report()
+    for estimator in a.analysis_file_dirs[evaluator.KEY_ESTIMATOR_DIRS].keys():
+      for scenario, directory in a.analysis_file_dirs[estimator].items():
+        self.assertTrue(
+            os.path.exists(os.path.join(
+                directory, analyzer.BARPLOT_MAX_SETS_FILENAME)),
+            'Barplot for max set does not exists: '
+            f'{estimator} under {scenario}.')
+        self.assertTrue(
+            os.path.exists(os.path.join(
+                directory, analyzer.BARPLOT_ESTIMABLE_SETS_FILENAME)),
+            'Barplot for estimable set does not exists: '
+            f'{estimator} under {scenario}.')
 
 if __name__ == '__main__':
   absltest.main()
