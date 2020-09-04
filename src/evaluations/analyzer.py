@@ -335,6 +335,7 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
     df_parsed_source_and_frequency = df_long[CARDINALITY_SOURCE].apply(
         _split_source_and_frequency)
 
+    # Add parsed cardinality source and frequency level columns to the table.
     df_long = pd.concat(
         [df_long[[SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, simulator.RUN_INDEX,
                   simulator.NUM_SETS, CARDINALITY_VALUE]],
