@@ -52,10 +52,14 @@ BARPLOT_MAX_SETS_FILENAME = 'barplot_max_sets.png'
 XLABEL_ROTATE = 'xlabel_rotate'
 BOXPLOT_SIZE_WIDTH_INCH = 'boxplot_size_width_inch'
 BOXPLOT_SIZE_HEIGHT_INCH = 'boxplot_size_width_inch'
+BARPLOT_SIZE_WIDTH_INCH = 'barplot_size_width_inch'
+BARPLOT_SIZE_HEIGHT_INCH = 'barplot_size_height_inch'
 PLOT_PARAMS = {
     XLABEL_ROTATE: 0,
     BOXPLOT_SIZE_WIDTH_INCH: 12,
     BOXPLOT_SIZE_HEIGHT_INCH: 6,
+    BARPLOT_SIZE_WIDTH_INCH: 12,
+    BARPLOT_SIZE_HEIGHT_INCH: 6,
 }
 
 # Variables related with getting analysis results.
@@ -283,6 +287,10 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
     super().__init__(out_dir, evaluation_directory, evaluation_run_name,
                      evaluation_name, estimable_criteria_list, plot_params)
 
+  def __call__(self):
+    super().__call__()
+    self._save_plot_frequency_distribution_for_report()
+
   def convert_raw_df_to_long_format(self):
     """Convert the raw DataFrame to a long format.
 
@@ -357,15 +365,16 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
       scenario_name = df[SCENARIO_NAME].values[0]
       estimator_name = df[SKETCH_ESTIMATOR_NAME].values[0]
       num_sets = df[simulator.NUM_SETS].values[0]
-      ax.set_title(f'{num_sets}\n{scenario_name}\n{estimator_name}')
+      ax.set_title(f'{simulator.NUM_SETS}:{num_sets}\n'
+                   f'{scenario_name}\n{estimator_name}')
       # Save the plot to file.
       fig = ax.get_figure()
       plot_file = os.path.join(
           self.analysis_file_dirs[estimator_name][scenario_name],
           filename)
-      # fig.set_size_inches(
-      #     w=self.plot_params[BOXPLOT_SIZE_WIDTH_INCH],
-      #     h=self.plot_params[BOXPLOT_SIZE_HEIGHT_INCH])
+      fig.set_size_inches(
+          w=self.plot_params[BARPLOT_SIZE_WIDTH_INCH],
+          h=self.plot_params[BARPLOT_SIZE_HEIGHT_INCH])
       fig.savefig(plot_file)
 
     # Generate plots for all estimator and scenario combinations.
@@ -385,7 +394,7 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
         CARDINALITY_VALUE and CARDINALITY_SOURCE.
     """
     num_estimable_sets_stats_df = (
-        self.get_relative_error_stats_of_num_of_estimable_sets())
+        self.get_num_estimable_sets_df())
     plot_df = raw_df_long.merge(
         right=num_estimable_sets_stats_df,
         left_on=[SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, simulator.NUM_SETS],
