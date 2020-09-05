@@ -1,4 +1,4 @@
-"""Tests for google3.experimental.users.huangxichen.om.voc.src.estimators.tests.vector_of_counts_sketch_operator."""
+"""Tests for wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts_sketch_operator."""
 from absl.testing import absltest
 from absl.testing import parameterized
 
