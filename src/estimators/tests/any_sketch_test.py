@@ -27,7 +27,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch impor
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import SketchConfig
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import SumFunction
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import UniformDistribution
-
+from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import UniqueKeyFunction
 
 class DistributionTest(parameterized.TestCase):
 
@@ -158,6 +158,30 @@ class AnySketchTest(absltest.TestCase):
     for i, sketch in enumerate(expected):
       np.testing.assert_equal(s1.sketch[i], sketch)
 
+  def test_add_unique_key(self):
+    s1 = AnySketch(
+        SketchConfig([IndexSpecification(UniformDistribution(4), 'uniform')],
+                     num_hashes=3,
+                     value_functions=[UniqueKeyFunction()]), 42)
+    with self.assertRaises(AssertionError):
+      s1.add(1)
+
+    s2 = AnySketch(
+        SketchConfig([IndexSpecification(UniformDistribution(4), 'uniform')],
+                     num_hashes=1,
+                     value_functions=[UniqueKeyFunction()]), 42)
+    with self.assertRaises(AssertionError):
+      s2.add('9')
+
+    s2 = AnySketch(
+        SketchConfig([IndexSpecification(UniformDistribution(4), 'uniform')],
+                     num_hashes=1,
+                     value_functions=[UniqueKeyFunction()]), 42)
+    s2.add(9)
+    expected = np.array([UniqueKeyFunction.FLAG_EMPTY_REGISTER] * 4)
+    expected[2] = 9
+    np.testing.assert_equal(s2.sketch, expected)
+
 
 class ValueFunctionTest(parameterized.TestCase):
 
@@ -181,6 +205,23 @@ class ValueFunctionTest(parameterized.TestCase):
   def test_bitwise_or_works(self, x, y, expected):
     bitwise_or = BitwiseOrFunction()
     self.assertEqual(bitwise_or(x, y), expected, f'{x}^{y} != {expected}')
+
+  empty = UniqueKeyFunction.FLAG_EMPTY_REGISTER
+  collision = UniqueKeyFunction.FLAG_COLLIDED_REGISTER
+  id_a = 5
+  id_b = 7
+
+  @parameterized.parameters(
+      (empty, empty, empty),
+      (empty, id_a, id_a),
+      (empty, collision, collision),
+      (id_a, id_a, id_a),
+      (id_a, id_b, collision),
+      (collision, id_a, collision),
+      (collision, collision, collision))
+  def test_unique_key(self, x, y, expected):
+    unique_key = UniqueKeyFunction()
+    self.assertEqual(unique_key(x, y), expected, f'{x}^{y} != {expected}')
 
 
 if __name__ == '__main__':
