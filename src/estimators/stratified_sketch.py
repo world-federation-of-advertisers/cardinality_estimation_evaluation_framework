@@ -29,7 +29,7 @@ class ExactSetOperator(object):
   The methods below all accept an ExactMultiSet object and returning an
   ExactMultiSet object.
   """
-
+  #   TODO(uakyol) : Make this child of SketchOperator class.
   @classmethod
   def union(cls, this, that):
     """Union operation for ExactSet."""
@@ -76,7 +76,7 @@ class StratifiedSketch(SketchBase):
                          max_freq,
                          cardinality_sketch_factory,
                          noiser_class=None,
-                         epsilon=0,
+                         epsilon=None,
                          epsilon_split=0.5,
                          underlying_set=None,
                          union=ExactSetOperator.union):
@@ -114,7 +114,9 @@ class StratifiedSketch(SketchBase):
         simulator.EstimatorConfig.sketch_factory.
       noiser : A noiser class that is a subclass of base.EstimateNoiserBase.
       epsilon : Total privacy budget to spend for noising this sketch.
-      epsilon_split : Ratio of privacy budget to spend to noise 1+ sketch.
+      epsilon_split : Ratio of privacy budget to spend to noise 1+ sketch. When
+        epsilon_split=0 the 1+ sketch is created from the underlying exact set
+        directly. epsilon_split should be smaller than 1.
       underlying_set : ExactMultiSet object that holds the frequency for each
         item for this Stratified Sketch.
       union : Function to be used to calculate the 1+ sketch as the union of the
