@@ -21,7 +21,7 @@ class StratifiedSketchOperator:
   The operators defined in this class are NOT intended to be used as generic
   sketch operators for the Vector-of-Counts (VoC hereafter). They are ONLY
   intended to be used with stratefied_sketch.py for estimation frequency.
-  The reason behind this is that the union operators defined here are for VoCs
+  The reason behind this is that the union operator defined here is for VoCs
   whose underlying sets are DISJOINT, and the difference operator is for
   those sets that are fully-overlapping.
   """
