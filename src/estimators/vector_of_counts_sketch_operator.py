@@ -15,15 +15,15 @@
 import copy
 
 
-class SketchOperator:
+class StratifiedSketchOperator:
   """Sketch operations for supporting frequency dedupe.
 
-  The operator defined in this class is NOT intended to be used as a generic
-  sketch operator for the Vector-of-Counts (VoC hereafter). It is ONLY intended
-  to be worked with the stratefied_sketch.py for estimating the frequency. The
-  reason behind is that the union operators defined here is for VoCs whose
-  underlying sets are DISJOINT, and the difference operator is for those sets
-  that are fully-overlapping.
+  The operators defined in this class are NOT intended to be used as generic
+  sketch operators for the Vector-of-Counts (VoC hereafter). They are ONLY
+  intended to be used with stratefied_sketch.py for estimation frequency.
+  The reason behind this is that the union operators defined here are for VoCs
+  whose underlying sets are DISJOINT, and the difference operator is for
+  those sets that are fully-overlapping.
   """
 
   def __init__(self, estimator):

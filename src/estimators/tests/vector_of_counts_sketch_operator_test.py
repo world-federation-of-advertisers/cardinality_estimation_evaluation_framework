@@ -19,13 +19,13 @@ import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import SequentialEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import VectorOfCounts
-from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts_sketch_operator import SketchOperator
+from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts_sketch_operator import StratifiedSketchOperator
 
 
-class SketchOperatorTest(parameterized.TestCase):
+class StratifiedSketchOperatorTest(parameterized.TestCase):
 
   def setUp(self):
-    super(SketchOperatorTest, self).setUp()
+    super(StratifiedSketchOperatorTest, self).setUp()
 
     def _create_sketches(this_stats, that_stats):
       sketches = []
@@ -57,9 +57,9 @@ class SketchOperatorTest(parameterized.TestCase):
       ([1, 0], None, [1, 0]),
       (None, None, None),
   )
-  def test_union_works(self, this_stats, that_stats, expected):
+  def test_union(self, this_stats, that_stats, expected):
     sketches = self.create_sketches(this_stats, that_stats)
-    operator = SketchOperator(estimator=SequentialEstimator())
+    operator = StratifiedSketchOperator(estimator=SequentialEstimator())
     union_sketch = operator.union(*sketches)
     self.assert_sketch_equal(union_sketch, expected)
 
@@ -69,9 +69,9 @@ class SketchOperatorTest(parameterized.TestCase):
       ([1, 0], None, None),
       (None, None, None),
   )
-  def test_intersection_works(self, this_stats, that_stats, expected):
+  def test_intersection(self, this_stats, that_stats, expected):
     sketches = self.create_sketches(this_stats, that_stats)
-    operator = SketchOperator(estimator=SequentialEstimator())
+    operator = StratifiedSketchOperator(estimator=SequentialEstimator())
     intersection_sketch = operator.intersection(*sketches)
     self.assert_sketch_equal(intersection_sketch, expected)
 
@@ -81,9 +81,9 @@ class SketchOperatorTest(parameterized.TestCase):
       ([1, 0], None, [1, 0]),
       (None, None, None),
   )
-  def test_difference_works(self, this_stats, that_stats, expected):
+  def test_difference(self, this_stats, that_stats, expected):
     sketches = self.create_sketches(this_stats, that_stats)
-    operator = SketchOperator(estimator=SequentialEstimator())
+    operator = StratifiedSketchOperator(estimator=SequentialEstimator())
     difference_sketch = operator.difference(*sketches)
     self.assert_sketch_equal(difference_sketch, expected)
 
