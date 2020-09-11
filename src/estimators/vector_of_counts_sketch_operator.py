@@ -87,7 +87,7 @@ class StratifiedSketchOperator:
       A VectorOfCounts that is the difference of the input sketches.
     """
     if this is None or that is None:
-      return this
+      return copy.deepcopy(this)
     result = copy.deepcopy(this)
     result.stats = this.stats - that.stats
     return result
