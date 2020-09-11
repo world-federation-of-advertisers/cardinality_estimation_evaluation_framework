@@ -65,6 +65,9 @@ MESSAGE_HTML_TEMPLATE = """
 # Number of digits that should be shown when reporting the relative error
 RELATIVE_ERROR_FORMAT_ACCURACY = 4
 
+ANALYSIS_TYPE_CARDINALITY = 'cardinality'
+ANALYSIS_TYPE_FREQUENCY = 'frequency'
+
 
 class ReportGenerator:
   """Generate HTML report for an estimator evaluation."""
@@ -103,6 +106,8 @@ class ReportGenerator:
         ReportGenerator.add_parsed_sketch_estimator_name_cols(
             self.analysis_results[KEY_NUM_ESTIMABLE_SETS_STATS_DF],
             analyzer.SKETCH_ESTIMATOR_NAME))
+
+    self.analysis_type = None
 
   def __call__(self, out_filename=HTML_REPORT_FILENAME):
     html_report = self.generate_html_report()
@@ -182,9 +187,9 @@ class ReportGenerator:
         aggfunc=''.join)
 
   @classmethod
-  def generate_boxplot_html(cls, sketch_estimator_list, scenario_list,
-                            description_to_file_dir, out_dir):
-    """Generate HTML for boxplot of relative errors by scenarios.
+  def generate_plots_html(cls, sketch_estimator_list, scenario_list,
+                          description_to_file_dir, out_dir, analysis_type):
+    """Generate HTML for plots by scenarios.
 
     Args:
       sketch_estimator_list: a list of sketch_estimator names, which conforms to
@@ -193,10 +198,15 @@ class ReportGenerator:
       description_to_file_dir: a dictionary that contains the file tree of the
         analysis results.
       out_dir: a string representing the output directory.
+      analysis_type: one of ANALYSIS_TYPE_CARDINALITY and
+        ANALYSIS_TYPE_FREQUENCY.
 
     Returns:
       The HTML of the plot if the plot file exists. Otherwise, return None.
     """
+    assert analysis_type in (ANALYSIS_TYPE_CARDINALITY,
+                             ANALYSIS_TYPE_FREQUENCY)
+
     sketch_estimator_df = pd.DataFrame(
         [], columns=evaluation_configs.SKETCH_ESTIMATOR_CONFIG_NAMES_FORMAT)
     for sketch_estimator in sketch_estimator_list:
@@ -204,9 +214,9 @@ class ReportGenerator:
           ReportGenerator.parse_sketch_estimator_name(sketch_estimator),
           ignore_index=True)
 
-    def _get_boxplot_html(row):
+    def _generate_plots_html(row):
       sketch_estimator_name = '-'.join([
-          row[i] for i in (
+          str(row[i]) for i in (
               evaluation_configs.SKETCH_ESTIMATOR_CONFIG_NAMES_FORMAT)
       ])
       if sketch_estimator_name not in description_to_file_dir[
@@ -217,23 +227,57 @@ class ReportGenerator:
       if row[analyzer.SCENARIO_NAME] not in estimator_dir:
         return None
 
-      img_file = os.path.join(
+      # Boxplot.
+      boxplot_file = os.path.join(
           estimator_dir[row[analyzer.SCENARIO_NAME]],
           analyzer.BOXPLOT_FILENAME)
       # Get relative path.
-      img_file = os.path.relpath(img_file, out_dir)
-
-      title = (
+      boxplot_file = os.path.relpath(boxplot_file, out_dir)
+      boxplot_title = (
           row[evaluation_configs.SKETCH] + ', '
           + row[evaluation_configs.ESTIMATOR]  + '<br>'
           + 'sketch_config: ' + row[evaluation_configs.SKETCH_CONFIG] + '<br>'
           + f'{SKETCH_EPSILON}: ' + row[SKETCH_EPSILON] + '<br>'
-          + f'{ESTIMATE_EPSILON}: ' + row[ESTIMATE_EPSILON])
+          + f'{ESTIMATE_EPSILON}: ' + row[ESTIMATE_EPSILON] + '<br>'
+          + 'Relative error:' + '<br>'
+      )
 
-      return (
+      html_str = (
           '<figure>'
-          f'<figcaption>{title}</figcaption>'
-          f'<img src="{img_file}" width="400" height="250">'
+          f'<figcaption>{boxplot_title}</figcaption>'
+          f'<img src="{boxplot_file}" width="400" height="250">'
+          '</figure>'
+          '<figure>')
+      if analysis_type == ANALYSIS_TYPE_CARDINALITY:
+        return html_str
+
+      # Barplot of frequency distribution for number of estimable sets.
+      barplot_file_num_estimable_sets = os.path.join(
+          estimator_dir[row[analyzer.SCENARIO_NAME]],
+          analyzer.BARPLOT_ESTIMABLE_SETS_FILENAME)
+      # Get relative path.
+      barplot_file_num_estimable_sets = os.path.relpath(
+          barplot_file_num_estimable_sets, out_dir)
+      barplot_title_num_estimable_sets = (
+          'Barplot: num_sets = number of estimable sets')
+
+      # Barplot of frequency distribution for max num_sets.
+      barplot_file_max_num_sets = os.path.join(
+          estimator_dir[row[analyzer.SCENARIO_NAME]],
+          analyzer.BARPLOT_MAX_SETS_FILENAME)
+      # Get relative path.
+      barplot_file_max_num_sets = os.path.relpath(barplot_file_max_num_sets,
+                                                  out_dir)
+      barplot_title_max_num_sets = 'Barplot: num_sets = max number of sets'
+
+      return html_str + (
+          f'<figcaption>{barplot_title_num_estimable_sets}</figcaption>'
+          f'<img src="{barplot_file_num_estimable_sets}" '
+          'width="400" height="250">'
+          '</figure>'
+          '<figure>'
+          f'<figcaption>{barplot_title_max_num_sets}</figcaption>'
+          f'<img src="{barplot_file_max_num_sets}" width="400" height="250">'
           '</figure>'
       )
 
@@ -242,7 +286,7 @@ class ReportGenerator:
     for scenario in scenario_list:
       plot_df = sketch_estimator_df.copy()
       plot_df[analyzer.SCENARIO_NAME] = scenario
-      plot_df['link'] = plot_df.apply(_get_boxplot_html, axis=1)
+      plot_df['link'] = plot_df.apply(_generate_plots_html, axis=1)
       plot_df['epsilon'] = (plot_df[SKETCH_EPSILON] + '<br>'
                             + plot_df[ESTIMATE_EPSILON])
       plot_df = plot_df.pivot_table(
@@ -287,19 +331,20 @@ class ReportGenerator:
     running_time_df_html = (
         self.analysis_results[KEY_RUNNING_TIME_DF].to_html(escape=False))
 
-    # Generate the boxplot by scenarios.
+    # Generate the plots by scenarios.
     sketch_estimator_list = self.analysis_results[
         KEY_DESCRIPTION_TO_FILE_DIR][evaluator.KEY_ESTIMATOR_DIRS].keys()
     scenario_list = set()
     for estimator in sketch_estimator_list:
       scenario_list.update(self.analysis_results[
           KEY_DESCRIPTION_TO_FILE_DIR][estimator].keys())
-    plot_df_html = ReportGenerator.generate_boxplot_html(
+    plot_df_html = ReportGenerator.generate_plots_html(
         sketch_estimator_list=sketch_estimator_list,
         scenario_list=sorted(scenario_list),
         description_to_file_dir=self.analysis_results[
             KEY_DESCRIPTION_TO_FILE_DIR],
-        out_dir=self.out_dir)
+        out_dir=self.out_dir,
+        analysis_type=self.analysis_type)
 
     report_html = MESSAGE_HTML_TEMPLATE.format(
         num_estimable_sets_stats_df_html=num_estimable_sets_stats_df_html,
@@ -315,6 +360,7 @@ class CardinalityReportGenerator(ReportGenerator):
   def __init__(self, *args, **kwargs):
     self.error_metric_column = simulator.RELATIVE_ERROR_BASENAME + '1'
     super().__init__(*args, **kwargs)
+    self.analysis_type = ANALYSIS_TYPE_CARDINALITY
 
 
 class FrequencyReportGenerator(ReportGenerator):
@@ -323,3 +369,4 @@ class FrequencyReportGenerator(ReportGenerator):
   def __init__(self, *args, **kwargs):
     self.error_metric_column = simulator.SHUFFLE_DISTANCE
     super().__init__(*args, **kwargs)
+    self.analysis_type = ANALYSIS_TYPE_FREQUENCY
