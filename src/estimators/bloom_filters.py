@@ -283,6 +283,7 @@ class UnionEstimator(EstimatorBase):
     union = self.union_sketches(sketch_list)
     return [UnionEstimator.estimate_cardinality(union)]
 
+
 class FirstMomentEstimator(EstimatorBase):
   """First moment cardinality estimator for AnyDistributionBloomFilter."""
   # TODO: Refactor this class to break down the methods for each type
