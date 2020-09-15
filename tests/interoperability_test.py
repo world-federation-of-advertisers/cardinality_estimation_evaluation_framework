@@ -457,6 +457,8 @@ class InteroperabilityTest(absltest.TestCase):
         boxplot_xlabel_rotate=90,
         boxplot_size_width_inch=6,
         boxplot_size_height_inch=4,
+        barplot_size_width_inch=6,
+        barplot_size_height_inch=4,
         analysis_type='frequency',
         max_frequency=max_frequency,
     )
