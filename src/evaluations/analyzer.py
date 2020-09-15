@@ -311,7 +311,7 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
     true_cardinality_1,true_cardinality_2\n
     1,11,4,10,5\n
     2,22,8,20,10
-    The wide format is difficult to be passed to the seaborn plotting functions.
+    The wide format is difficult to pass to the seaborn plotting functions.
     As such, we convert the raw_df to a long format, whose columns look like:
     num_sets,cardinality_source,cardinality_value,frequency_level\n
     1,'estimated_cardinality',11,1\n
