@@ -291,12 +291,51 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
     super().__call__()
     self._save_plot_frequency_distribution_for_report()
 
+  @classmethod
+  def _split_source_and_frequency(cls, source_freq):
+    """Split the cardinality_frequency string into a named pd.Series.
+
+    For example, true_cardinality_2 will be split into
+    pd.Series({CARDINALITY_SOURCE: 'true_cardinality', FREQUENCY_LEVEL: 2}).
+
+    Args:
+      source_freq: a string in the format of estimated_cardinality_X or
+        true_cardinality_X, where X is an integer.
+    Returns:
+      A named pd.Series with CARDINALITY_SOURCE and FREQUENCY_LEVEL.
+    """
+    source_freq_list = source_freq.split('_')
+    return pd.Series({
+        CARDINALITY_SOURCE: '_'.join(source_freq_list[0:2]),
+        FREQUENCY_LEVEL: int(source_freq_list[2]),
+    })
+
   def convert_raw_df_to_long_format(self):
-    """Convert the raw DataFrame to a long format.
+    r"""Convert the raw DataFrame to a long format.
+
+    The raw_df is in a wide format, i.e, it has multiple columns to represent
+    the cardinality of different frequency levels. For example, the columns
+    look like:
+    num_sets,estimated_cardinality_1,estimated_cardinality_2,
+    true_cardinality_1,true_cardinality_2\n
+    1,11,4,10,5\n
+    2,22,8,20,10
+    The wide format is difficult to pass to the seaborn plotting functions.
+    As such, we convert the raw_df to a long format, whose columns look like:
+    num_sets,cardinality_source,cardinality_value,frequency_level\n
+    1,'estimated_cardinality',11,1\n
+    1,'true_cardinality',10,1\n
+    1,'estimated_cardinality',4,2\n
+    1,'true_cardinality',5,2\n
+    2,'estimated_cardinality',22,1\n
+    2,'true_cardinality',20,1\n
+    2,'estimated_cardinality',8,2\n
+    2,'true_cardinality',10,2
 
     Returns:
       A pd.DataFrame. It is a long format of self.raw_df, which contains
-      columns of
+      columns of SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, simulator.RUN_INDEX,
+      simulator.NUM_SETS, CARDINALITY_SOURCE, CARDINALITY_VALUE.
     """
     # Get all the columns that are the true or estimated cardinality of all
     # the frequency levels.
@@ -314,26 +353,8 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
         value_name=CARDINALITY_VALUE,
     )
 
-    def _split_source_and_frequency(source_freq):
-      """Split the cardinality_frequency string into a named pd.Series.
-
-      For example, true_cardinality_2 will be split into
-      pd.Series({CARDINALITY_SOURCE: 'true_cardinality', FREQUENCY_LEVEL: 2}).
-
-      Args:
-        source_freq: a string in the format of estimated_cardinality_X or
-          true_cardinality_X, where X is an integer.
-      Returns:
-        A named pd.Series with .
-      """
-      source_freq_list = source_freq.split('_')
-      return pd.Series({
-          CARDINALITY_SOURCE: '_'.join(source_freq_list[0:2]),
-          FREQUENCY_LEVEL: int(source_freq_list[2]),
-      })
-
     df_parsed_source_and_frequency = df_long[CARDINALITY_SOURCE].apply(
-        _split_source_and_frequency)
+        FrequencyEstimatorEvaluationAnalyzer._split_source_and_frequency)
 
     # Add parsed cardinality source and frequency level columns to the table.
     df_long = pd.concat(
