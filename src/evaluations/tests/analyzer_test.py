@@ -292,24 +292,20 @@ class FrequencyEstimatorEvaluationAnalyzerTest(absltest.TestCase):
 
     self.run_name = 'test_run'
 
-    def _get_test_evaluator(out_dir):
-      return evaluator.Evaluator(
-          evaluation_config=self.evaluation_config,
-          sketch_estimator_config_list=self.sketch_estimator_config_list,
-          run_name=self.run_name,
-          out_dir=out_dir)
+  def get_test_evaluator(self, out_dir):
+    return evaluator.Evaluator(
+        evaluation_config=self.evaluation_config,
+        sketch_estimator_config_list=self.sketch_estimator_config_list,
+        run_name=self.run_name,
+        out_dir=out_dir)
 
-    self.get_test_evaluator = _get_test_evaluator
-
-    def _get_test_analyzer(out_dir, evaluation_dir):
-      return analyzer.FrequencyEstimatorEvaluationAnalyzer(
-          out_dir=out_dir,
-          evaluation_directory=evaluation_dir,
-          evaluation_run_name=self.run_name,
-          evaluation_name=self.evaluation_config.name,
-          estimable_criteria_list=[(0.05, 0.95), (1.01, 0.9)])
-
-    self.get_test_analyzer = _get_test_analyzer
+  def get_test_analyzer(self, out_dir, evaluation_dir):
+    return analyzer.FrequencyEstimatorEvaluationAnalyzer(
+        out_dir=out_dir,
+        evaluation_directory=evaluation_dir,
+        evaluation_run_name=self.run_name,
+        evaluation_name=self.evaluation_config.name,
+        estimable_criteria_list=[(0.05, 0.95), (1.01, 0.9)])
 
   def test_convert_raw_df_to_long_format(self):
     df = pd.DataFrame({
