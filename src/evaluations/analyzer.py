@@ -36,6 +36,9 @@ SKETCH_ESTIMATOR_NAME = 'sketch_estimator'
 SCENARIO_NAME = 'scenario'
 NUM_ESTIMABLE_SETS = 'num_estimable_sets'
 RAW_RESULT_DF = 'df'
+CARDINALITY_SOURCE = 'source'
+CARDINALITY_VALUE = 'cardinality'
+FREQUENCY_LEVEL = 'frequency_level'
 
 # The file that summarize the maximum number of sets that can be estimated
 # within 5% (or specified by the error_margin) relative error for at least 95%
@@ -43,14 +46,20 @@ RAW_RESULT_DF = 'df'
 # scenario and num_estimable_sets.
 NUM_ESTIMABLE_SETS_FILENAME = 'num_estimable_sets.csv'
 BOXPLOT_FILENAME = 'boxplot.png'
+BARPLOT_ESTIMABLE_SETS_FILENAME = 'barplot_estimable_sets.png'
+BARPLOT_MAX_SETS_FILENAME = 'barplot_max_sets.png'
 
 XLABEL_ROTATE = 'xlabel_rotate'
 BOXPLOT_SIZE_WIDTH_INCH = 'boxplot_size_width_inch'
 BOXPLOT_SIZE_HEIGHT_INCH = 'boxplot_size_width_inch'
+BARPLOT_SIZE_WIDTH_INCH = 'barplot_size_width_inch'
+BARPLOT_SIZE_HEIGHT_INCH = 'barplot_size_height_inch'
 PLOT_PARAMS = {
     XLABEL_ROTATE: 0,
     BOXPLOT_SIZE_WIDTH_INCH: 12,
     BOXPLOT_SIZE_HEIGHT_INCH: 6,
+    BARPLOT_SIZE_WIDTH_INCH: 12,
+    BARPLOT_SIZE_HEIGHT_INCH: 6,
 }
 
 # Variables related with getting analysis results.
@@ -277,6 +286,180 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
     self.error_metric_name = 'Shuffle distance'
     super().__init__(out_dir, evaluation_directory, evaluation_run_name,
                      evaluation_name, estimable_criteria_list, plot_params)
+
+  def __call__(self):
+    super().__call__()
+    self._save_plot_frequency_distribution_for_report()
+
+  @classmethod
+  def _split_source_and_frequency(cls, source_freq):
+    """Split the cardinality_frequency string into a named pd.Series.
+
+    For example, true_cardinality_2 will be split into
+    pd.Series({CARDINALITY_SOURCE: 'true_cardinality', FREQUENCY_LEVEL: 2}).
+
+    Args:
+      source_freq: a string in the format of estimated_cardinality_X or
+        true_cardinality_X, where X is an integer.
+    Returns:
+      A named pd.Series with CARDINALITY_SOURCE and FREQUENCY_LEVEL.
+    """
+    source_freq_list = source_freq.split('_')
+    return pd.Series({
+        CARDINALITY_SOURCE: '_'.join(source_freq_list[0:2]),
+        FREQUENCY_LEVEL: int(source_freq_list[2]),
+    })
+
+  def convert_raw_df_to_long_format(self):
+    r"""Convert the raw DataFrame to a long format.
+
+    The raw_df is in a wide format, i.e, it has multiple columns to represent
+    the cardinality of different frequency levels. For example, the columns
+    look like:
+    num_sets,estimated_cardinality_1,estimated_cardinality_2,
+    true_cardinality_1,true_cardinality_2\n
+    1,11,4,10,5\n
+    2,22,8,20,10
+    The wide format is difficult to pass to the seaborn plotting functions.
+    As such, we convert the raw_df to a long format, whose columns look like:
+    num_sets,cardinality_source,cardinality_value,frequency_level\n
+    1,'estimated_cardinality',11,1\n
+    1,'true_cardinality',10,1\n
+    1,'estimated_cardinality',4,2\n
+    1,'true_cardinality',5,2\n
+    2,'estimated_cardinality',22,1\n
+    2,'true_cardinality',20,1\n
+    2,'estimated_cardinality',8,2\n
+    2,'true_cardinality',10,2
+
+    Returns:
+      A pd.DataFrame. It is a long format of self.raw_df, which contains
+      columns of SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, simulator.RUN_INDEX,
+      simulator.NUM_SETS, CARDINALITY_SOURCE, CARDINALITY_VALUE.
+    """
+    # Get all the columns that are the true or estimated cardinality of all
+    # the frequency levels.
+    value_vars = []
+    for col in self.raw_df.columns:
+      if (simulator.TRUE_CARDINALITY_BASENAME in col
+          or simulator.ESTIMATED_CARDINALITY_BASENAME in col):
+        value_vars.append(col)
+
+    df_long = self.raw_df.melt(
+        id_vars=[SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, simulator.RUN_INDEX,
+                 simulator.NUM_SETS],
+        value_vars=value_vars,
+        var_name=CARDINALITY_SOURCE,
+        value_name=CARDINALITY_VALUE,
+    )
+
+    df_parsed_source_and_frequency = df_long[CARDINALITY_SOURCE].apply(
+        FrequencyEstimatorEvaluationAnalyzer._split_source_and_frequency)
+
+    # Add parsed cardinality source and frequency level columns to the table.
+    df_long = pd.concat(
+        [df_long[[SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, simulator.RUN_INDEX,
+                  simulator.NUM_SETS, CARDINALITY_VALUE]],
+         df_parsed_source_and_frequency],
+        axis=1,
+    )
+
+    return df_long
+
+  def _save_plot_frequency_distribution(self, raw_df_long, filename):
+    """Make and save plots for estimated and true frequency distributions.
+
+    Calling this method will create plots in the output directory.
+
+    Args:
+      raw_df_long: a long format of pd.DataFrame, which have columns of
+        SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, FREQUENCY_LEVEL,
+        CARDINALITY_VALUE and CARDINALITY_SOURCE.
+      filename: a string of plot filename.
+    """
+    def plot_one_estimator_under_one_scenario(df):
+      ax = plotting.barplot_frequency_distributions(
+          df,
+          frequency=FREQUENCY_LEVEL,
+          cardinality=CARDINALITY_VALUE,
+          source=CARDINALITY_SOURCE,
+      )
+      scenario_name = df[SCENARIO_NAME].values[0]
+      estimator_name = df[SKETCH_ESTIMATOR_NAME].values[0]
+      num_sets = df[simulator.NUM_SETS].values[0]
+      ax.set_title(f'{simulator.NUM_SETS}:{num_sets}\n'
+                   f'{scenario_name}\n{estimator_name}')
+      # Save the plot to file.
+      fig = ax.get_figure()
+      plot_file = os.path.join(
+          self.analysis_file_dirs[estimator_name][scenario_name],
+          filename)
+      fig.set_size_inches(
+          w=self.plot_params[BARPLOT_SIZE_WIDTH_INCH],
+          h=self.plot_params[BARPLOT_SIZE_HEIGHT_INCH])
+      fig.savefig(plot_file)
+
+    # Generate plots for all estimator and scenario combinations.
+    raw_df_long.groupby([SKETCH_ESTIMATOR_NAME, SCENARIO_NAME]).apply(
+        plot_one_estimator_under_one_scenario)
+
+  def _save_plot_frequency_distribution_num_estimable_sets(self, raw_df_long):
+    """Save barplot for comparing estimated vs true frequency distributions.
+
+    This method will save plots for all estimator and scenario combinations.
+    The plots include frequency distribution when the number of set is equal to
+    the number of estimable sets.
+
+    Args:
+      raw_df_long: a long format of pd.DataFrame, which have columns of
+        SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, FREQUENCY_LEVEL,
+        CARDINALITY_VALUE and CARDINALITY_SOURCE.
+    """
+    num_estimable_sets_stats_df = (
+        self.get_num_estimable_sets_df())
+    plot_df = raw_df_long.merge(
+        right=num_estimable_sets_stats_df,
+        left_on=[SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, simulator.NUM_SETS],
+        right_on=[SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, NUM_ESTIMABLE_SETS],
+        how='inner',  # If the number of estimable set is 0, then will not plot.
+    )
+    self._save_plot_frequency_distribution(plot_df,
+                                           BARPLOT_ESTIMABLE_SETS_FILENAME)
+
+  def _save_plot_frequency_distribution_max_num_sets(self, raw_df_long):
+    """Save barplot for comparing estimated vs true frequency distributions.
+
+    This method will save plots for all estimator and scenario combinations.
+    The plots include frequency distribution when the number of set is equal to
+    the maximum number of sets.
+
+    Args:
+      raw_df_long: a long format of pd.DataFrame, which have columns of
+        SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, FREQUENCY_LEVEL,
+        CARDINALITY_VALUE and CARDINALITY_SOURCE.
+    """
+    num_max_sets_df = (
+        self.raw_df.groupby([SKETCH_ESTIMATOR_NAME, SCENARIO_NAME])
+        .agg({simulator.NUM_SETS: 'max'}).reset_index())
+    plot_df = raw_df_long.merge(
+        right=num_max_sets_df,
+        on=[SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, simulator.NUM_SETS],
+        how='inner',
+    )
+    self._save_plot_frequency_distribution(plot_df,
+                                           BARPLOT_MAX_SETS_FILENAME)
+
+  def _save_plot_frequency_distribution_for_report(self):
+    """Save barplot for comparing estimated vs true frequency distributions.
+
+    This method will generate plots for all estimator and scenario combinations.
+    The plots include frequency distribution when the number of set is equal to
+    the number of estimable sets, and when that is equal to the maximum number
+    of sets.
+    """
+    raw_df_long = self.convert_raw_df_to_long_format()
+    self._save_plot_frequency_distribution_num_estimable_sets(raw_df_long)
+    self._save_plot_frequency_distribution_max_num_sets(raw_df_long)
 
 
 def get_analysis_results(analysis_out_dir, evaluation_run_name,

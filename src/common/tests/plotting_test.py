@@ -27,6 +27,16 @@ def get_relative_error_by_num_sets():
       'relative_error': [0.05, -0.05, 0.1, 0.1, -0.1, -0.2]})
 
 
+def get_df_for_test_barplot_frequency_distributions():
+  return pd.DataFrame({
+      'run_index': [0, 0, 0, 0, 1, 1, 1, 1],
+      'cardinality_source': ['estimated_cardinality', 'estimated_cardinality',
+                             'true_cardinality', 'true_cardinality'] * 2,
+      'frequency_level': [1, 2, 1, 2] * 2,
+      'cardinality_value': [12, 5, 10, 7, 8, 8, 10, 7]
+  })
+
+
 class PlottingTest(absltest.TestCase):
 
   def test_boxplot_relative_error_plot_xticks(self):
@@ -53,6 +63,30 @@ class PlottingTest(absltest.TestCase):
       _ = plotting.boxplot_relative_error(
           get_relative_error_by_num_sets(),
           'num_set', 'rel_err')
+
+  def test_barplot_frequency_distributions_labels_correct(self):
+    df = get_df_for_test_barplot_frequency_distributions()
+    ax = plotting.barplot_frequency_distributions(
+        df=df,
+        frequency='frequency_level',
+        cardinality='cardinality_value',
+        source='cardinality_source')
+    xlabels = [x.get_text() for x in ax.get_xticklabels()]
+    self.assertListEqual(xlabels, ['1', '2'],
+                         'The x-axis tick labels are not correct.')
+    self.assertEqual(ax.get_xlabel(), 'Per frequency level',
+                     'The x-axis label is not correct')
+    self.assertEqual(ax.get_ylabel(), 'Cardinality',
+                     'The y-axis label is not correct')
+
+  def test_barplot_frequency_distributions_returns(self):
+    df = get_df_for_test_barplot_frequency_distributions()
+    ax = plotting.barplot_frequency_distributions(
+        df=df,
+        frequency='frequency_level',
+        cardinality='cardinality_value',
+        source='cardinality_source')
+    self.assertIsInstance(ax, matplotlib.axes.Axes)
 
 
 if __name__ == '__main__':

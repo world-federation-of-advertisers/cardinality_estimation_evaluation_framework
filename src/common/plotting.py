@@ -40,3 +40,28 @@ def boxplot_relative_error(df, num_sets, relative_error,
   ax.set_ylabel(metric_name)
   ax.set_xlabel('Number of sets')
   return ax
+
+
+def barplot_frequency_distributions(df, frequency, cardinality, source):
+  """Barplot for comparing multiple frequency distributions.
+
+  Args:
+    df: a pd.DataFrame that has the columns of the frequency level, the
+      cardinality, and the source, specified by frequency, cardinality, and
+      source respectively.
+    frequency: a column name in df specifying the per frequency level.
+    cardinality: a column name in df specifying the cardinality of the set of
+      the corresponding frequency level.
+    source: a column name in df specifying the source of the cardinality.
+      For example, it could be a column containing labels like
+      'estimated_cardinality' and 'true_cardinality'. Different source will
+      have different colors in the plot.
+
+  Returns:
+    A matplotlib.axes.Axes object of the barplot.
+  """
+  _, ax = plt.subplots()
+  sns.catplot(x=frequency, y=cardinality, hue=source, data=df,
+              kind='bar', palette='muted', ax=ax)
+  ax.set(xlabel='Per frequency level', ylabel='Cardinality')
+  return ax

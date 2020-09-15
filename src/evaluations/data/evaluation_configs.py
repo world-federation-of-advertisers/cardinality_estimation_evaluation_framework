@@ -32,9 +32,11 @@ SKETCH_CONFIG = 'sketch_config'
 SKETCH_EPSILON = 'sketch_epsilon'
 ESTIMATOR = 'estimator'
 ESTIMATE_EPSILON = 'estimate_epsilon'
+MAX_FREQUENCY = 'max_frequency'
 
 SKETCH_ESTIMATOR_CONFIG_NAMES_FORMAT = (
-    SKETCH, SKETCH_CONFIG, ESTIMATOR, SKETCH_EPSILON, ESTIMATE_EPSILON)
+    SKETCH, SKETCH_CONFIG, ESTIMATOR, SKETCH_EPSILON, ESTIMATE_EPSILON,
+    MAX_FREQUENCY)
 
 NUM_RUNS_VALUE = 100
 UNIVERSE_SIZE_VALUE = 100000
@@ -592,12 +594,13 @@ def _format_epsilon(dp_type, epsilon=None, decimals=4):
 
 def construct_sketch_estimator_config_name(sketch_name, sketch_config,
                                            estimator_name, sketch_epsilon=None,
-                                           estimate_epsilon=None):
+                                           estimate_epsilon=None,
+                                           max_frequency=None):
   """Construct the name attribute for SketchEstimatorConfig.
 
   The name will be in the format of
   name_of_sketch-param_of_sketch-estimator_specification-sketch_epsilon
-  -estimate_epsilon.
+  -estimate_epsilon[-max_frequency].
 
   Args:
     sketch_name: a string of the estimator name. Do not include dash (-).
@@ -607,6 +610,8 @@ def construct_sketch_estimator_config_name(sketch_name, sketch_config,
       By default, set to None, i.e., not add noise to the sketch.
     estimate_epsilon: an optional differential private parameter for the
       estimate. By default, set to None, i.e., not add noise to the estimate.
+    max_frequency: an optional maximum frequency level. If not given, will not
+      be added to the name.
 
   Returns:
     The name of the SketchEstimatorConfig.
@@ -618,8 +623,11 @@ def construct_sketch_estimator_config_name(sketch_name, sketch_config,
     assert '-' not in s, f'Input should not contain "-", given {s}.'
   sketch_epsilon = _format_epsilon(LOCAL_DP_STR, sketch_epsilon)
   estimate_epsilon = _format_epsilon(GLOBAL_DP_STR, estimate_epsilon)
-  return '-'.join([sketch_name, sketch_config, estimator_name, sketch_epsilon,
-                   estimate_epsilon])
+  result = '-'.join([sketch_name, sketch_config, estimator_name, sketch_epsilon,
+                     estimate_epsilon])
+  if max_frequency is not None:
+    result = result + '-' + str(max_frequency)
+  return result
 
 
 # Document the estimators.
@@ -925,7 +933,11 @@ def _generate_cardinality_estimator_configs():
 def _generate_frequency_estimator_configs(max_frequency):
   return (
       SketchEstimatorConfig(
-          name='exact_multi_set-10000-NA-NA',
+          name=construct_sketch_estimator_config_name(
+              sketch_name='exact_multi_set',
+              sketch_config='10000',
+              estimator_name='lossless',
+              max_frequency=str(int(max_frequency))),
           sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
           estimator=exact_set.LosslessEstimator(),
           max_frequency=max_frequency),

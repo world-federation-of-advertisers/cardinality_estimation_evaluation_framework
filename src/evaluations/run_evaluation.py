@@ -77,7 +77,11 @@ flags.DEFINE_integer('boxplot_xlabel_rotate', 0,
 flags.DEFINE_integer('boxplot_size_width_inch', 12,
                      'The widths of the boxplot in inches.')
 flags.DEFINE_integer('boxplot_size_height_inch', 6,
-                     'The widths of the boxplot in inches.')
+                     'The height of the boxplot in inches.')
+flags.DEFINE_integer('barplot_size_width_inch', 12,
+                     'The widths of the barplot in inches.')
+flags.DEFINE_integer('barplot_size_height_inch', 6,
+                     'The height of the barplot in inches.')
 flags.DEFINE_enum('analysis_type', 'cardinality', ['cardinality', 'frequency'],
                   'Type of analysis that is to be performed.')
 flags.DEFINE_integer('max_frequency', 10, 'Maximum frequency to be analyzed.')
@@ -94,7 +98,8 @@ def _run(run_evaluation, run_analysis, generate_html_report, evaluation_out_dir,
          num_workers, error_margin, proportion_of_runs,
          boxplot_xlabel_rotate, boxplot_size_width_inch,
          boxplot_size_height_inch, analysis_type,
-         max_frequency):
+         max_frequency, barplot_size_width_inch=None,
+         barplot_size_height_inch=None):
   """Run evaluation."""
   evaluation_config = evaluation_configs.get_evaluation_config(
       evaluation_config)(num_runs)
@@ -117,7 +122,8 @@ def _run(run_evaluation, run_analysis, generate_html_report, evaluation_out_dir,
 
   error_margin = [float(x) for x in error_margin]
   proportion_of_runs = [float(x) for x in proportion_of_runs]
-  estimable_criteria_list = zip(error_margin, proportion_of_runs)
+  estimable_criteria_list = list(map(tuple, zip(error_margin,
+                                                proportion_of_runs)))
 
   if analysis_type == 'frequency':
     estimator_analyzer_func = analyzer.FrequencyEstimatorEvaluationAnalyzer
@@ -138,6 +144,8 @@ def _run(run_evaluation, run_analysis, generate_html_report, evaluation_out_dir,
             analyzer.XLABEL_ROTATE: boxplot_xlabel_rotate,
             analyzer.BOXPLOT_SIZE_WIDTH_INCH: boxplot_size_width_inch,
             analyzer.BOXPLOT_SIZE_HEIGHT_INCH: boxplot_size_height_inch,
+            analyzer.BARPLOT_SIZE_WIDTH_INCH: barplot_size_width_inch,
+            analyzer.BARPLOT_SIZE_HEIGHT_INCH: barplot_size_height_inch,
         })
     generate_summary()
 
@@ -176,6 +184,8 @@ def main(argv):
       boxplot_xlabel_rotate=FLAGS.boxplot_xlabel_rotate,
       boxplot_size_width_inch=FLAGS.boxplot_size_width_inch,
       boxplot_size_height_inch=FLAGS.boxplot_size_height_inch,
+      barplot_size_width_inch=FLAGS.barplot_size_width_inch,
+      barplot_size_height_inch=FLAGS.barplot_size_height_inch,
       analysis_type=FLAGS.analysis_type,
       max_frequency=FLAGS.max_frequency,
   )

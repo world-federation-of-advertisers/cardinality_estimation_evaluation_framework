@@ -16,6 +16,7 @@ import os
 import re
 
 from absl.testing import absltest
+from absl.testing import parameterized
 
 import numpy as np
 import pandas as pd
@@ -29,7 +30,7 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations.data import eva
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
 
 
-class ReportGeneratorTest(absltest.TestCase):
+class ReportGeneratorTest(parameterized.TestCase):
 
   def setUp(self):
     super(ReportGeneratorTest, self).setUp()
@@ -185,24 +186,29 @@ class ReportGeneratorTest(absltest.TestCase):
       self.assertRegex(
           col[0], regex, f'column {col[0]} not is not in correct format.')
 
-  def test_generate_boxplot_html(self):
-    out_dir = self.create_tempdir('test_generate_boxplot_html')
+  @parameterized.parameters(
+      (report_generator.ANALYSIS_TYPE_CARDINALITY,),
+      (report_generator.ANALYSIS_TYPE_FREQUENCY,),
+  )
+  def test_generate_plots_html(self, analysis_type):
+    out_dir = self.create_tempdir('test_generate_plots_html')
     self.run_evaluation_and_simulation(out_dir.full_path)
     analysis_results = analyzer.get_analysis_results(
         analysis_out_dir=out_dir.full_path,
         evaluation_run_name=self.evaluation_run_name,
         evaluation_name=self.evaluation_config.name)
-    # Generate boxplot html.
+    # Generate plots html.
     description_to_file_dir = analysis_results[
         report_generator.KEY_DESCRIPTION_TO_FILE_DIR]
     sketch_estimator_list = [i.name for i in self.sketch_estimator_config_list]
     scenario_list = [
         conf.name for conf in self.evaluation_config.scenario_config_list]
-    plot_html = report_generator.ReportGenerator.generate_boxplot_html(
+    plot_html = report_generator.ReportGenerator.generate_plots_html(
         description_to_file_dir=description_to_file_dir,
         sketch_estimator_list=sketch_estimator_list,
         scenario_list=scenario_list,
-        out_dir=out_dir.full_path)
+        out_dir=out_dir.full_path,
+        analysis_type=analysis_type)
     # Read the table from html.
     plot_html = ' '.join(plot_html.split('\n'))
     regex = r'<table(.+?)</table>'
