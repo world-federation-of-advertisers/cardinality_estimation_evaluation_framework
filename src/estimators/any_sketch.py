@@ -32,22 +32,6 @@ class ValueFunction(object):
   def __eq__(self, other):
     return isinstance(other, self.__class__)
 
-  METHOD_ADD_ONE = 'add_one'
-  METHOD_ADD_POSITIVE_INTEGER_KEY = 'add_positive_key'
-
-  @classmethod
-  def get_value_from_id(cls, x, method):
-    """Convert an ID to the value to be added into the sketch."""
-    assert method in (ValueFunction.METHOD_ADD_ONE,
-                      ValueFunction.METHOD_ADD_POSITIVE_INTEGER_KEY)
-    if method == ValueFunction.METHOD_ADD_ONE:
-      return 1
-    if method == ValueFunction.METHOD_ADD_POSITIVE_INTEGER_KEY:
-      assert isinstance(x, int) and (x >= 0) and (x < 2 ** 31), (
-          'Now for conveninence, we only support'
-          'adding non-negative np.int32 ids.')
-      return x + 1
-
 
 class SumFunction(ValueFunction):
 
