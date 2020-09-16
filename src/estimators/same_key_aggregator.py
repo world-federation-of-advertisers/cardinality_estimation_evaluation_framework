@@ -14,9 +14,11 @@
 """Contains the class AnySketch and the objects required to configure it."""
 
 from wfa_cardinality_estimation_evaluation_framework.estimators import any_sketch
+from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import UniqueKeyFunction
+from wfa_cardinality_estimation_evaluation_framework.estimators.base import SketchBase
 
 
-class ExponentialSameKeyAggregator():
+class ExponentialSameKeyAggregator(SketchBase):
   """Implement a Same Key Aggregator in Exponential bloom filter."""
 
   @classmethod
@@ -28,7 +30,7 @@ class ExponentialSameKeyAggregator():
     return f
 
   def __init__(self, length, decay_rate, random_seed):
-    """Creates an ExponentialBloomFilter.
+    """Creates an ExponentialSameKeyAggregator.
 
     Args:
        length: The length of bit vector for the Exponential bloom filter.
@@ -36,15 +38,13 @@ class ExponentialSameKeyAggregator():
        random_seed: An optional integer specifying the random seed for
          generating the random seeds for hash functions.
     """
-    self.unique_key_sketch = any_sketch.AnySketch.__init__(
-        self,
+    self.unique_key_sketch = any_sketch.AnySketch(
         any_sketch.SketchConfig([
             any_sketch.IndexSpecification(
                 any_sketch.ExponentialDistribution(length, decay_rate), "exp")
         ], num_hashes=1, value_functions=[any_sketch.UniqueKeyFunction()]),
         random_seed)
-    self.frequency_count_sketch = any_sketch.AnySketch.__init__(
-        self,
+    self.frequency_count_sketch = any_sketch.AnySketch(
         any_sketch.SketchConfig([
             any_sketch.IndexSpecification(
                 any_sketch.ExponentialDistribution(length, decay_rate), "exp")
@@ -52,5 +52,11 @@ class ExponentialSameKeyAggregator():
         random_seed)
 
   def add(self, x):
-    self.unique_key_sketch.add(x)
     self.frequency_count_sketch.add(x)
+    # Then update the unique_key_sketch
+    indexes = self.unique_key_sketch.get_indexes(x)
+    unique_key = UniqueKeyFunction()
+    for index in indexes:
+      self.unique_key_sketch.sketch[index] = unique_key(
+          self.unique_key_sketch.sketch[index],
+          UniqueKeyFunction.get_value_from_id(x))

@@ -158,30 +158,6 @@ class AnySketchTest(absltest.TestCase):
     for i, sketch in enumerate(expected):
       np.testing.assert_equal(s1.sketch[i], sketch)
 
-  def test_add_unique_key(self):
-    s1 = AnySketch(
-        SketchConfig([IndexSpecification(UniformDistribution(4), 'uniform')],
-                     num_hashes=3,
-                     value_functions=[UniqueKeyFunction()]), 42)
-    with self.assertRaises(AssertionError):
-      s1.add(1)
-
-    s2 = AnySketch(
-        SketchConfig([IndexSpecification(UniformDistribution(4), 'uniform')],
-                     num_hashes=1,
-                     value_functions=[UniqueKeyFunction()]), 42)
-    with self.assertRaises(AssertionError):
-      s2.add('9')
-
-    s2 = AnySketch(
-        SketchConfig([IndexSpecification(UniformDistribution(4), 'uniform')],
-                     num_hashes=1,
-                     value_functions=[UniqueKeyFunction()]), 42)
-    s2.add(9)
-    expected = np.array([UniqueKeyFunction.FLAG_EMPTY_REGISTER] * 4)
-    expected[2] = 9
-    np.testing.assert_equal(s2.sketch, expected)
-
 
 class ValueFunctionTest(parameterized.TestCase):
 
@@ -222,6 +198,16 @@ class ValueFunctionTest(parameterized.TestCase):
   def test_unique_key(self, x, y, expected):
     unique_key = UniqueKeyFunction()
     self.assertEqual(unique_key(x, y), expected, f'{x}^{y} != {expected}')
+
+  def test_get_value_from_id(self):
+    get_value = UniqueKeyFunction.get_value_from_id
+    self.assertEqual(get_value(0), 1)
+    with self.assertRaises(AssertionError):
+      get_value('3')
+    with self.assertRaises(AssertionError):
+      get_value(-1)
+    with self.assertRaises(AssertionError):
+      get_value(2**31)
 
 
 if __name__ == '__main__':

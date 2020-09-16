@@ -32,6 +32,22 @@ class ValueFunction(object):
   def __eq__(self, other):
     return isinstance(other, self.__class__)
 
+  METHOD_ADD_ONE = 'add_one'
+  METHOD_ADD_POSITIVE_INTEGER_KEY = 'add_positive_key'
+
+  @classmethod
+  def get_value_from_id(cls, x, method):
+    """Convert an ID to the value to be added into the sketch."""
+    assert method in (ValueFunction.METHOD_ADD_ONE,
+                      ValueFunction.METHOD_ADD_POSITIVE_INTEGER_KEY)
+    if method == ValueFunction.METHOD_ADD_ONE:
+      return 1
+    if method == ValueFunction.METHOD_ADD_POSITIVE_INTEGER_KEY:
+      assert isinstance(x, int) and (x >= 0) and (x < 2 ** 31), (
+          'Now for conveninence, we only support'
+          'adding non-negative np.int32 ids.')
+      return x + 1
+
 
 class SumFunction(ValueFunction):
 
@@ -50,8 +66,8 @@ class BitwiseOrFunction(ValueFunction):
 class UniqueKeyFunction(ValueFunction):
   """ValueFunction to track the state of unique key of a register."""
 
-  FLAG_EMPTY_REGISTER = -1
-  FLAG_COLLIDED_REGISTER = -2
+  FLAG_EMPTY_REGISTER = 0
+  FLAG_COLLIDED_REGISTER = -1
 
   def __call__(self, x, y):
     """ValueFunction to track the state of unique key of a register.
@@ -70,15 +86,29 @@ class UniqueKeyFunction(ValueFunction):
       return y
     if y == UniqueKeyFunction.FLAG_EMPTY_REGISTER:
       return x
-    if (x == UniqueKeyFunction.FLAG_COLLIDED_REGISTER) or (
-        y == UniqueKeyFunction.FLAG_COLLIDED_REGISTER):
-      return x
+    if x == UniqueKeyFunction.FLAG_COLLIDED_REGISTER or y == UniqueKeyFunction.FLAG_COLLIDED_REGISTER:
+      return UniqueKeyFunction.FLAG_COLLIDED_REGISTER
     # When x & y are neither FLAG_EMPTY_REGISTER or FLAG_COLLIDED_REGISTER,
     # i.e., they are real keys,
     # it suffices to check if they are the same keys.
     if x == y:
       return x
     return UniqueKeyFunction.FLAG_COLLIDED_REGISTER
+
+  @classmethod
+  def get_value_from_id(cls, x):
+    """Convert an ID to its value to insert into the UniqueKeyFunction."""
+    # Current ids (from any set_generator) are all non-negative integers.
+    # We add id + 1 to the unique_key_sketch, so that all keys are positive.
+    # Positive keys do not conflict with FLAG_EMPTY_REGISTER
+    # nor FLAG_COLLIDED_REGISTER.
+    assert isinstance(x, int)
+    value_to_insert = x + 1
+    # With real universe size = 200M < 2^31, ids from any set_generator
+    # can be represented as an np.int32.
+    assert value_to_insert > 0 and value_to_insert <= 2**31 - 1, (
+        'Current sketch supports np.int32 keys.')
+    return value_to_insert
 
 
 class Distribution(object):
@@ -306,8 +336,6 @@ class AnySketch(SketchBase):
     self.sketch = np.zeros(
         tuple(len(i.distribution) for i in config.index_specs),
         dtype=np.int32)
-    if config.value_functions[0] == UniqueKeyFunction():
-      self.sketch += UniqueKeyFunction.FLAG_EMPTY_REGISTER
     # We create config.num_hashes * #indexes hashes. Idealy we would
     # only need one hash per index dimension, but multiple makes the
     # implementation easier. There is probably a better way that
@@ -353,18 +381,8 @@ class AnySketch(SketchBase):
     indexes = self.get_indexes(x)
     # Move this to the loop when we support more than one value function.
     value_function = self.config.value_functions[0]
-
-    if value_function == UniqueKeyFunction():
-      assert self.config.num_hashes == 1, (
-          'Same Key Aggregator only supports one hash function.')
-      assert isinstance(x, int) and (x >= 0) and (x < 2 ** 31), (
-          'Now for conveninence, Same Key Aggregator only supports'
-          'adding integer np.int32 ids.')
-      value_to_add = x
-    else:
-      value_to_add = 1
     for index in indexes:
-      self.sketch[index] = value_function(self.sketch[index], value_to_add)
+      self.sketch[index] = value_function(self.sketch[index], 1)
 
   def __contains__(self, x):
     """Check for presence of an item in the Sketch.
