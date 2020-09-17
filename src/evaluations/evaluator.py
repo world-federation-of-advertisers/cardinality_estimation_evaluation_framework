@@ -321,8 +321,8 @@ class Evaluator(object):
     estimator = sketch_estimator_config.sketch_factory(0)
     sketch_estimator_config_file = os.path.join(
         estimator_dir, ESTIMATOR_CONFIG_FILE)
-    with open(sketch_estimator_config_file, 'wb') as f:
-      pickle.dump(estimator, f)
+    # with open(sketch_estimator_config_file, 'wb') as f:
+    #   pickle.dump(estimator, f)
 
   def run_one_scenario(self, scenario_config, sketch_estimator_config):
     """Run evaluation for an estimator under a scenario."""

@@ -20,7 +20,9 @@ from wfa_cardinality_estimation_evaluation_framework.estimators import estimator
 from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
 from wfa_cardinality_estimation_evaluation_framework.estimators import independent_set_estimator
 from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_legions
+from wfa_cardinality_estimation_evaluation_framework.estimators import stratified_sketch
 from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts
+from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts_sketch_operator
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import EvaluationConfig
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import ScenarioConfig
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import SketchEstimatorConfig
@@ -930,18 +932,67 @@ def _generate_cardinality_estimator_configs():
   return tuple(configs)
 
 
+def _stratiefied_sketch_vector_of_counts(max_frequency,
+                                         sketch_epsilon=None):
+  """Construct configs of StratifiedSketch based on VectorOfCounts."""
+  sketch_operator = vector_of_counts_sketch_operator.StratifiedSketchOperator(
+      estimator=vector_of_counts.SequentialEstimator(clip=True)
+  )
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='stratified_sketch_vector_of_counts',
+          sketch_config='4096',
+          estimator_name='sequential',
+          sketch_epsilon=sketch_epsilon,
+          max_frequency=str(int(max_frequency))),
+      sketch_factory=stratified_sketch.StratifiedSketch.get_sketch_factory(
+          max_freq=max_frequency,
+          cardinality_sketch_factory=(
+              vector_of_counts.VectorOfCounts.get_sketch_factory(4096)
+          ),
+          noiser_class=vector_of_counts.LaplaceNoiser,
+          epsilon=sketch_epsilon if sketch_epsilon is not None else float(
+              'inf'),
+          epsilon_split=0,
+          union=sketch_operator.union,
+      ),
+      estimator=stratified_sketch.SequentialEstimator(
+          sketch_operator=sketch_operator,
+          cardinality_estimator=vector_of_counts.SequentialEstimator(
+              clip=True,
+          ),
+      ),
+      max_frequency=max_frequency,
+  )
+
+
+def _exact_multi_set(max_frequency):
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='exact_multi_set',
+          sketch_config='10000',
+          estimator_name='lossless',
+          max_frequency=str(int(max_frequency))),
+      sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
+      estimator=exact_set.LosslessEstimator(),
+      max_frequency=max_frequency,
+  )
+
+
 def _generate_frequency_estimator_configs(max_frequency):
-  return (
-      SketchEstimatorConfig(
-          name=construct_sketch_estimator_config_name(
-              sketch_name='exact_multi_set',
-              sketch_config='10000',
-              estimator_name='lossless',
-              max_frequency=str(int(max_frequency))),
-          sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
-          estimator=exact_set.LosslessEstimator(),
-          max_frequency=max_frequency),
-      )
+  """Create frequency estimator configurations."""
+  configs = []
+
+  # Stratified Sketch based on Vector-of-Counts.
+  for epsilon in SKETCH_EPSILON_VALUES:
+    configs.append(
+        _stratiefied_sketch_vector_of_counts(max_frequency, epsilon)
+    )
+
+  # Exact set.
+  configs.append(_exact_multi_set(max_frequency))
+
+  return tuple(configs)
 
 
 def get_estimator_configs(estimator_names, max_frequency):
