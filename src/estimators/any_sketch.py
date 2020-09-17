@@ -47,6 +47,64 @@ class BitwiseOrFunction(ValueFunction):
     return x | y
 
 
+class UniqueKeyFunction(ValueFunction):
+  """ValueFunction to track the state of unique key of a register."""
+
+  FLAG_EMPTY_REGISTER = 0
+  FLAG_COLLIDED_REGISTER = -1
+
+  def __call__(self, x, y):
+    """ValueFunction to track the state of unique key of a register.
+
+    Args:
+      x: A state of unique key. It can be either a real key (hashed ID)
+        indicating the unique key in the register, or FLAG_EMPTY_REGISTER
+        indicating that the register is empty, or FLAG_COLLIDED_REGISTER
+        indicating that the register already has collision.
+      y: Another state of unique key.
+
+    Returns:
+      A state of unique key that merges x and y.
+    """
+    empty = UniqueKeyFunction.FLAG_EMPTY_REGISTER
+    collision = UniqueKeyFunction.FLAG_COLLIDED_REGISTER
+    if x == empty and y == empty:
+      return empty
+    if x == collision or y == collision:
+      return collision
+
+    # Excluding the above cases, these cases are left:
+    # 1. x = empty, y = real id.
+    # 2. x = real id, y = empty.
+    # 3. x and y are both real ids.
+    if x == empty:
+      # When x = empty and y is a real key, we just insert y as the
+      # (new) unique key.
+      return y
+    if y == empty:
+      return x
+
+    # Otherwise, both x and y are real ids. It suffices to check collision.
+    if x == y:
+      return x
+    return collision
+
+  @classmethod
+  def get_value_from_id(cls, x):
+    """Convert an ID to its value to insert into the UniqueKeyFunction."""
+    # Current ids (from any set_generator) are all non-negative integers.
+    # We add id + 1 to the unique_key_sketch, so that all keys are positive.
+    # Positive keys do not conflict with FLAG_EMPTY_REGISTER
+    # nor FLAG_COLLIDED_REGISTER.
+    assert isinstance(x, int)
+    value_to_insert = x + 1
+    # With real universe size = 200M < 2^31, ids from any set_generator
+    # can be represented as an np.int32.
+    assert value_to_insert > 0 and value_to_insert <= 2**31 - 1, (
+        'Current sketch supports np.int32 keys.')
+    return value_to_insert
+
+
 class Distribution(object):
   """A base class for distributions to document interface."""
 
