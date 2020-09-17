@@ -18,6 +18,7 @@ import numpy as np
 from wfa_cardinality_estimation_evaluation_framework.estimators import bloom_filters
 from wfa_cardinality_estimation_evaluation_framework.estimators import estimator_noisers
 from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
+from wfa_cardinality_estimation_evaluation_framework.estimators import hyper_log_log
 from wfa_cardinality_estimation_evaluation_framework.estimators import independent_set_estimator
 from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_legions
 from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts
@@ -664,6 +665,37 @@ def _independent_set_estimator(sketch_epsilon=None, estimate_epsilon=None):
   )
 
 
+def _hll_plus(estimate_epsilon=None):
+  """Generate a SketchEstimatorConfig for HyperLogLogPlus.
+
+  Args:
+    estimate_epsilon: a differential private parameter for the estimated
+      cardinality.
+
+  Returns:
+    A SketchEstimatorConfig for HyperLogLogPlus.
+  """
+  if estimate_epsilon:
+    estimate_noiser = estimator_noisers.GeometricEstimateNoiser(
+        epsilon=estimate_epsilon)
+  else:
+    estimate_noiser = None
+
+  sketch_len = 2**14
+
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='hyper_log_log_plus',
+          sketch_config=str(sketch_len),
+          estimator_name='first_moment_log',
+          estimate_epsilon=estimate_epsilon),
+      sketch_factory=hyper_log_log.HyperLogLogPlusPlus.get_sketch_factory(
+          length=sketch_len),
+      estimator=hyper_log_log.HllCardinality(),
+      estimate_noiser=estimate_noiser,
+  )
+
+
 def _log_bloom_filter_first_moment_log(length, sketch_epsilon=None,
                                        estimate_epsilon=None):
   """Generate a SketchEstimatorConfig for Log Bloom Filters.
@@ -918,6 +950,10 @@ def _generate_cardinality_estimator_configs():
     for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
       configs.append(_independent_set_estimator(sketch_epsilon,
                                                 estimate_epsilon))
+
+  # Configs of hyper-log-log-plus.
+  for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
+    configs.append(_hll_plus(estimate_epsilon))
 
   return tuple(configs)
 
