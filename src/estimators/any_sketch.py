@@ -66,18 +66,28 @@ class UniqueKeyFunction(ValueFunction):
     Returns:
       A state of unique key that merges x and y.
     """
-    if x == UniqueKeyFunction.FLAG_EMPTY_REGISTER:
+    empty = UniqueKeyFunction.FLAG_EMPTY_REGISTER
+    collision = UniqueKeyFunction.FLAG_COLLIDED_REGISTER
+    if x == empty and y == empty:
+      return empty
+    if x == collision or y == collision:
+      return collision
+
+    # Excluding the above cases, these cases are left:
+    # 1. x = empty, y = real id.
+    # 2. x = real id, y = empty.
+    # 3. x and y are both real ids.
+    if x == empty:
+      # When x = empty and y is a real key, we just insert y as the
+      # (new) unique key.
       return y
-    if y == UniqueKeyFunction.FLAG_EMPTY_REGISTER:
+    if y == empty:
       return x
-    if x == UniqueKeyFunction.FLAG_COLLIDED_REGISTER or y == UniqueKeyFunction.FLAG_COLLIDED_REGISTER:
-      return UniqueKeyFunction.FLAG_COLLIDED_REGISTER
-    # When x & y are neither FLAG_EMPTY_REGISTER or FLAG_COLLIDED_REGISTER,
-    # i.e., they are real keys,
-    # it suffices to check if they are the same keys.
+
+    # Otherwise, both x and y are real ids. It suffices to check collision.
     if x == y:
       return x
-    return UniqueKeyFunction.FLAG_COLLIDED_REGISTER
+    return collision
 
   @classmethod
   def get_value_from_id(cls, x):
