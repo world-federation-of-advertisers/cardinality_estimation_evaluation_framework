@@ -15,6 +15,7 @@
 import math
 
 import numpy as np
+import itertools
 from wfa_cardinality_estimation_evaluation_framework.estimators import bloom_filters
 from wfa_cardinality_estimation_evaluation_framework.estimators import estimator_noisers
 from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
@@ -45,6 +46,10 @@ SMALL_REACH_RATE_VALUE = 0.01
 LARGE_REACH_RATE_VALUE = 0.2
 SHARED_PROP_LIST_VALUE = (0.25, 0.5, 0.75)
 REMARKETING_RATE_VALUE = 0.2
+
+NUM_SETS_VALUE_FREQ = 10
+SET_SIZE_FOR_FREQ = 20000
+FREQ_UNIVERSE_SIZE = 200000
 
 NO_GLOBAL_DP_STR = 'no_global_dp'
 GLOBAL_DP_STR = 'global_dp'
@@ -439,6 +444,118 @@ def _generate_configs_scenario_5(num_sets, small_set_size,
   return scenario_config_list
 
 
+def _generate_freq_configs_scenario_1(universe_size, num_sets, set_size):
+  """Generate configs of Frequency Scenario 1.
+
+  See Frequency Scenario 1: Homogeneous user activities within a publisher for more details:
+  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#frequency-scenario-1-homogeneous-user-activities-within-a-publisher-1
+
+  Args:
+    universe_size: the universal size of reach
+    num_sets: the number of sets
+    set_size: size of each set, assuming they're all equal
+
+  Returns:
+    A list of ScenarioConfigs of freq scenario 1 Homogeneous user activities within a publisher correlated sets.
+"""
+
+  freq_rate_lists = [0.5, 1, 1.5, 2]
+  freq_cap_lists = [3, 5, 10]
+  scenario_config_list = []
+  for freq_rate, freq_cap in itertools.product(freq_rate_lists, freq_cap_lists):
+    scenario_config_list.append(
+      ScenarioConfig(
+        name='-'.join([
+            'homogeneous',
+            'universe_size:' + str(universe_size),
+            'num_sets:' + str(num_sets),
+            'freq_rate:' + str(freq_rate),
+            'freq_cap:' + str(freq_cap),
+        ]),
+        set_generator_factory=(
+            frequency_set_generator.HomogeneousMultiSetGenerator.
+            get_generator_factory_with_num_and_size(
+                universe_size=universe_size, num_sets=num_sets,
+                set_size=set_size, freq_rates=[freq_rate]*num_sets,
+                freq_cap=freq_cap
+            ))),
+      )
+  return scenario_config_list
+
+
+def _generate_freq_configs_scenario_2(universe_size, num_sets, set_size):
+  """Generate configs of Frequency Scenario 2.
+
+  See Frequency Scenario 2: Heterogeneous user frequency.:
+  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#frequency-scenario-2-heterogeneous-user-frequency-1
+  Args:
+    universe_size: the universal size of reach
+    num_sets: the number of sets
+    set_size: size of each set, assuming they're all equal
+
+  Returns:
+    A list of ScenarioConfigs of freq scenario 2 heterogeneous user frequency.
+"""
+
+  distribution_rate_lists = [0.5, 1, 1.5, 2]
+  freq_cap_lists = [3, 5, 10]
+  scenario_config_list = []
+  for distribution_rate, freq_cap in itertools.product(
+      distribution_rate_lists, freq_cap_lists):
+    scenario_config_list.append(
+      ScenarioConfig(
+        name='-'.join([
+            'heterogeneous',
+            'universe_size:' + str(universe_size),
+            'num_sets:' + str(num_sets),
+            'distribution_rate:' + str(distribution_rate),
+            'freq_cap:' + str(freq_cap),
+        ]),
+        set_generator_factory=(
+            frequency_set_generator.HeterogeneousMultiSetGenerator.
+                get_generator_factory_with_num_and_size(
+                    universe_size=universe_size, num_sets=num_sets,
+                    set_size=set_size,
+                    gamma_params=[[1,distribution_rate]]*num_sets,
+                    freq_cap=freq_cap
+            ))),
+        )
+  return scenario_config_list
+
+
+def _complete_frequency_test_with_selected_parameters(
+    num_runs=NUM_RUNS_VALUE,
+    universe_size=FREQ_UNIVERSE_SIZE,
+    num_sets=NUM_SETS_VALUE_FREQ,
+    set_size=SET_SIZE_FOR_FREQ):
+  """Generate configurations with handy selected parameters for scenarios.
+
+  This evaluation covers the frequency simulation scenarios
+
+  Args:
+    num_runs: the number of runs per scenario * parameter setting.
+    universe_size: the size of the pools from which the IDs will be selected.
+    num_sets: the number of sets.
+    set_size: reached size of each publisher, assuming all publishers have the
+      same size
+
+  Returns:
+    An EvaluationConfig.
+  """
+  scenario_config_list = []
+  # Scenario 1. Homogeneous user activities within a publisher
+  scenario_config_list += _generate_freq_configs_scenario_1(
+      universe_size, num_sets, set_size)
+  # Scenario 2. Heterogeneous user frequency
+  scenario_config_list += _generate_freq_configs_scenario_2(
+      universe_size, num_sets, set_size)
+
+  return EvaluationConfig(
+    name='complete_frequency_test_with_selected_parameters',
+    num_runs=num_runs,
+    scenario_config_list=scenario_config_list)
+
+
 def _complete_test_with_selected_parameters(
     num_runs=NUM_RUNS_VALUE,
     universe_size=UNIVERSE_SIZE_VALUE,
@@ -541,6 +658,7 @@ def _generate_evaluation_configs():
       _complete_test_with_selected_parameters,
       _frequency_end_to_end_test,
       _frequency_smoke_test,
+      _complete_frequency_test_with_selected_parameters,
   )
 
 

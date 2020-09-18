@@ -46,6 +46,13 @@ class EvaluationConfigTest(parameterized.TestCase):
     self.assertEqual(configs.num_runs, 4)
     self.assertLen(configs.scenario_config_list, 3)
 
+
+  def test_complete_frequency_test_with_selected_parameters(self):
+    configs = evaluation_configs._complete_frequency_test_with_selected_parameters(4)
+    self.assertEqual(configs.name, 'complete_frequency_test_with_selected_parameters')
+    self.assertEqual(configs.num_runs, 4)
+
+
   @parameterized.parameters(
       (2000, None, 'independent-universe_size:2000'),
       (2000, 0.2, 'remarketing-remarketing_size:400-universe_size:2000'),
