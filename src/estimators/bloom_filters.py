@@ -429,6 +429,9 @@ class FirstMomentEstimator(EstimatorBase):
       return np.sum(1 - np.power(1 - register_probs, u) - sketch.sketch)
 
     lower_bound = (np.log(1 - n) / np.log(1 - np.mean(register_probs)))
+    # In case lower bound is already larger due to noise, we just return
+    if first_moment(lower_bound) > 0:
+      return lower_bound
 
     return invert_monotonic(first_moment, lower_bound)(0)
 
