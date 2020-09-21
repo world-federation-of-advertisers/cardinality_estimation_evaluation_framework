@@ -55,6 +55,7 @@ class UniqueKeyFunction(ValueFunction):
 
   def __call__(self, x, y):
     """ValueFunction to track the state of unique key of a register.
+
     Args:
       x: A state of unique key. It can be either a real key (hashed ID)
         indicating the unique key in the register, or FLAG_EMPTY_REGISTER
