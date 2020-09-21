@@ -55,14 +55,12 @@ class UniqueKeyFunction(ValueFunction):
 
   def __call__(self, x, y):
     """ValueFunction to track the state of unique key of a register.
-
     Args:
       x: A state of unique key. It can be either a real key (hashed ID)
         indicating the unique key in the register, or FLAG_EMPTY_REGISTER
         indicating that the register is empty, or FLAG_COLLIDED_REGISTER
         indicating that the register already has collision.
       y: Another state of unique key.
-
     Returns:
       A state of unique key that merges x and y.
     """
@@ -127,7 +125,6 @@ class UniformDistribution(Distribution):
 
   def __init__(self, num_values):
     """Create a truncated uniform distribution.
-
     Args:
       num_values: The number of values that the uniform distribuition can take
         on. This is just the modulus for the hash function.
@@ -200,7 +197,6 @@ class LogBucketDistribution(Distribution):
 
   def __init__(self, num_values):
     """Create the distribution.
-
     Args:
       num_values: The number of registers.
     """
@@ -242,7 +238,6 @@ class ExponentialDistribution(Distribution):
 
   def __init__(self, num_values, decay_rate):
     """Create the distribution.
-
     Args:
       num_values: The number of registers.
       decay_rate: The decay rate of Exponential distribution.
@@ -295,7 +290,6 @@ SketchConfig = collections.namedtuple('SketchConfig',
 
 class AnySketch(SketchBase):
   """A generalized sketch class.
-
   This sketch class generalizes the data structure required to
   capture Bloom filters, HLLs, Cascading Legions, Vector of Counts, and
   other sketch types. It uses a map of register keys (tuples) to a register
@@ -303,12 +297,10 @@ class AnySketch(SketchBase):
   performance, but is rather intended to be a flexible data
   structure that can be used for experimenting with different
   sketch types.
-
   The register key, which is a tuple is defined by an Index
   Specification. Each specification includes a distribution that
   describes how hashed items are to be distributed along its
   axis.
-
   See bloom_filter.py in this directory for an example. The
   basic Bloom filter can be seen as an Any Sketch with a single
   dimension that is distributed uniformly.
@@ -316,7 +308,6 @@ class AnySketch(SketchBase):
 
   def __init__(self, config, random_seed=None, hash_function=HashFunction):
     """A flexible multi-dimensional sketch class.
-
     Args:
       config: a SketchConfig, see above for more about this type.
       random_seed: a random seed for generating the random seeds for the hash
@@ -352,7 +343,6 @@ class AnySketch(SketchBase):
 
   def max_size(self):
     """Returns the total number of registers.
-
     Returns:
       The return value is the total length of self.sketch.
     """
@@ -380,10 +370,8 @@ class AnySketch(SketchBase):
 
   def __contains__(self, x):
     """Check for presence of an item in the Sketch.
-
     Args:
       x: what to check for.
-
     Returns:
       True if x may have been inserted, False if it is not present.
       This method may return false positives.
