@@ -62,6 +62,7 @@ class UniqueKeyFunction(ValueFunction):
         indicating that the register is empty, or FLAG_COLLIDED_REGISTER
         indicating that the register already has collision.
       y: Another state of unique key.
+
     Returns:
       A state of unique key that merges x and y.
     """
