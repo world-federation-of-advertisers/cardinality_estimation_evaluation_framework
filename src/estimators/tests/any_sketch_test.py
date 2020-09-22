@@ -27,7 +27,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch impor
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import SketchConfig
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import SumFunction
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import UniformDistribution
-
+from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import UniqueKeyFunction
 
 class DistributionTest(parameterized.TestCase):
 
@@ -181,6 +181,33 @@ class ValueFunctionTest(parameterized.TestCase):
   def test_bitwise_or_works(self, x, y, expected):
     bitwise_or = BitwiseOrFunction()
     self.assertEqual(bitwise_or(x, y), expected, f'{x}^{y} != {expected}')
+
+  empty = UniqueKeyFunction.FLAG_EMPTY_REGISTER
+  collision = UniqueKeyFunction.FLAG_COLLIDED_REGISTER
+  id_a = 5
+  id_b = 7
+
+  @parameterized.parameters(
+      (empty, empty, empty),
+      (empty, id_a, id_a),
+      (empty, collision, collision),
+      (id_a, id_a, id_a),
+      (id_a, id_b, collision),
+      (collision, id_a, collision),
+      (collision, collision, collision))
+  def test_unique_key(self, x, y, expected):
+    unique_key = UniqueKeyFunction()
+    self.assertEqual(unique_key(x, y), expected, f'{x}^{y} != {expected}')
+
+  def test_get_value_from_id(self):
+    get_value = UniqueKeyFunction.get_value_from_id
+    self.assertEqual(get_value(0), 1)
+    with self.assertRaises(AssertionError):
+      get_value('3')
+    with self.assertRaises(AssertionError):
+      get_value(-1)
+    with self.assertRaises(AssertionError):
+      get_value(2**31)
 
 
 if __name__ == '__main__':

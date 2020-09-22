@@ -263,6 +263,18 @@ class PairwiseEstimator(EstimatorBase):
         return merged
       if self.has_full_intersection(intersection_cardinality, this, that):
         return merged
+
+    if this_cardinality + that_cardinality == 0:
+      # It is possible that the sum of cardinalities is 0 and the
+      # cardinalities themselves are not 0 under the local DP cases.
+      # So need to check this to avoid division by zero.
+      # If the sum is zero, will distribute the counts evenly for all the
+      # buckets.
+      share = np.ones_like(merged.stats) * (
+          intersection_cardinality / merged.num_buckets)
+      merged.stats = this.stats + that.stats - share
+      return merged
+
     share = intersection_cardinality * (this.stats + that.stats) / (
         this_cardinality + that_cardinality)
     merged.stats = this.stats + that.stats - share
