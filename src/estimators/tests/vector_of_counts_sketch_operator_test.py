@@ -17,7 +17,6 @@ from absl.testing import parameterized
 
 import numpy as np
 
-from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import SequentialEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import VectorOfCounts
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts_sketch_operator import StratifiedSketchOperator
 
@@ -59,7 +58,7 @@ class StratifiedSketchOperatorTest(parameterized.TestCase):
   )
   def test_union(self, this_stats, that_stats, expected):
     sketches = self.create_sketches(this_stats, that_stats)
-    operator = StratifiedSketchOperator(estimator=SequentialEstimator())
+    operator = StratifiedSketchOperator()
     union_sketch = operator.union(*sketches)
     self.assert_sketch_equal(union_sketch, expected)
 
@@ -70,10 +69,29 @@ class StratifiedSketchOperatorTest(parameterized.TestCase):
       (None, None, None),
       ([0, 0], [1, 1], [0, 0]),
       ([1, 1], [0, 0], [0, 0]),
+      ([1, 0], [0, -1], [0.25, 0.25]),
   )
-  def test_intersection(self, this_stats, that_stats, expected):
+  def test_intersection_no_clip(self, this_stats, that_stats, expected):
     sketches = self.create_sketches(this_stats, that_stats)
-    operator = StratifiedSketchOperator(estimator=SequentialEstimator())
+    operator = StratifiedSketchOperator()
+    intersection_sketch = operator.intersection(*sketches)
+    self.assert_sketch_equal(intersection_sketch, expected)
+
+  @parameterized.parameters(
+      ([1, 0], [0, 1], [0, 0]),  # Clip the intersection.
+      (None, [0, 1], None),
+      ([1, 0], None, None),
+      (None, None, None),
+      ([0, 0], [1, 1], [0, 0]),
+      ([1, 1], [0, 0], [0, 0]),
+      ([1, 0], [0, -1], [0, 0]),  # Clip the intersection.
+      ([1e5, 1], [1e5, 0], [1e5, 0]),  # Has full overlap.
+      ([1e5, 1], [1e4, 0], [1e4, 0]),  # No clip applied.
+  )
+  def test_intersection_with_clip(self, this_stats, that_stats, expected):
+    sketches = self.create_sketches(this_stats, that_stats)
+    operator = StratifiedSketchOperator(clip=True, epsilon=np.log(3),
+                                        clip_threshold=1e-5)
     intersection_sketch = operator.intersection(*sketches)
     self.assert_sketch_equal(intersection_sketch, expected)
 
@@ -85,7 +103,7 @@ class StratifiedSketchOperatorTest(parameterized.TestCase):
   )
   def test_difference(self, this_stats, that_stats, expected):
     sketches = self.create_sketches(this_stats, that_stats)
-    operator = StratifiedSketchOperator(estimator=SequentialEstimator())
+    operator = StratifiedSketchOperator()
     difference_sketch = operator.difference(*sketches)
     self.assert_sketch_equal(difference_sketch, expected)
 

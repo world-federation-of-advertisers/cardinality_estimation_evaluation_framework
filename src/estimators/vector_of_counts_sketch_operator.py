@@ -15,6 +15,8 @@
 import copy
 import numpy as np
 
+from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import PairwiseEstimator
+
 
 class StratifiedSketchOperator:
   """Sketch operations for supporting frequency dedupe.
@@ -27,15 +29,18 @@ class StratifiedSketchOperator:
   those sets that are fully-overlapping.
   """
 
-  def __init__(self, estimator):
+  def __init__(self, clip=False, epsilon=np.log(3), clip_threshold=3):
     """Construct a VectorOfCounts sketch operator.
 
     Args:
-      estimator: an instance generated from the derived class of
-        EstimatorBase, which takes in a list of VectorOfCounts sketches and
-        return the cardinality. For example, SequentialEstimator.
+      clip: Whether to clip the intersection when merging two VectorOfCounts.
+      epsilon: Value of epsilon in differential privacy.
+      clip_threshold: Threshold of z-score in clipping. The larger threshold,
+        the more chance of clipping.
     """
-    self._estimator = estimator
+    self._clip = clip
+    self._estimator = PairwiseEstimator(clip=clip, epsilon=epsilon,
+                                        clip_threshold=clip_threshold)
 
   def union(self, this, that):
     """Generate the union sketch of the input sketches.
@@ -68,21 +73,13 @@ class StratifiedSketchOperator:
     if this is None or that is None:
       return None
 
-    this_cardinality = this.cardinality()
-    that_cardinality = that.cardinality()
+    if self._clip:
+      this = self._estimator.clip_empty_vector_of_count(this)
+      that = self._estimator.clip_empty_vector_of_count(that)
 
-    if this_cardinality == 0:
-      return copy.deepcopy(this)
-
-    if that_cardinality == 0:
-      return copy.deepcopy(that)
-
-    result = copy.deepcopy(this)
-    union_cardinality = self._estimator([this, that])[0]
-    intersection_cardinality = (this_cardinality + that_cardinality
-                                - union_cardinality)
-    result.stats = intersection_cardinality * (this.stats + that.stats) / (
-        this_cardinality + that_cardinality)
+    union_sketch = self._estimator.merge(this, that)
+    result = copy.deepcopy(union_sketch)
+    result.stats = this.stats + that.stats - union_sketch.stats
     return result
 
   def difference(self, this, that):
