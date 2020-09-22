@@ -13,6 +13,7 @@
 # limitations under the License.
 """Sketch operator for Vector-of-Counts."""
 import copy
+import numpy as np
 
 
 class StratifiedSketchOperator:
@@ -66,9 +67,17 @@ class StratifiedSketchOperator:
     """
     if this is None or that is None:
       return None
-    result = copy.deepcopy(this)
+
     this_cardinality = this.cardinality()
     that_cardinality = that.cardinality()
+
+    if this_cardinality == 0:
+      return copy.deepcopy(this)
+
+    if that_cardinality == 0:
+      return copy.deepcopy(that)
+
+    result = copy.deepcopy(this)
     union_cardinality = self._estimator([this, that])[0]
     intersection_cardinality = (this_cardinality + that_cardinality
                                 - union_cardinality)

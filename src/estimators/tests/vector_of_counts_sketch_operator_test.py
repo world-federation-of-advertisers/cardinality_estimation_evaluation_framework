@@ -68,6 +68,8 @@ class StratifiedSketchOperatorTest(parameterized.TestCase):
       (None, [0, 1], None),
       ([1, 0], None, None),
       (None, None, None),
+      ([0, 0], [1, 1], [0, 0]),
+      ([1, 1], [0, 0], [0, 0]),
   )
   def test_intersection(self, this_stats, that_stats, expected):
     sketches = self.create_sketches(this_stats, that_stats)
