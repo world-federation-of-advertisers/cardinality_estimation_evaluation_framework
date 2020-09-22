@@ -932,19 +932,31 @@ def _generate_cardinality_estimator_configs():
   return tuple(configs)
 
 
-def _stratiefied_sketch_vector_of_counts(max_frequency,
+def _stratiefied_sketch_vector_of_counts(max_frequency, clip,
                                          sketch_epsilon=None):
-  """Construct configs of StratifiedSketch based on VectorOfCounts."""
+  """Construct configs of StratifiedSketch based on VectorOfCounts.
+
+  Args:
+    max_frequency: an integer indicating the maximum frequency to estimate.
+    clip: a boolean indicating if or not to apply clipping for the
+      Vector-of-Counts sketch.
+    sketch_epsilon: the DP epsilon for noising the Vector-of-Counts sketch.
+
+  Returns:
+    A SketchEstimatorConfig for stratified sketch with Vector-of-Counts as its
+    base sketch.
+  """
   sketch_operator = vector_of_counts_sketch_operator.StratifiedSketchOperator(
-      estimator=vector_of_counts.SequentialEstimator(clip=True)
+      estimator=vector_of_counts.SequentialEstimator(clip=clip)
   )
+  clip_str = 'clip' if clip else 'no_clip'
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='stratified_sketch_vector_of_counts',
           sketch_config='4096',
-          estimator_name='sequential',
+          estimator_name=f'sequential_{clip_str}',
           sketch_epsilon=sketch_epsilon,
-          max_frequency=str(int(max_frequency))),
+          max_frequency=str(max_frequency)),
       sketch_factory=stratified_sketch.StratifiedSketch.get_sketch_factory(
           max_freq=max_frequency,
           cardinality_sketch_factory=(
@@ -959,7 +971,7 @@ def _stratiefied_sketch_vector_of_counts(max_frequency,
       estimator=stratified_sketch.SequentialEstimator(
           sketch_operator=sketch_operator,
           cardinality_estimator=vector_of_counts.SequentialEstimator(
-              clip=True,
+              clip=clip,
           ),
       ),
       max_frequency=max_frequency,
@@ -985,9 +997,10 @@ def _generate_frequency_estimator_configs(max_frequency):
 
   # Stratified Sketch based on Vector-of-Counts.
   for epsilon in SKETCH_EPSILON_VALUES:
-    configs.append(
-        _stratiefied_sketch_vector_of_counts(max_frequency, epsilon)
-    )
+    for clip in [False, True]:
+      configs.append(
+          _stratiefied_sketch_vector_of_counts(max_frequency, clip, epsilon)
+      )
 
   # Exact set.
   configs.append(_exact_multi_set(max_frequency))
