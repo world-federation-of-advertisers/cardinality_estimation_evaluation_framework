@@ -982,8 +982,13 @@ def _stratiefied_sketch_vector_of_counts(max_frequency, clip,
     A SketchEstimatorConfig for stratified sketch with Vector-of-Counts as its
     base sketch.
   """
+  if sketch_epsilon is not None:
+    sketch_epsilon_float = sketch_epsilon
+  else:
+    sketch_epsilon_float = float('inf')
   sketch_operator = vector_of_counts_sketch_operator.StratifiedSketchOperator(
-      estimator=vector_of_counts.SequentialEstimator(clip=clip)
+      clip=clip,
+      epsilon=sketch_epsilon_float,
   )
   clip_str = 'clip' if clip else 'no_clip'
   return SketchEstimatorConfig(
@@ -999,8 +1004,7 @@ def _stratiefied_sketch_vector_of_counts(max_frequency, clip,
               vector_of_counts.VectorOfCounts.get_sketch_factory(4096)
           ),
           noiser_class=vector_of_counts.LaplaceNoiser,
-          epsilon=sketch_epsilon if sketch_epsilon is not None else float(
-              'inf'),
+          epsilon=sketch_epsilon_float,
           epsilon_split=0,
           union=sketch_operator.union,
       ),
@@ -1008,6 +1012,7 @@ def _stratiefied_sketch_vector_of_counts(max_frequency, clip,
           sketch_operator=sketch_operator,
           cardinality_estimator=vector_of_counts.SequentialEstimator(
               clip=clip,
+              epsilon=sketch_epsilon_float,
           ),
       ),
       max_frequency=max_frequency,
