@@ -344,6 +344,46 @@ class FrequencyEstimatorEvaluationAnalyzerTest(absltest.TestCase):
     except AssertionError:
       self.fail('The long format is not correct.')
 
+  def test_get_per_frequency_cardinality_for_all_cases(self):
+    df = pd.DataFrame({
+        analyzer.SKETCH_ESTIMATOR_NAME: ['some_sketch'] * 4,
+        analyzer.SCENARIO_NAME: ['some_scenario'] * 4,
+        simulator.RUN_INDEX: [0] * 4,
+        simulator.NUM_SETS: [1] * 4,
+        analyzer.CARDINALITY_VALUE: [6, 4, 7, 3],
+        analyzer.CARDINALITY_SOURCE: (
+            [simulator.TRUE_CARDINALITY_BASENAME.rstrip('_')] * 2
+            + [simulator.ESTIMATED_CARDINALITY_BASENAME.rstrip('_')] * 2),
+        analyzer.FREQUENCY_LEVEL: [1, 2] * 2,
+    })
+
+    expected = pd.DataFrame({
+        analyzer.SKETCH_ESTIMATOR_NAME: ['some_sketch'] * 4,
+        analyzer.SCENARIO_NAME: ['some_scenario'] * 4,
+        simulator.RUN_INDEX: [0] * 4,
+        simulator.NUM_SETS: [1] * 4,
+        analyzer.CARDINALITY_VALUE: [2, 4, 4, 3],
+        analyzer.CARDINALITY_SOURCE: (
+            [simulator.TRUE_CARDINALITY_BASENAME.rstrip('_')] * 2
+            + [simulator.ESTIMATED_CARDINALITY_BASENAME.rstrip('_')] * 2),
+        analyzer.FREQUENCY_LEVEL: [1, 2] * 2,
+    })
+
+    per_freq_df = (
+        analyzer.FrequencyEstimatorEvaluationAnalyzer
+        .get_per_frequency_cardinality_for_all_cases(df))
+    joined_df = expected.merge(
+        per_freq_df,
+        on=[analyzer.SKETCH_ESTIMATOR_NAME, analyzer.SCENARIO_NAME,
+            simulator.RUN_INDEX, simulator.NUM_SETS,
+            analyzer.CARDINALITY_SOURCE, analyzer.FREQUENCY_LEVEL],
+        how='outer',
+        suffixes=['_expected', '_output'])
+
+    self.assertTrue(all(
+        joined_df[analyzer.CARDINALITY_VALUE + '_expected']
+        == joined_df[analyzer.CARDINALITY_VALUE + '_output']))
+
   def test_save_plot_frequency_distribution_for_report(self):
     evaluation_out_dir = self.create_tempdir('evaluation').full_path
     # Run evaluation.
