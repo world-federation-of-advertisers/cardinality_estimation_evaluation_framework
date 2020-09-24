@@ -16,7 +16,6 @@
 import copy
 import itertools
 import os
-import pickle
 import shutil
 import time
 
@@ -29,11 +28,7 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import 
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import SketchEstimatorConfig
 from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import Simulator
 
-# Pickle filenames for saving the configurations.
-SCENARIO_SEED_FILE = 'set_generator_seed.p'
-SCENARIO_CONFIG_FILE = 'scenario_config.p'
-ESTIMATOR_CONFIG_FILE = 'sketch_estimator_config.p'
-RUN_DIRS_FILE = 'run.p'
+# Filenames.
 EVALUATION_RUN_TIME_FILE = 'evaluation_run_time'
 
 # Keys of the dictionary to remember where the configs and results are saved.
@@ -266,9 +261,6 @@ class Evaluator(object):
         out_dir=out_dir,
         overwrite=overwrite)
 
-    with open(os.path.join(out_dir, run_name, RUN_DIRS_FILE), 'wb') as f:
-      pickle.dump(self.description_to_file_dir, f)
-
     # This is to make sure that different estimators use the same simulation
     # data under the same scenario.
     scenario_random_states = {}
@@ -296,14 +288,10 @@ class Evaluator(object):
       # tuples for each process spawned.
       with ProcessPool(self.workers) as pool:
         times = pool.uimap(self._run_one_scenario_process, work_items)
-      
-      # While the scenarios are running, save estimator configs
-      for sketch_estimator_config in self.sketch_estimator_config_list:
-        self.save_estimator(sketch_estimator_config)
-
-      aggregate_and_write_times(times,
-                                self.description_to_file_dir[KEY_ESTIMATOR_DIRS],
-                                pbar)
+      aggregate_and_write_times(
+          times,
+          self.description_to_file_dir[KEY_ESTIMATOR_DIRS],
+          pbar)
 
   def evaluate_estimator(self, sketch_estimator_config):
     """Evaluate one estimator under all the scenarios."""
@@ -315,26 +303,12 @@ class Evaluator(object):
     for scenario_config in self.evaluation_config.scenario_config_list:
       self.run_one_scenario(scenario_config, sketch_estimator_config)
 
-  def save_estimator(self, sketch_estimator_config):
-    estimator_dir = self.description_to_file_dir[KEY_ESTIMATOR_DIRS][
-        sketch_estimator_config.name]
-    estimator = sketch_estimator_config.sketch_factory(0)
-    sketch_estimator_config_file = os.path.join(
-        estimator_dir, ESTIMATOR_CONFIG_FILE)
-    with open(sketch_estimator_config_file, 'wb') as f:
-      pickle.dump(estimator, f)
-
   def run_one_scenario(self, scenario_config, sketch_estimator_config):
     """Run evaluation for an estimator under a scenario."""
     logging.info('Scenario: %s', scenario_config.name)
 
     scenario_dir = self.description_to_file_dir[
         sketch_estimator_config.name][scenario_config.name]
-    # Save an example of the scenario_config.
-    gen = scenario_config.set_generator_factory(np.random.RandomState())
-    scenario_config_file = os.path.join(scenario_dir, SCENARIO_CONFIG_FILE)
-    with open(scenario_config_file, 'wb') as f:
-      pickle.dump(gen, f)
 
     # Run simulations.
     df_raw_file = os.path.join(scenario_dir, RAW_RESULT_DF_FILENAME)
