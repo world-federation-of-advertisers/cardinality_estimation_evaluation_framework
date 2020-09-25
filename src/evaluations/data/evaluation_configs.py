@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Evaluation configurations."""
+import itertools
 import math
 
 import numpy as np
@@ -70,6 +71,7 @@ ADBF_LENGTH_LIST = np.array([1e5, 2.5e5], dtype=np.int64)
 
 # The length of the bloom filters.
 BLOOM_FILTERS_LENGTH_LIST = np.array([5e6], dtype=np.int64)
+VOC_LENGTH_LIST = np.array([1024, 4096], dtype=np.int64)
 
 
 # Document the evaluation configurations.
@@ -968,7 +970,7 @@ def _generate_cardinality_estimator_configs():
   return tuple(configs)
 
 
-def _stratiefied_sketch_vector_of_counts(max_frequency, clip,
+def _stratiefied_sketch_vector_of_counts(max_frequency, clip, length,
                                          sketch_epsilon=None):
   """Construct configs of StratifiedSketch based on VectorOfCounts.
 
@@ -976,6 +978,7 @@ def _stratiefied_sketch_vector_of_counts(max_frequency, clip,
     max_frequency: an integer indicating the maximum frequency to estimate.
     clip: a boolean indicating if or not to apply clipping for the
       Vector-of-Counts sketch.
+    length: the length of Vector-of-Counts.
     sketch_epsilon: the DP epsilon for noising the Vector-of-Counts sketch.
 
   Returns:
@@ -994,14 +997,14 @@ def _stratiefied_sketch_vector_of_counts(max_frequency, clip,
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='stratified_sketch_vector_of_counts',
-          sketch_config='4096',
+          sketch_config=str(length),
           estimator_name=f'sequential_{clip_str}',
           sketch_epsilon=sketch_epsilon,
           max_frequency=str(max_frequency)),
       sketch_factory=stratified_sketch.StratifiedSketch.get_sketch_factory(
           max_freq=max_frequency,
           cardinality_sketch_factory=(
-              vector_of_counts.VectorOfCounts.get_sketch_factory(4096)
+              vector_of_counts.VectorOfCounts.get_sketch_factory(int(length))
           ),
           noiser_class=vector_of_counts.LaplaceNoiser,
           epsilon=sketch_epsilon_float,
@@ -1037,11 +1040,13 @@ def _generate_frequency_estimator_configs(max_frequency):
   configs = []
 
   # Stratified Sketch based on Vector-of-Counts.
-  for epsilon in SKETCH_EPSILON_VALUES:
-    for clip in [False, True]:
-      configs.append(
-          _stratiefied_sketch_vector_of_counts(max_frequency, clip, epsilon)
-      )
+  for epsilon, clip, length in itertools.product(SKETCH_EPSILON_VALUES,
+                                                 [False, True],
+                                                 VOC_LENGTH_LIST):
+    configs.append(
+        _stratiefied_sketch_vector_of_counts(max_frequency, clip, length,
+                                             epsilon)
+    )
 
   # Exact set.
   configs.append(_exact_multi_set(max_frequency))
