@@ -16,6 +16,7 @@ import os
 import re
 
 from absl.testing import absltest
+from absl.testing import parameterized
 
 import numpy as np
 import pandas as pd
@@ -27,21 +28,20 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations import evaluato
 from wfa_cardinality_estimation_evaluation_framework.evaluations import report_generator
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data import evaluation_configs
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
-from wfa_cardinality_estimation_evaluation_framework.simulations import simulator
 
 
-class ReportGeneratorTest(absltest.TestCase):
+class ReportGeneratorTest(parameterized.TestCase):
 
   def setUp(self):
     super(ReportGeneratorTest, self).setUp()
-    exact_set_lossless = simulator.SketchEstimatorConfig(
-        name='exact_set-infty-infty-lossless',
+    exact_set_lossless = configs.SketchEstimatorConfig(
+        name='exact_set-infty-lossless-infty-infty',
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LosslessEstimator(),
         sketch_noiser=None,
         estimate_noiser=None)
-    exact_set_less_one = simulator.SketchEstimatorConfig(
-        name='exact_set-infty-infty-less_one',
+    exact_set_less_one = configs.SketchEstimatorConfig(
+        name='exact_set-infty-less_one-infty-infty',
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LessOneEstimator(),
         sketch_noiser=exact_set.AddRandomElementsNoiser(
@@ -87,15 +87,15 @@ class ReportGeneratorTest(absltest.TestCase):
 
     self.run_evaluation_and_simulation = _run_evaluation_and_simulation
 
-    exact_set_lossless_freq3 = simulator.SketchEstimatorConfig(
-        name='exact_set-infty-infty-lossless',
+    exact_set_lossless_freq3 = configs.SketchEstimatorConfig(
+        name='exact_set-infty-lossless-infty-infty',
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LosslessEstimator(),
         sketch_noiser=None,
         estimate_noiser=None,
         max_frequency=3)
-    exact_set_less_one_freq3 = simulator.SketchEstimatorConfig(
-        name='exact_set-infty-infty-less_one',
+    exact_set_less_one_freq3 = configs.SketchEstimatorConfig(
+        name='exact_set-infty-less_one-infty-infty',
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LessOneEstimator(),
         sketch_noiser=exact_set.AddRandomElementsNoiser(
@@ -111,7 +111,7 @@ class ReportGeneratorTest(absltest.TestCase):
       self.evaluator = evaluator.Evaluator(
           evaluation_config=self.evaluation_config,
           sketch_estimator_config_list=(
-            self.frequency_sketch_estimator_config_list),
+              self.frequency_sketch_estimator_config_list),
           run_name=self.frequency_evaluation_run_name,
           out_dir=out_dir)
       self.evaluator()
@@ -125,34 +125,36 @@ class ReportGeneratorTest(absltest.TestCase):
       self.analyzer()
 
     self.run_frequency_evaluation_and_simulation = (
-      _run_frequency_evaluation_and_simulation)
+        _run_frequency_evaluation_and_simulation)
 
   def test_parse_sketch_estimator_name(self):
-    sketch_estimator_name = 'vector_of_counts-4096-ln3-sequential'
+    sketch_estimator_name = 'vector_of_counts-4096-sequential-ln3-infty'
     parsed_name = report_generator.ReportGenerator.parse_sketch_estimator_name(
         sketch_estimator_name)
     expected = {
         evaluation_configs.SKETCH: 'vector_of_counts',
         evaluation_configs.SKETCH_CONFIG: '4096',
-        evaluation_configs.EPSILON: 'ln3',
-        evaluation_configs.ESTIMATOR: 'sequential'
+        evaluation_configs.SKETCH_EPSILON: 'ln3',
+        evaluation_configs.ESTIMATOR: 'sequential',
+        evaluation_configs.ESTIMATE_EPSILON: 'infty',
     }
     self.assertEqual(parsed_name, expected)
 
   def test_add_parsed_sketch_estimator_name_cols(self):
     df = pd.DataFrame({
-        'sketch_estimator': ['vector_of_counts-4096-ln3-sequential',
-                             'bloom_filter-1e6-infty-union_estimator']})
+        'sketch_estimator': ['vector_of_counts-4096-sequential-ln3-infty',
+                             'bloom_filter-1e6-union_estimator-infty-ln3']})
     result = (
         report_generator.ReportGenerator
         .add_parsed_sketch_estimator_name_cols(df, 'sketch_estimator'))
     expected = pd.DataFrame({
-        'sketch_estimator': ['vector_of_counts-4096-ln3-sequential',
-                             'bloom_filter-1e6-infty-union_estimator'],
+        'sketch_estimator': ['vector_of_counts-4096-sequential-ln3-infty',
+                             'bloom_filter-1e6-union_estimator-infty-ln3'],
         evaluation_configs.SKETCH: ['vector_of_counts', 'bloom_filter'],
         evaluation_configs.SKETCH_CONFIG: ['4096', '1e6'],
-        evaluation_configs.EPSILON: ['ln3', 'infty'],
-        evaluation_configs.ESTIMATOR: ['sequential', 'union_estimator']
+        evaluation_configs.ESTIMATOR: ['sequential', 'union_estimator'],
+        evaluation_configs.SKETCH_EPSILON: ['ln3', 'infty'],
+        evaluation_configs.ESTIMATE_EPSILON: ['infty', 'ln3'],
     })
     try:
       pd.testing.assert_frame_equal(result, expected)
@@ -184,24 +186,29 @@ class ReportGeneratorTest(absltest.TestCase):
       self.assertRegex(
           col[0], regex, f'column {col[0]} not is not in correct format.')
 
-  def test_generate_boxplot_html(self):
-    out_dir = self.create_tempdir('test_generate_boxplot_html')
+  @parameterized.parameters(
+      (report_generator.ANALYSIS_TYPE_CARDINALITY,),
+      (report_generator.ANALYSIS_TYPE_FREQUENCY,),
+  )
+  def test_generate_plots_html(self, analysis_type):
+    out_dir = self.create_tempdir('test_generate_plots_html')
     self.run_evaluation_and_simulation(out_dir.full_path)
     analysis_results = analyzer.get_analysis_results(
         analysis_out_dir=out_dir.full_path,
         evaluation_run_name=self.evaluation_run_name,
         evaluation_name=self.evaluation_config.name)
-    # Generate boxplot html.
+    # Generate plots html.
     description_to_file_dir = analysis_results[
         report_generator.KEY_DESCRIPTION_TO_FILE_DIR]
     sketch_estimator_list = [i.name for i in self.sketch_estimator_config_list]
     scenario_list = [
         conf.name for conf in self.evaluation_config.scenario_config_list]
-    plot_html = report_generator.ReportGenerator.generate_boxplot_html(
+    plot_html = report_generator.ReportGenerator.generate_plots_html(
         description_to_file_dir=description_to_file_dir,
         sketch_estimator_list=sketch_estimator_list,
         scenario_list=scenario_list,
-        out_dir=out_dir.full_path)
+        out_dir=out_dir.full_path,
+        analysis_type=analysis_type)
     # Read the table from html.
     plot_html = ' '.join(plot_html.split('\n'))
     regex = r'<table(.+?)</table>'

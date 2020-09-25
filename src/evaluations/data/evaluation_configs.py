@@ -12,34 +12,72 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Evaluation configurations."""
+import itertools
 import math
-import numpy as np
 
+import numpy as np
+import itertools
 from wfa_cardinality_estimation_evaluation_framework.estimators import bloom_filters
-from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
-from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_legions
-from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts
 from wfa_cardinality_estimation_evaluation_framework.estimators import estimator_noisers
+from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
+from wfa_cardinality_estimation_evaluation_framework.estimators import hyper_log_log
+from wfa_cardinality_estimation_evaluation_framework.estimators import independent_set_estimator
+from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_legions
+from wfa_cardinality_estimation_evaluation_framework.estimators import stratified_sketch
+from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts
+from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts_sketch_operator
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import EvaluationConfig
 from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import ScenarioConfig
+from wfa_cardinality_estimation_evaluation_framework.evaluations.configs import SketchEstimatorConfig
+from wfa_cardinality_estimation_evaluation_framework.simulations import frequency_set_generator
 from wfa_cardinality_estimation_evaluation_framework.simulations import set_generator
-from wfa_cardinality_estimation_evaluation_framework.simulations.simulator import SketchEstimatorConfig
 
 SKETCH = 'sketch'
 SKETCH_CONFIG = 'sketch_config'
-EPSILON = 'epsilon'
+SKETCH_EPSILON = 'sketch_epsilon'
 ESTIMATOR = 'estimator'
+ESTIMATE_EPSILON = 'estimate_epsilon'
+MAX_FREQUENCY = 'max_frequency'
 
 SKETCH_ESTIMATOR_CONFIG_NAMES_FORMAT = (
-    SKETCH, SKETCH_CONFIG, EPSILON, ESTIMATOR)
+    SKETCH, SKETCH_CONFIG, ESTIMATOR, SKETCH_EPSILON, ESTIMATE_EPSILON,
+    MAX_FREQUENCY)
 
 NUM_RUNS_VALUE = 100
-UNIVERSE_SIZE_VALUE = 100000
+UNIVERSE_SIZE_VALUE = 1000000
 NUM_SETS_VALUE = 20
 SMALL_REACH_RATE_VALUE = 0.01
 LARGE_REACH_RATE_VALUE = 0.2
 SHARED_PROP_LIST_VALUE = (0.25, 0.5, 0.75)
 REMARKETING_RATE_VALUE = 0.2
+
+NUM_SETS_VALUE_FREQ = 10
+SET_SIZE_FOR_FREQ = 20000
+FREQ_UNIVERSE_SIZE = 200000
+
+NO_GLOBAL_DP_STR = 'no_global_dp'
+GLOBAL_DP_STR = 'global_dp'
+NO_LOCAL_DP_STR = 'no_local_dp'
+LOCAL_DP_STR = 'local_dp'
+
+# The None in the epsilon value is used to tell the sketch estimator constructor
+# that we do not want to noise the sketch.
+SKETCH_EPSILON_VALUES = (math.log(3), math.log(3) / 4, math.log(3) / 10, None)
+# The current simulator module add noise to the estimated cardinality so as to
+# mimic the global differential privacy use case. In the real world, the
+# implementation could be different and more complicated.
+# As such, we use a small epsilon so as to be conservative on the result.
+ESTIMATE_EPSILON_VALUES = (math.log(3), None)
+
+# The length of the Any Distribution Bloom Filters.
+# We use the np.array with dtype so as to make sure that the lengths are all
+# integers.
+ADBF_LENGTH_LIST = np.array([1e5, 2.5e5], dtype=np.int64)
+
+# The length of the bloom filters.
+BLOOM_FILTERS_LENGTH_LIST = np.array([5e6], dtype=np.int64)
+VOC_LENGTH_LIST = np.array([1024, 4096], dtype=np.int64)
+
 
 # Document the evaluation configurations.
 def _smoke_test(num_runs=NUM_RUNS_VALUE):
@@ -97,6 +135,44 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE):
                       shared_prop=0.5))),
           )
       )
+
+
+def _frequency_smoke_test(num_runs=NUM_RUNS_VALUE):
+  """Smoke test frequency evaluation configurations.
+
+  Args:
+    num_runs: the number of runs per scenario.
+
+  Returns:
+    An EvaluationConfig.
+  """
+  return EvaluationConfig(
+      name='frequency_smoke_test',
+      num_runs=num_runs,
+      scenario_config_list=(
+          ScenarioConfig(
+              name='homogeneous',
+              set_generator_factory=(
+                frequency_set_generator.HomogeneousMultiSetGenerator.
+                get_generator_factory_with_num_and_size(
+                    universe_size=int(2e5), num_sets=10, set_size=int(2e4),
+                    freq_rates=[1]*10, freq_cap=3))),
+          ScenarioConfig(
+              name='heterogeneous',
+              set_generator_factory=(
+                frequency_set_generator.HeterogeneousMultiSetGenerator.
+                get_generator_factory_with_num_and_size(
+                    universe_size=int(2e5), num_sets=10, set_size=int(2e4),
+                    gamma_params=[[1,1]]*10, freq_cap=3))),
+          ScenarioConfig(
+              name='publisher_constant',
+              set_generator_factory=(
+                frequency_set_generator.PublisherConstantFrequencySetGenerator.
+                get_generator_factory_with_num_and_size(
+                    universe_size=int(2e5), num_sets=10, set_size=int(2e4),
+                    frequency=3))),
+      )
+    )
 
 
 def _get_default_name_to_choices_of_set_size_list(
@@ -373,6 +449,118 @@ def _generate_configs_scenario_5(num_sets, small_set_size,
   return scenario_config_list
 
 
+def _generate_freq_configs_scenario_1(universe_size, num_sets, set_size):
+  """Generate configs of Frequency Scenario 1.
+
+  See Frequency Scenario 1: Homogeneous user activities within a publisher for more details:
+  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#frequency-scenario-1-homogeneous-user-activities-within-a-publisher-1
+
+  Args:
+    universe_size: the universal size of reach
+    num_sets: the number of sets
+    set_size: size of each set, assuming they're all equal
+
+  Returns:
+    A list of ScenarioConfigs of freq scenario 1 Homogeneous user activities within a publisher correlated sets.
+"""
+
+  freq_rate_lists = [0.5, 1, 1.5, 2]
+  freq_cap_lists = [3, 5, 10]
+  scenario_config_list = []
+  for freq_rate, freq_cap in itertools.product(freq_rate_lists, freq_cap_lists):
+    scenario_config_list.append(
+      ScenarioConfig(
+        name='-'.join([
+            'homogeneous',
+            'universe_size:' + str(universe_size),
+            'num_sets:' + str(num_sets),
+            'freq_rate:' + str(freq_rate),
+            'freq_cap:' + str(freq_cap),
+        ]),
+        set_generator_factory=(
+            frequency_set_generator.HomogeneousMultiSetGenerator.
+            get_generator_factory_with_num_and_size(
+                universe_size=universe_size, num_sets=num_sets,
+                set_size=set_size, freq_rates=[freq_rate]*num_sets,
+                freq_cap=freq_cap
+            ))),
+      )
+  return scenario_config_list
+
+
+def _generate_freq_configs_scenario_2(universe_size, num_sets, set_size):
+  """Generate configs of Frequency Scenario 2.
+
+  See Frequency Scenario 2: Heterogeneous user frequency.:
+  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#frequency-scenario-2-heterogeneous-user-frequency-1
+  Args:
+    universe_size: the universal size of reach
+    num_sets: the number of sets
+    set_size: size of each set, assuming they're all equal
+
+  Returns:
+    A list of ScenarioConfigs of freq scenario 2 heterogeneous user frequency.
+"""
+
+  distribution_rate_lists = [0.5, 1, 1.5, 2]
+  freq_cap_lists = [3, 5, 10]
+  scenario_config_list = []
+  for distribution_rate, freq_cap in itertools.product(
+      distribution_rate_lists, freq_cap_lists):
+    scenario_config_list.append(
+      ScenarioConfig(
+        name='-'.join([
+            'heterogeneous',
+            'universe_size:' + str(universe_size),
+            'num_sets:' + str(num_sets),
+            'distribution_rate:' + str(distribution_rate),
+            'freq_cap:' + str(freq_cap),
+        ]),
+        set_generator_factory=(
+            frequency_set_generator.HeterogeneousMultiSetGenerator.
+                get_generator_factory_with_num_and_size(
+                    universe_size=universe_size, num_sets=num_sets,
+                    set_size=set_size,
+                    gamma_params=[[1,distribution_rate]]*num_sets,
+                    freq_cap=freq_cap
+            ))),
+        )
+  return scenario_config_list
+
+
+def _complete_frequency_test_with_selected_parameters(
+    num_runs=NUM_RUNS_VALUE,
+    universe_size=FREQ_UNIVERSE_SIZE,
+    num_sets=NUM_SETS_VALUE_FREQ,
+    set_size=SET_SIZE_FOR_FREQ):
+  """Generate configurations with handy selected parameters for scenarios.
+
+  This evaluation covers the frequency simulation scenarios
+
+  Args:
+    num_runs: the number of runs per scenario * parameter setting.
+    universe_size: the size of the pools from which the IDs will be selected.
+    num_sets: the number of sets.
+    set_size: reached size of each publisher, assuming all publishers have the
+      same size
+
+  Returns:
+    An EvaluationConfig.
+  """
+  scenario_config_list = []
+  # Scenario 1. Homogeneous user activities within a publisher
+  scenario_config_list += _generate_freq_configs_scenario_1(
+      universe_size, num_sets, set_size)
+  # Scenario 2. Heterogeneous user frequency
+  scenario_config_list += _generate_freq_configs_scenario_2(
+      universe_size, num_sets, set_size)
+
+  return EvaluationConfig(
+    name='complete_frequency_test_with_selected_parameters',
+    num_runs=num_runs,
+    scenario_config_list=scenario_config_list)
+
+
 def _complete_test_with_selected_parameters(
     num_runs=NUM_RUNS_VALUE,
     universe_size=UNIVERSE_SIZE_VALUE,
@@ -443,29 +631,29 @@ def _complete_test_with_selected_parameters(
 
 def _frequency_end_to_end_test(num_runs=NUM_RUNS_VALUE):
   """EvaluationConfig of end-to-end test of frequency evaluation code."""
-  num_sets=3
-  universe_size=10000
-  set_size=5000
-  freq_rate_list=[1,2,3]
-  freq_cap=5
+  num_sets = 3
+  universe_size = 10000
+  set_size = 5000
+  freq_rates = [1, 2, 3]
+  freq_cap = 5
   return EvaluationConfig(
       name='frequency_end_to_end_test',
       num_runs=num_runs,
       scenario_config_list=[
-        ScenarioConfig(
-            name='-'.join([
-                'subset',
-                'universe_size:' + str(universe_size),
-                'num_sets:' + str(num_sets)
-            ]),
-            set_generator_factory=(
-                set_generator.HomogeneousMultiSetGenerator
-                    .get_generator_factory_with_num_and_size(
-                        universe_size=universe_size,
-                        num_sets=num_sets,
-                        set_size=set_size,
-                        freq_rate_list=freq_rate_list,
-                        freq_cap=freq_cap)))]
+          ScenarioConfig(
+              name='-'.join([
+                  'subset',
+                  'universe_size:' + str(universe_size),
+                  'num_sets:' + str(num_sets)
+              ]),
+              set_generator_factory=(
+                  frequency_set_generator.HomogeneousMultiSetGenerator
+                  .get_generator_factory_with_num_and_size(
+                      universe_size=universe_size,
+                      num_sets=num_sets,
+                      set_size=set_size,
+                      freq_rates=freq_rates,
+                      freq_cap=freq_cap)))]
     )
 
 
@@ -473,7 +661,9 @@ def _generate_evaluation_configs():
   return (
       _smoke_test,
       _complete_test_with_selected_parameters,
-      _frequency_end_to_end_test
+      _frequency_end_to_end_test,
+      _frequency_smoke_test,
+      _complete_frequency_test_with_selected_parameters,
   )
 
 
@@ -497,81 +687,308 @@ def get_evaluation_config(config_name):
   return config[0]
 
 
+def _format_epsilon(dp_type, epsilon=None, decimals=4):
+  """Format epsilon value to string.
+
+  Args:
+    dp_type: one of LOCAL_DP_STR and GLOBAL_DP_STR.
+    epsilon: an optional differential private parameter. By default set to None.
+    decimals: an integer value which set the number of decimal points of the
+      epsilon to keep.
+
+  Returns:
+    A string representation of epsilon.
+
+  Raises:
+    ValueError: if dp_type is not one of 'local' and 'global'.
+  """
+  if epsilon is None:
+    if dp_type == GLOBAL_DP_STR:
+      return NO_GLOBAL_DP_STR
+    elif dp_type == LOCAL_DP_STR:
+      return NO_LOCAL_DP_STR
+    else:
+      raise ValueError(f'dp_type should be one of "{GLOBAL_DP_STR}" and '
+                       f'"{LOCAL_DP_STR}".')
+
+  str_format = dp_type + '_' + '{:0.' + str(decimals) + 'f}'
+  return str_format.format(float(epsilon))
+
+
+def construct_sketch_estimator_config_name(sketch_name, sketch_config,
+                                           estimator_name, sketch_epsilon=None,
+                                           estimate_epsilon=None,
+                                           max_frequency=None):
+  """Construct the name attribute for SketchEstimatorConfig.
+
+  The name will be in the format of
+  name_of_sketch-param_of_sketch-estimator_specification-sketch_epsilon
+  -estimate_epsilon[-max_frequency].
+
+  Args:
+    sketch_name: a string of the estimator name. Do not include dash (-).
+    sketch_config: a string of the sketch config. Do not include dash (-).
+    estimator_name: a string of the estimator name.  Do not include dash (-).
+    sketch_epsilon: an optional differential private parameter for the sketch.
+      By default, set to None, i.e., not add noise to the sketch.
+    estimate_epsilon: an optional differential private parameter for the
+      estimate. By default, set to None, i.e., not add noise to the estimate.
+    max_frequency: an optional maximum frequency level. If not given, will not
+      be added to the name.
+
+  Returns:
+    The name of the SketchEstimatorConfig.
+
+  Raises:
+    AssertionError: if the input include dash (-).
+  """
+  for s in [sketch_name, sketch_config, estimator_name]:
+    assert '-' not in s, f'Input should not contain "-", given {s}.'
+  sketch_epsilon = _format_epsilon(LOCAL_DP_STR, sketch_epsilon)
+  estimate_epsilon = _format_epsilon(GLOBAL_DP_STR, estimate_epsilon)
+  result = '-'.join([sketch_name, sketch_config, estimator_name, sketch_epsilon,
+                     estimate_epsilon])
+  if max_frequency is not None:
+    result = result + '-' + str(max_frequency)
+  return result
+
+
 # Document the estimators.
-# The name attribute of the SketchEstimatorConfig should conform to
-# name_of_sketch-param_of_sketch-epsilon_value-estimator_specification.
-# For example, if a user want to evaluate Bloom Filter of length 1000 with
-# epsilon 0.1, and the UnionEstimator, then the name could be:
-# bloom_filter-1e4-0.1-union.
-LOG_BLOOM_FILTER_1E5_LN3_FIRST_MOMENT_LOG = SketchEstimatorConfig(
-    name='log_bloom_filter-1e5-ln3-first_moment_log',
-    sketch_factory=bloom_filters.LogarithmicBloomFilter.get_sketch_factory(
-        length=10**5),
-    estimator=bloom_filters.FirstMomentEstimator(
-        method=bloom_filters.FirstMomentEstimator.METHOD_LOG,
-        denoiser=bloom_filters.SurrealDenoiser(epsilon=math.log(3))),
-    sketch_noiser=bloom_filters.BlipNoiser(epsilon=math.log(3)))
+def _independent_set_estimator(sketch_epsilon=None, estimate_epsilon=None):
+  """Generate a SketchEstimatorConfig for the independent set estimator.
 
-LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(
-    name='log_bloom_filter-1e5-infty-first_moment_log',
-    sketch_factory=bloom_filters.LogarithmicBloomFilter.get_sketch_factory(
-        length=10**5),
-    estimator=bloom_filters.FirstMomentEstimator(
-        method=bloom_filters.FirstMomentEstimator.METHOD_LOG))
+  Use the Reach sketch as the underlying sketch. Set the universe size to
+  UNIVERSE_SIZE_VALUE.
 
-GEO_BLOOM_FILTER_1E4_INFTY_FIRST_MOMENT_GEO = SketchEstimatorConfig(
-    name='geo_bloom_filter-1e4-infty-first_moment_geo',
-    sketch_factory=bloom_filters.GeometricBloomFilter.get_sketch_factory(10000, 0.0012),
-    estimator=bloom_filters.FirstMomentEstimator(
-        method=bloom_filters.FirstMomentEstimator.METHOD_GEO))
+  Args:
+    sketch_epsilon: a differential private parameter for the sketch.
+    estimate_epsilon: a differential private parameter for the estimated
+      cardinality.
 
-GEO_BLOOM_FILTER_1E4_LN3_FIRST_MOMENT_GEO = SketchEstimatorConfig(
-    name='geo_bloom_filter-1e4-ln3-first_moment_geo',
-    sketch_factory=bloom_filters.GeometricBloomFilter.get_sketch_factory(10000, 0.0012),
-    estimator=bloom_filters.FirstMomentEstimator(
-        method=bloom_filters.FirstMomentEstimator.METHOD_GEO,
-        denoiser=bloom_filters.SurrealDenoiser(probability=0.25)),
-    sketch_noiser=bloom_filters.BlipNoiser(epsilon=np.log(3)))
+  Returns:
+    A SketchEstimatorConfig for the independent estimator.
+  """
+  if sketch_epsilon:
+    sketch_noiser = vector_of_counts.LaplaceNoiser(epsilon=sketch_epsilon)
+  else:
+    sketch_noiser = None
 
-BLOOM_FILTER_3E6_INFTY_UNION_ESTIMATOR = SketchEstimatorConfig(
-    name='bloom_filter-3e6-infty-union_estimator',
-    sketch_factory=bloom_filters.BloomFilter.get_sketch_factory(
-        3*10**6, 8),
-    estimator=bloom_filters.UnionEstimator())
+  if estimate_epsilon:
+    estimate_noiser = estimator_noisers.LaplaceEstimateNoiser(
+        epsilon=estimate_epsilon)
+  else:
+    estimate_noiser = None
 
-BLOOM_FILTER_3E6_LN3_UNION_ESTIMATOR = SketchEstimatorConfig(
-    name='bloom_filter-3e6-ln3-union_estimator',
-    sketch_factory=bloom_filters.BloomFilter.get_sketch_factory(
-        3*10**6, 8),
-    estimator=bloom_filters.UnionEstimator(
-        denoiser=bloom_filters.SurrealDenoiser(probability=0.25)
-    ),
-    sketch_noiser=bloom_filters.BlipNoiser(epsilon=8*np.log(3)))
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='reach_using_voc',
+          sketch_config='1',
+          estimator_name=f'independent_estimator_universe{UNIVERSE_SIZE_VALUE}',
+          sketch_epsilon=sketch_epsilon,
+          estimate_epsilon=estimate_epsilon),
+      sketch_factory=vector_of_counts.VectorOfCounts.get_sketch_factory(
+          num_buckets=1),
+      estimator=independent_set_estimator.IndependentSetEstimator(
+          vector_of_counts.SequentialEstimator(), UNIVERSE_SIZE_VALUE),
+      sketch_noiser=sketch_noiser,
+      estimate_noiser=estimate_noiser
+  )
 
-EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG = SketchEstimatorConfig(
-    name='exp_bloom_filter-1e5_10-ln3-first_moment_exp',
-    sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
-        length=10**5, decay_rate=10),
-    estimator=bloom_filters.FirstMomentEstimator(
-        method=bloom_filters.FirstMomentEstimator.METHOD_EXP,
-        denoiser=bloom_filters.SurrealDenoiser(epsilon=math.log(3))),
-    sketch_noiser=bloom_filters.BlipNoiser(epsilon=math.log(3)))
 
-EXP_BLOOM_FILTER_1E5_10_LN3GLOBAL_FIRST_MOMENT_LOG = SketchEstimatorConfig(
-    name='exp_bloom_filter-1e5_10-ln3global-first_moment_exp',
-    sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
-        length=10**5, decay_rate=10),
-    estimator=bloom_filters.FirstMomentEstimator(
-        method=bloom_filters.FirstMomentEstimator.METHOD_EXP,
-        noiser = estimator_noisers.GeometricEstimateNoiser(
-            epsilon=math.log(3))))
+def _hll_plus(estimate_epsilon=None):
+  """Generate a SketchEstimatorConfig for HyperLogLogPlus.
 
-EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG = SketchEstimatorConfig(
-    name='exp_bloom_filter-1e5_10-infty-first_moment_exp',
-    sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
-        length=10**5, decay_rate=10),
-    estimator=bloom_filters.FirstMomentEstimator(
-        method=bloom_filters.FirstMomentEstimator.METHOD_EXP))
+  Args:
+    estimate_epsilon: a differential private parameter for the estimated
+      cardinality.
+
+  Returns:
+    A SketchEstimatorConfig for HyperLogLogPlus.
+  """
+  if estimate_epsilon:
+    estimate_noiser = estimator_noisers.GeometricEstimateNoiser(
+        epsilon=estimate_epsilon)
+  else:
+    estimate_noiser = None
+
+  sketch_len = 2**14
+
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='hyper_log_log_plus',
+          sketch_config=str(sketch_len),
+          estimator_name='hll_cardinality',
+          estimate_epsilon=estimate_epsilon),
+      sketch_factory=hyper_log_log.HyperLogLogPlusPlus.get_sketch_factory(
+          length=sketch_len),
+      estimator=hyper_log_log.HllCardinality(),
+      estimate_noiser=estimate_noiser,
+  )
+
+
+def _log_bloom_filter_first_moment_log(length, sketch_epsilon=None,
+                                       estimate_epsilon=None):
+  """Generate a SketchEstimatorConfig for Log Bloom Filters.
+
+  Args:
+    length: the length of the log bloom filters.
+    sketch_epsilon: a differential private parameter for the sketch.
+    estimate_epsilon: a differential private parameter for the estimated
+      cardinality.
+
+  Returns:
+    A SketchEstimatorConfig for log Bloom Filters of length being 10**5.
+  """
+  if sketch_epsilon:
+    sketch_noiser = bloom_filters.BlipNoiser(epsilon=sketch_epsilon)
+    sketch_denoiser = bloom_filters.SurrealDenoiser(epsilon=sketch_epsilon)
+  else:
+    sketch_noiser, sketch_denoiser = None, None
+
+  if estimate_epsilon:
+    estimate_noiser = estimator_noisers.GeometricEstimateNoiser(
+        epsilon=estimate_epsilon)
+  else:
+    estimate_noiser = None
+
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='log_bloom_filter',
+          sketch_config=str(length),
+          estimator_name='first_moment_log',
+          sketch_epsilon=sketch_epsilon,
+          estimate_epsilon=estimate_epsilon),
+      sketch_factory=bloom_filters.LogarithmicBloomFilter.get_sketch_factory(
+          length=length),
+      estimator=bloom_filters.FirstMomentEstimator(
+          method=bloom_filters.FirstMomentEstimator.METHOD_LOG,
+          noiser=estimate_noiser,
+          denoiser=sketch_denoiser),
+      sketch_noiser=sketch_noiser
+  )
+
+
+def _geo_bloom_filter_first_moment_geo(sketch_epsilon=None):
+  """Generate a SketchEstimatorConfig for Geometric Bloom Filters.
+
+  The length of the Geometric Bloom Filters sketch will be set to 10**4 and the
+  geometric distribution probability will be set to 0.0012.
+
+  Args:
+    sketch_epsilon: a differential private parameter for the sketch.
+
+  Returns:
+    A SketchEstimatorConfig for Geometric Bloom Filters of length being 10**4
+    and geometric distribution probability being 0.0012.
+  """
+  if sketch_epsilon:
+    sketch_noiser = bloom_filters.BlipNoiser(epsilon=sketch_epsilon)
+    sketch_denoiser = bloom_filters.SurrealDenoiser(epsilon=sketch_epsilon)
+  else:
+    sketch_noiser, sketch_denoiser = None, None
+
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='geo_bloom_filter',
+          sketch_config='1e4_0.0012',
+          estimator_name='first_moment_geo',
+          sketch_epsilon=sketch_epsilon),
+      sketch_factory=bloom_filters.GeometricBloomFilter.get_sketch_factory(
+          10000, 0.0012),
+      estimator=bloom_filters.FirstMomentEstimator(
+          method=bloom_filters.FirstMomentEstimator.METHOD_GEO,
+          denoiser=sketch_denoiser),
+      sketch_noiser=sketch_noiser
+  )
+
+
+def _bloom_filter_first_moment_estimator_uniform(length, sketch_epsilon=None,
+                                                 estimate_epsilon=None):
+  """Generate a SketchEstimatorConfig for Bloom Filters.
+
+  The bloom filter uses 1 hash functions.
+
+  Args:
+    length: the length of the bloom filter.
+    sketch_epsilon: a differential private parameter for the sketch.
+    estimate_epsilon: a differential private parameter for the estimated
+      cardinality.
+
+  Returns:
+    A SketchEstimatorConfig for Bloom Filters of with 1 hash function.
+  """
+  if sketch_epsilon:
+    sketch_noiser = bloom_filters.BlipNoiser(epsilon=sketch_epsilon)
+    sketch_denoiser = bloom_filters.SurrealDenoiser(epsilon=sketch_epsilon)
+  else:
+    sketch_noiser, sketch_denoiser = None, None
+
+  if estimate_epsilon:
+    estimate_noiser = estimator_noisers.GeometricEstimateNoiser(
+        epsilon=estimate_epsilon)
+  else:
+    estimate_noiser = None
+
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='bloom_filter',
+          sketch_config=str(length) + '_hash1',
+          estimator_name='union_estimator',
+          sketch_epsilon=sketch_epsilon,
+          estimate_epsilon=estimate_epsilon),
+      sketch_factory=bloom_filters.UniformBloomFilter.get_sketch_factory(
+          length),
+      estimator=bloom_filters.FirstMomentEstimator(
+          method=bloom_filters.FirstMomentEstimator.METHOD_UNIFORM,
+          noiser=estimate_noiser,
+          denoiser=sketch_denoiser),
+      sketch_noiser=sketch_noiser
+  )
+
+
+def _exp_bloom_filter_first_moment_exp(length, sketch_epsilon=None,
+                                       estimate_epsilon=None):
+  """Generate a SketchEstimatorConfig for Exponential Bloom Filters.
+
+  The decay rate is 10.
+
+  Args:
+    length: the length of the exponential bloom filters.
+    sketch_epsilon: a differential private parameter for the sketch.
+    estimate_epsilon: a differential private parameter for the estimated
+      cardinality.
+
+  Returns:
+    A SketchEstimatorConfig for Exponential Bloom Filters of with decay rate
+    being 10.
+  """
+  if sketch_epsilon:
+    sketch_noiser = bloom_filters.BlipNoiser(epsilon=sketch_epsilon)
+    sketch_denoiser = bloom_filters.SurrealDenoiser(epsilon=sketch_epsilon)
+  else:
+    sketch_noiser, sketch_denoiser = None, None
+
+  if estimate_epsilon:
+    estimate_noiser = estimator_noisers.GeometricEstimateNoiser(
+        epsilon=estimate_epsilon)
+  else:
+    estimate_noiser = None
+
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='exp_bloom_filter',
+          sketch_config=str(length) + '_10',
+          estimator_name='first_moment_exp',
+          sketch_epsilon=sketch_epsilon,
+          estimate_epsilon=estimate_epsilon),
+      sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
+          length=length, decay_rate=10),
+      estimator=bloom_filters.FirstMomentEstimator(
+          method=bloom_filters.FirstMomentEstimator.METHOD_EXP,
+          noiser=estimate_noiser,
+          denoiser=sketch_denoiser),
+      sketch_noiser=sketch_noiser
+  )
 
 LIQUID_LEGIONS_1E5_10_LN3_SEQUENTIAL = SketchEstimatorConfig(
     name='liquid_legions-1e5_10-ln3-sequential',
@@ -586,53 +1003,196 @@ LIQUID_LEGIONS_1E5_10_INFTY_SEQUENTIAL = SketchEstimatorConfig(
         a=10, m=10**5),
     estimator=liquid_legions.SequentialEstimator())
 
-VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL = SketchEstimatorConfig(
-    name='vector_of_counts-4096-ln3-sequential',
-    sketch_factory=vector_of_counts.VectorOfCounts.get_sketch_factory(
-        num_buckets=4096),
-    estimator=vector_of_counts.SequentialEstimator(),
-    sketch_noiser=vector_of_counts.LaplaceNoiser(epsilon=math.log(3)))
 
-VECTOR_OF_COUNTS_4096_INFTY_SEQUENTIAL = SketchEstimatorConfig(
-    name='vector_of_counts-4096-infty-sequential',
-    sketch_factory=vector_of_counts.VectorOfCounts.get_sketch_factory(
-        num_buckets=4096),
-    estimator=vector_of_counts.SequentialEstimator())
+def _vector_of_counts_4096_sequential(sketch_epsilon=None,
+                                      estimate_epsilon=None):
+  """Generate a SketchEstimatorConfig for Vector-of-Counts.
+
+  The length of the Vector-of-Counts sketch will be set to 4096.
+
+  Args:
+    sketch_epsilon: a differential private parameter for the sketch.
+    estimate_epsilon: a differential private parameter for the estimated
+      cardinality.
+
+  Returns:
+    A SketchEstimatorConfig for Vector-of-Counts of length being 4096.
+  """
+  if sketch_epsilon:
+    sketch_noiser = vector_of_counts.LaplaceNoiser(epsilon=sketch_epsilon)
+  else:
+    sketch_noiser = None
+
+  if estimate_epsilon:
+    estimate_noiser = estimator_noisers.LaplaceEstimateNoiser(
+        epsilon=estimate_epsilon)
+  else:
+    estimate_noiser = None
+
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='vector_of_counts',
+          sketch_config='4096',
+          estimator_name='sequential',
+          sketch_epsilon=sketch_epsilon,
+          estimate_epsilon=estimate_epsilon),
+      sketch_factory=vector_of_counts.VectorOfCounts.get_sketch_factory(
+          num_buckets=4096),
+      estimator=vector_of_counts.SequentialEstimator(),
+      sketch_noiser=sketch_noiser,
+      estimate_noiser=estimate_noiser
+  )
+
 
 def _generate_cardinality_estimator_configs():
-  return (
-      LOG_BLOOM_FILTER_1E5_LN3_FIRST_MOMENT_LOG,
-      LOG_BLOOM_FILTER_1E5_INFTY_FIRST_MOMENT_LOG,
-      EXP_BLOOM_FILTER_1E5_10_LN3_FIRST_MOMENT_LOG,
-      EXP_BLOOM_FILTER_1E5_10_LN3GLOBAL_FIRST_MOMENT_LOG,
-      EXP_BLOOM_FILTER_1E5_10_INFTY_FIRST_MOMENT_LOG,
-      LIQUID_LEGIONS_1E5_10_LN3_SEQUENTIAL,
-      LIQUID_LEGIONS_1E5_10_INFTY_SEQUENTIAL,
-      VECTOR_OF_COUNTS_4096_LN3_SEQUENTIAL,
-      VECTOR_OF_COUNTS_4096_INFTY_SEQUENTIAL)
+  """Generate a tuple of cardinality estimator configs.
+
+  Returns:
+    A tuple of cardinality estimator configs.
+  """
+  configs = []
+
+  # Construct configs for ADBFs with different lengths, sketch epsilon
+  # and estimate epsilon.
+  adbf_config_constructors = [
+      _log_bloom_filter_first_moment_log,
+      _exp_bloom_filter_first_moment_exp,
+  ]
+  for config_constructor in adbf_config_constructors:
+    for length in ADBF_LENGTH_LIST:
+      for sketch_epsilon in SKETCH_EPSILON_VALUES:
+        for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
+          configs.append(config_constructor(length, sketch_epsilon,
+                                            estimate_epsilon))
+
+  # Construct configs for estimators that currently doesn't support global DP.
+  for sketch_epsilon in SKETCH_EPSILON_VALUES:
+    configs.append(_geo_bloom_filter_first_moment_geo(sketch_epsilon))
+
+  # Configs of Vector-of-Counts.
+  for sketch_epsilon in SKETCH_EPSILON_VALUES:
+    for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
+      configs.append(_vector_of_counts_4096_sequential(sketch_epsilon,
+                                                       estimate_epsilon))
+
+  # Configs of independent estimator.
+  for sketch_epsilon in SKETCH_EPSILON_VALUES:
+    for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
+      configs.append(_independent_set_estimator(sketch_epsilon,
+                                                estimate_epsilon))
+
+  # Configs of hyper-log-log-plus.
+  for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
+    configs.append(_hll_plus(estimate_epsilon))
+
+  return tuple(configs)
+
+
+def _stratiefied_sketch_vector_of_counts(max_frequency, clip, length,
+                                         sketch_epsilon=None):
+  """Construct configs of StratifiedSketch based on VectorOfCounts.
+
+  Args:
+    max_frequency: an integer indicating the maximum frequency to estimate.
+    clip: a boolean indicating if or not to apply clipping for the
+      Vector-of-Counts sketch.
+    length: the length of Vector-of-Counts.
+    sketch_epsilon: the DP epsilon for noising the Vector-of-Counts sketch.
+
+  Returns:
+    A SketchEstimatorConfig for stratified sketch with Vector-of-Counts as its
+    base sketch.
+  """
+  if sketch_epsilon is not None:
+    sketch_epsilon_float = sketch_epsilon
+  else:
+    sketch_epsilon_float = float('inf')
+  sketch_operator = vector_of_counts_sketch_operator.StratifiedSketchOperator(
+      clip=clip,
+      epsilon=sketch_epsilon_float,
+  )
+  clip_str = 'clip' if clip else 'no_clip'
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='stratified_sketch_vector_of_counts',
+          sketch_config=str(length),
+          estimator_name=f'sequential_{clip_str}',
+          sketch_epsilon=sketch_epsilon,
+          max_frequency=str(max_frequency)),
+      sketch_factory=stratified_sketch.StratifiedSketch.get_sketch_factory(
+          max_freq=max_frequency,
+          cardinality_sketch_factory=(
+              vector_of_counts.VectorOfCounts.get_sketch_factory(int(length))
+          ),
+          noiser_class=vector_of_counts.LaplaceNoiser,
+          epsilon=sketch_epsilon_float,
+          epsilon_split=0,
+          union=sketch_operator.union,
+      ),
+      estimator=stratified_sketch.SequentialEstimator(
+          sketch_operator=sketch_operator,
+          cardinality_estimator=vector_of_counts.SequentialEstimator(
+              clip=clip,
+              epsilon=sketch_epsilon_float,
+          ),
+      ),
+      max_frequency=max_frequency,
+  )
+
+
+def _exact_multi_set(max_frequency):
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='exact_multi_set',
+          sketch_config='10000',
+          estimator_name='lossless',
+          max_frequency=str(int(max_frequency))),
+      sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
+      estimator=exact_set.LosslessEstimator(),
+      max_frequency=max_frequency,
+  )
+
 
 def _generate_frequency_estimator_configs(max_frequency):
-  return (
-      SketchEstimatorConfig(
-          name='exact_multi_set-10000-NA-NA',
-          sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
-          estimator=exact_set.LosslessEstimator(),
-          max_frequency=max_frequency),
-      )
+  """Create frequency estimator configurations."""
+  configs = []
+
+  # Stratified Sketch based on Vector-of-Counts.
+  for epsilon, clip, length in itertools.product(SKETCH_EPSILON_VALUES,
+                                                 [False, True],
+                                                 VOC_LENGTH_LIST):
+    configs.append(
+        _stratiefied_sketch_vector_of_counts(max_frequency, clip, length,
+                                             epsilon)
+    )
+
+  # Exact set.
+  configs.append(_exact_multi_set(max_frequency))
+
+  return tuple(configs)
+
 
 def get_estimator_configs(estimator_names, max_frequency):
-  """Returns a list of estimator configs by name."""
-  if not len(estimator_names):
-    raise ValueError('No estimators were specified.')
+  """Returns a list of estimator configs by name.
 
-  all_configs = (_generate_cardinality_estimator_configs() +
-                 _generate_frequency_estimator_configs(max_frequency))
+  Args:
+    estimator_names: a list of estimators defined in the evaluation_configs.
+    max_frequency: an integer value of the maximum frequency level.
+
+  Returns:
+    A list of SketchEstimatorConfig.
+
+  Raises:
+    ValueError: if the estimator_names is not given, or any element of
+      estimator_names is not defined in the evaluation_configs.
+  """
+  if not estimator_names:
+    raise ValueError('No estimators were specified.')
 
   all_estimators = {
       conf.name: conf for conf in
-      _generate_cardinality_estimator_configs() +
-      _generate_frequency_estimator_configs(max_frequency) }
-
+      _generate_cardinality_estimator_configs()
+      + _generate_frequency_estimator_configs(max_frequency)}
   estimator_list = [all_estimators[c] for c in estimator_names
                     if c in all_estimators]
 
@@ -640,8 +1200,8 @@ def get_estimator_configs(estimator_names, max_frequency):
     return estimator_list
 
   invalid_estimator_names = [c for c in estimator_names
-                             if not c in all_estimators]
+                             if c not in all_estimators]
 
   raise ValueError('Invalid estimator(s): {}\nSupported estimators: {}'.
                    format(','.join(invalid_estimator_names),
-                          ','.join(all_estimators.keys())))
+                          ',\n'.join(all_estimators.keys())))

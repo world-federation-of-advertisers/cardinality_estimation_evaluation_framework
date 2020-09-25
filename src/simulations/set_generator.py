@@ -485,3 +485,4 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
     for i in self.set_indices:
       yield set_ids_list[i]
     return self
+

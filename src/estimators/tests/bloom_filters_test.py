@@ -348,6 +348,5 @@ class SurrealDenoiserTest(absltest.TestCase):
     np.testing.assert_allclose(
         denoised_adbf.sketch, expected, atol=0.01)
 
-
 if __name__ == '__main__':
   absltest.main()

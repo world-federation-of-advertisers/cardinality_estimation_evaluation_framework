@@ -283,6 +283,7 @@ class UnionEstimator(EstimatorBase):
     union = self.union_sketches(sketch_list)
     return [UnionEstimator.estimate_cardinality(union)]
 
+
 class FirstMomentEstimator(EstimatorBase):
   """First moment cardinality estimator for AnyDistributionBloomFilter."""
   # TODO: Refactor this class to break down the methods for each type
@@ -293,6 +294,17 @@ class FirstMomentEstimator(EstimatorBase):
   METHOD_ANY = "any"
 
   def __init__(self, method, denoiser=None, noiser=None, weights=None):
+    """Construct an estimator.
+
+    Args:
+      method: an estimation method name. One of METHOD_GEO, METHOD_LOG,
+        METHOD_EXP, or METHOD_ANY defined in this class.
+      denoiser: a callable that conforms to the DenoiserBase. It is used to
+        estimate the raw sketch given a sketch with local DP noise.
+      noiser: a callable that takes the sum of bits and return the noised sum
+        of bits. This is used to add the global DP noise.
+      weights: an array of per bucket weights.
+    """
     EstimatorBase.__init__(self)
 
     # The METHOD_ANY and METHOD_GEO estimators both require bucket

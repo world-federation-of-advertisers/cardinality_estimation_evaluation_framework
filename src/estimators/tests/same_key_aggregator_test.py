@@ -17,7 +17,6 @@ from absl.testing import absltest
 import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import UniqueKeyFunction
-from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
 from wfa_cardinality_estimation_evaluation_framework.estimators.same_key_aggregator import ExponentialSameKeyAggregator
 from wfa_cardinality_estimation_evaluation_framework.estimators.same_key_aggregator import StandardizedHistogramEstimator
 
@@ -31,7 +30,6 @@ class ExponentialSameKeyAggregatorTest(absltest.TestCase):
     ska = ExponentialSameKeyAggregator(
         length=4, decay_rate=10, random_seed=0)
     ska.add(0)
-
     expected_exponential_bloom_filter[0] = 1
     expected_unique_key_tracker[0] = 1
     np.testing.assert_equal(
@@ -47,7 +45,6 @@ class ExponentialSameKeyAggregatorTest(absltest.TestCase):
     ska = ExponentialSameKeyAggregator(
         length=4, decay_rate=10, random_seed=0)
     ska.add_ids([0, 1])
-
     expected_exponential_bloom_filter[0] = 1
     np.testing.assert_equal(
         ska.exponential_bloom_filter.sketch, expected_exponential_bloom_filter)

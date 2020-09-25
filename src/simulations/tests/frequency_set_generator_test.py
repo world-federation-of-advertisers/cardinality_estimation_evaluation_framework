@@ -42,6 +42,7 @@ class FrequencySetGeneratorTest(parameterized.TestCase):
 
   def test_homogeneous_pmf_multiset_generator_multiple_sets(self):
       pmfgen = HomogeneousPmfMultiSetGenerator(
+
           100, [2,1,2], [[1], [0,1], [0,0,1]], np.random.RandomState(1))
       hists = []
       for s in pmfgen:
