@@ -101,7 +101,7 @@ class UniqueKeyFunction(ValueFunction):
     # With real universe size = 200M < 2^31, ids from any set_generator
     # can be represented as an np.int32.
     assert value_to_insert > 0 and value_to_insert <= 2**31 - 1, (
-        'Current sketch supports np.int32 keys.')
+        'Current sketch supports positive np.int32 keys.')
     return value_to_insert
 
 
@@ -154,6 +154,7 @@ class GeometricDistribution(Distribution):
 
   def __init__(self, num_values, probability):
     """Create a truncated geometric distribution.
+
     Args:
       num_values: The number of values that the geometric distribuition can take
         on. This is used to generate register_bounds according to geometric distribution.
@@ -242,7 +243,7 @@ class ExponentialDistribution(Distribution):
 
   def __init__(self, num_values, decay_rate):
     """Create the distribution.
-
+    
     Args:
       num_values: The number of registers.
       decay_rate: The decay rate of Exponential distribution.
