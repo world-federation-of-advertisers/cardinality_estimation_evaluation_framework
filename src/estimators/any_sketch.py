@@ -96,7 +96,7 @@ class UniqueKeyFunction(ValueFunction):
     # We add id + 1 to the unique_key_sketch, so that all keys are positive.
     # Positive keys do not conflict with FLAG_EMPTY_REGISTER
     # nor FLAG_COLLIDED_REGISTER.
-    assert isinstance(x, int)
+    assert isinstance(x, (int, np.integer))
     value_to_insert = x + 1
     # With real universe size = 200M < 2^31, ids from any set_generator
     # can be represented as an np.int32.

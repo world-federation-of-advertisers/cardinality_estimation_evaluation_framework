@@ -202,6 +202,8 @@ class ValueFunctionTest(parameterized.TestCase):
   def test_get_value_from_id(self):
     get_value = UniqueKeyFunction.get_value_from_id
     self.assertEqual(get_value(0), 1)
+    a = np.array([1, 2, 3], dtype=np.int32)
+    self.assertEqual(get_value(a[0]), 2)
     with self.assertRaises(AssertionError):
       get_value('3')
     with self.assertRaises(AssertionError):
