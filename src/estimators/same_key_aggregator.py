@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Contains the class AnySketch and the objects required to configure it."""
+"""Same key aggregator for frequency estimation."""
 
 import copy
 import functools
@@ -240,6 +240,3 @@ class StandardizedHistogramEstimator(EstimatorBase):
     standardized_hist = StandardizedHistogramEstimator.standardize_histogram(
         hist, one_plus_reach)
     return list(reversed(np.cumsum(list(reversed(standardized_hist)))))
-
-
-

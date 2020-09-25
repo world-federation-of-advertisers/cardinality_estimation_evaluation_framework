@@ -101,7 +101,7 @@ class UniqueKeyFunction(ValueFunction):
     # With real universe size = 200M < 2^31, ids from any set_generator
     # can be represented as an np.int32.
     assert value_to_insert > 0 and value_to_insert <= 2**31 - 1, (
-        'Current sketch supports np.int32 keys.')
+        'Current sketch supports positive np.int32 keys.')
     return value_to_insert
 
 
