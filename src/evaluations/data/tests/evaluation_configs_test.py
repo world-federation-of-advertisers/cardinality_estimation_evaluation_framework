@@ -398,6 +398,18 @@ class EvaluationConfigTest(parameterized.TestCase):
     for conf in sketch_estimator_configs:
       self.assertIn(conf.name, expected_sketch_estimator_configs)
 
+  def test_stratiefied_sketch_vector_of_counts(self):
+    conf = evaluation_configs._stratiefied_sketch_vector_of_counts(
+        max_frequency=3,
+        clip=True,
+        length=1024,
+        sketch_epsilon=math.log(3))
+    self.assertEqual(conf.max_frequency, 3)
+    self.assertEqual(
+        conf.name,
+        'stratified_sketch_vector_of_counts-1024-sequential_clip'
+        '-local_dp_1.0986-no_global_dp-3')
+
 
 if __name__ == '__main__':
   absltest.main()
