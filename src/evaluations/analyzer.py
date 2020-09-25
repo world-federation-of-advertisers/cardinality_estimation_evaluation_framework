@@ -381,7 +381,7 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
        frequency_level  cardinality
                      1            2
                      2            1
-                     3            4
+                     3            7
     where the cardinality of frequency_level == 1 is the number of IDs that have
     frequency equal to 1.
 
