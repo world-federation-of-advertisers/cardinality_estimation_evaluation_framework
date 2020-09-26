@@ -635,7 +635,7 @@ def _complete_test_with_selected_parameters(
       scenario_config_list=scenario_config_list)
 
 
-def _frequency_end_to_end_test(universe_size = 10000, num_runs=NUM_RUNS_VALUE):
+def _frequency_end_to_end_test(universe_size=10000, num_runs=NUM_RUNS_VALUE):
   """EvaluationConfig of end-to-end test of frequency evaluation code."""
   num_sets = 3
   set_size = 5000
