@@ -220,6 +220,17 @@ class FirstMomentEstimatorTest(parameterized.TestCase):
     union = estimator.union_sketches(adbf_list)
     expected = np.array([0.19, 0.91, 0.91, 0.99])
     np.testing.assert_allclose(union.sketch, expected, atol=0.01)
+  @parameterized.parameters(
+    ([1, 1, 0, 0], 3.38427734375),  # Normal case
+    ([2, 0, 1, 1], 0),  # error case (n>=1)
+    ([1, 0, 0, 0], 1.0),  # first_moment(lower_bound) > 0
+  )
+  def test_geo_estimator(self, sketch, expected):
+    adbf = GeometricBloomFilter(length=4, probability=0.6, random_seed=1)
+    adbf.sketch = np.array(sketch)
+    estimator = FirstMomentEstimator(method='geo')
+    estimate=estimator([adbf])[0]
+    self.assertAlmostEqual(estimate, expected)
 
   def test_check_compatibility(self):
     # With different random seed.
@@ -232,6 +243,7 @@ class FirstMomentEstimatorTest(parameterized.TestCase):
       (UniformBloomFilter, {}, 'uniform', 1.151),
       (LogarithmicBloomFilter, {}, 'log', 1.333),
       (ExponentialBloomFilter, {'decay_rate': 1}, 'exp', 1.1645),
+      (GeometricBloomFilter, {'probability': 0.08}, 'geo', 1.0005),
       (UniformBloomFilter, {}, 'any', 1)
   )
   def test_estimate_cardinality(self, bf, bf_kwargs, method, truth):
