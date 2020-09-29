@@ -46,12 +46,25 @@ class EvaluationConfigTest(parameterized.TestCase):
     self.assertEqual(configs.num_runs, 4)
     self.assertLen(configs.scenario_config_list, 3)
 
-
   def test_complete_frequency_test_with_selected_parameters(self):
     configs = evaluation_configs._complete_frequency_test_with_selected_parameters(4)
     self.assertEqual(configs.name, 'complete_frequency_test_with_selected_parameters')
     self.assertEqual(configs.num_runs, 4)
 
+  @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_freq_configs_scenario_1')
+  @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_freq_configs_scenario_2')
+  @mock.patch(EVALUATION_CONFIGS_MODULE + '_generate_freq_configs_scenario_3')
+  def test_complete_frequency_test_with_selected_parameters_all_scenarios_used(
+      self,
+      scenario_config_1,
+      scenario_config_2,
+      scenario_config_3):
+    """Test all the scenarios are concluded in the complete test."""
+    _ = evaluation_configs._complete_frequency_test_with_selected_parameters(
+        num_runs=1)
+    self.assertTrue(scenario_config_1.called, 'Scenario 1 not included.')
+    self.assertTrue(scenario_config_2.called, 'Scenario 3 not included.')
+    self.assertTrue(scenario_config_3.called, 'Scenario 3 not included.')
 
   @parameterized.parameters(
       (2000, None, 'independent-universe_size:2000'),

@@ -528,6 +528,47 @@ def _generate_freq_configs_scenario_2(universe_size, num_sets, set_size):
   return scenario_config_list
 
 
+def _generate_freq_configs_scenario_3(universe_size, num_sets, set_size):
+  """Generate configs of Frequency Scenario 3.
+
+  This is a stress testing, in which each publisher serves X impressions to
+  every reached id.
+
+  See Frequency Scenario 3: Per-publisher frequency capping:
+  https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#frequency-scenario-3-per-publisher-frequency-capping
+
+  Args:
+    universe_size: the universal size of reach.
+    num_sets: the number of sets.
+    set_size: size of each set, assuming they're all equal.
+
+  Returns:
+    A list of ScenarioConfigs of freq scenario 3 per-publisher frequency
+    capping.
+  """
+  frequency_list = [2, 3, 5, 10]
+  scenario_config_list = []
+  for frequency in frequency_list:
+    scenario_config_list.append(
+        ScenarioConfig(
+            name='-'.join([
+                'per_publisher_frequency_cap',
+                'universe_size:' + str(universe_size),
+                'num_sets:' + str(num_sets),
+                'frequency:' + str(frequency),
+            ]),
+            set_generator_factory=(
+                frequency_set_generator.PublisherConstantFrequencySetGenerator
+                .get_generator_factory_with_num_and_size(
+                    universe_size=universe_size,
+                    num_sets=num_sets,
+                    set_size=set_size,
+                    frequency=frequency)
+            )),
+    )
+  return scenario_config_list
+
+
 def _complete_frequency_test_with_selected_parameters(
     num_runs=NUM_RUNS_VALUE,
     universe_size=FREQ_UNIVERSE_SIZE,
@@ -553,6 +594,9 @@ def _complete_frequency_test_with_selected_parameters(
       universe_size, num_sets, set_size)
   # Scenario 2. Heterogeneous user frequency
   scenario_config_list += _generate_freq_configs_scenario_2(
+      universe_size, num_sets, set_size)
+  # Scenario 3. Per-publisher frequency capping.
+  scenario_config_list += _generate_freq_configs_scenario_3(
       universe_size, num_sets, set_size)
 
   return EvaluationConfig(
