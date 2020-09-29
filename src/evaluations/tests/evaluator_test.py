@@ -137,28 +137,6 @@ class EvaluatorTest(absltest.TestCase):
         out_dir=out_dir)
     self.assertEqual(created, loaded)
 
-  def test_evaluate_all_generate_save_configs(self):
-    test_evaluator = self.get_test_evaluator(self.create_tempdir().full_path)
-    test_evaluator()
-    for sketch_estimator_config in self.sketch_estimator_config_list:
-      sketch_estimator_config_file = os.path.join(
-          test_evaluator.description_to_file_dir[
-              evaluator.KEY_ESTIMATOR_DIRS][sketch_estimator_config.name],
-          evaluator.ESTIMATOR_CONFIG_FILE)
-      self.assertTrue(
-          os.path.exists(sketch_estimator_config_file),
-          'Estimator config file doesn\'t exist: '
-          f'{sketch_estimator_config.name}')
-
-      for scenario_config in self.evaluation_config.scenario_config_list:
-        scenario_config_file = os.path.join(
-            test_evaluator.description_to_file_dir[
-                sketch_estimator_config.name][scenario_config.name],
-            evaluator.SCENARIO_CONFIG_FILE)
-        self.assertTrue(
-            os.path.exists(scenario_config_file),
-            f'Scenario config file doesn\'t exist: {scenario_config.name}')
-
   def test_evaluate_all_save_results(self):
     test_evaluator = self.get_test_evaluator(self.create_tempdir().full_path)
     test_evaluator()

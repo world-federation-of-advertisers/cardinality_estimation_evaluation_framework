@@ -14,6 +14,7 @@
 
 """Tests for wfa_cardinality_estimation_evaluation_framework.evaluations.analyzer."""
 import collections
+import io
 import itertools
 import os
 
@@ -343,6 +344,38 @@ class FrequencyEstimatorEvaluationAnalyzerTest(absltest.TestCase):
       pd.testing.assert_frame_equal(df_long, expected)
     except AssertionError:
       self.fail('The long format is not correct.')
+
+  def test_get_per_frequency_cardinality_for_all_cases(self):
+    df_str = io.StringIO(
+        """sketch_estimator,scenario,run_index,num_sets,cardinality,source,frequency_level
+        some_sketch,some_scenario,0,1,6,true_cardinality,1
+        some_sketch,some_scenario,0,1,4,true_cardinality,2
+        some_sketch,some_scenario,0,1,7,estimated_cardinality,1
+        some_sketch,some_scenario,0,1,3,estimated_cardinality,2""")
+    df = pd.read_csv(df_str)
+
+    expected_str = io.StringIO(
+        """sketch_estimator,scenario,run_index,num_sets,cardinality,source,frequency_level
+        some_sketch,some_scenario,0,1,2,true_cardinality,1
+        some_sketch,some_scenario,0,1,4,true_cardinality,2
+        some_sketch,some_scenario,0,1,4,estimated_cardinality,1
+        some_sketch,some_scenario,0,1,3,estimated_cardinality,2""")
+    expected = pd.read_csv(expected_str)
+
+    per_freq_df = (
+        analyzer.FrequencyEstimatorEvaluationAnalyzer
+        .get_per_frequency_cardinality_for_all_cases(df))
+    joined_df = expected.merge(
+        per_freq_df,
+        on=[analyzer.SKETCH_ESTIMATOR_NAME, analyzer.SCENARIO_NAME,
+            simulator.RUN_INDEX, simulator.NUM_SETS,
+            analyzer.CARDINALITY_SOURCE, analyzer.FREQUENCY_LEVEL],
+        how='outer',
+        suffixes=['_expected', '_output'])
+
+    self.assertTrue(all(
+        joined_df[analyzer.CARDINALITY_VALUE + '_expected']
+        == joined_df[analyzer.CARDINALITY_VALUE + '_output']))
 
   def test_save_plot_frequency_distribution_for_report(self):
     evaluation_out_dir = self.create_tempdir('evaluation').full_path

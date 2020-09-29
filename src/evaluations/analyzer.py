@@ -366,6 +366,64 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
 
     return df_long
 
+  @classmethod
+  def _get_per_frequency_cardinality(cls, df, frequency_level_col,
+                                     cardinality_col):
+    """Calculate per-frequency cardinality.
+
+    For example, given a table of cumulative-frequency cardinality,
+       frequency_level  cardinality
+                     1           10
+                     2            8
+                     3            7
+    where the cardinality of frequency_level == 1 means that the number of IDs
+    that have at least 1 impressions, running this method will return
+       frequency_level  cardinality
+                     1            2
+                     2            1
+                     3            7
+    where the cardinality of frequency_level == 1 is the number of IDs that have
+    frequency equal to 1.
+
+    Args:
+      df: a pd.DataFrame that contain columns containing the frequency_level_col
+        and the cardinality_col.
+      frequency_level_col: a column name in df that represents the the
+        frequency level.
+      cardinality_col: a column name in df that represents the cardinality.
+
+    Returns:
+      A pd.DataFrame containing a column of cardinality_col, and indexed by
+      the frequency_level_col. The cardinality is the per-frequency cardinality.
+    """
+    # Calculate the per frequency level by taking lag-1 difference of the
+    # cardinalities of cumulative frequency levels.
+    max_frequency = max(df[frequency_level_col])
+    per_freq_card = (
+        df.set_index(frequency_level_col).sort_index(ascending=False)
+        .diff())
+    # Fill in the tail: the cardinality of the max_frequency level is the
+    # number of IDs with frequency >= max_frequency.
+    per_freq_card.loc[max_frequency, cardinality_col] = df.loc[
+        df[frequency_level_col] == max_frequency,
+        cardinality_col].values[0]
+    return per_freq_card.iloc[::-1]
+
+  @classmethod
+  def get_per_frequency_cardinality_for_all_cases(cls, df):
+    """Calculate per-frequency cardinality for all estimator and scenarios."""
+    per_freq_df = (
+        df.groupby([
+            SKETCH_ESTIMATOR_NAME, SCENARIO_NAME, simulator.RUN_INDEX,
+            simulator.NUM_SETS, CARDINALITY_SOURCE])
+        .apply(
+            FrequencyEstimatorEvaluationAnalyzer._get_per_frequency_cardinality,
+            frequency_level_col=FREQUENCY_LEVEL,
+            cardinality_col=CARDINALITY_VALUE)
+        .reset_index()
+    )
+    return per_freq_df
+
   def _save_plot_frequency_distribution(self, raw_df_long, filename):
     """Make and save plots for estimated and true frequency distributions.
 
@@ -457,9 +515,12 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
     the number of estimable sets, and when that is equal to the maximum number
     of sets.
     """
-    raw_df_long = self.convert_raw_df_to_long_format()
-    self._save_plot_frequency_distribution_num_estimable_sets(raw_df_long)
-    self._save_plot_frequency_distribution_max_num_sets(raw_df_long)
+    per_freq_df = (
+        FrequencyEstimatorEvaluationAnalyzer
+        .get_per_frequency_cardinality_for_all_cases(
+            self.convert_raw_df_to_long_format()))
+    self._save_plot_frequency_distribution_num_estimable_sets(per_freq_df)
+    self._save_plot_frequency_distribution_max_num_sets(per_freq_df)
 
 
 def get_analysis_results(analysis_out_dir, evaluation_run_name,

@@ -16,13 +16,13 @@ import itertools
 import math
 
 import numpy as np
-import itertools
 from wfa_cardinality_estimation_evaluation_framework.estimators import bloom_filters
 from wfa_cardinality_estimation_evaluation_framework.estimators import estimator_noisers
 from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
 from wfa_cardinality_estimation_evaluation_framework.estimators import hyper_log_log
 from wfa_cardinality_estimation_evaluation_framework.estimators import independent_set_estimator
 from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_legions
+from wfa_cardinality_estimation_evaluation_framework.estimators import same_key_aggregator
 from wfa_cardinality_estimation_evaluation_framework.estimators import stratified_sketch
 from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts
 from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts_sketch_operator
@@ -1161,6 +1161,41 @@ def _exact_multi_set(max_frequency):
   )
 
 
+def _exp_same_key_aggregator(max_frequency, global_epsilon, length):
+  """Create an ExponentialSameKeyAggregator config.
+
+  Args:
+    max_frequency: the maximum frequency to estimate.
+    global_epsilon: the global DP epsilon parameter.
+    length: the length of the ExponentialSameKeyAggregator.
+
+  Returns:
+    A SketchEstimatorConfig of ExponentialSameKeyAggregator.
+  """
+  if global_epsilon is not None:
+    estimate_noiser_class = estimator_noisers.GeometricEstimateNoiser
+  else:
+    estimate_noiser_class = None
+
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='exp_same_key_aggregator',
+          sketch_config='_'.join([str(int(length)), '10']),
+          estimator_name='standardized_histogram',
+          estimate_epsilon=global_epsilon,
+          max_frequency=str(max_frequency)),
+      sketch_factory=(
+          same_key_aggregator.ExponentialSameKeyAggregator.get_sketch_factory(
+              length, decay_rate=10)),
+      estimator=same_key_aggregator.StandardizedHistogramEstimator(
+          max_freq=max_frequency,
+          noiser_class=estimate_noiser_class,
+          epsilon=global_epsilon,
+      ),
+      max_frequency=max_frequency,
+  )
+
+
 def _generate_frequency_estimator_configs(max_frequency):
   """Create frequency estimator configurations."""
   configs = []
@@ -1176,6 +1211,12 @@ def _generate_frequency_estimator_configs(max_frequency):
 
   # Exact set.
   configs.append(_exact_multi_set(max_frequency))
+
+  # Same-key-aggregator.
+  for global_epsilon, length in itertools.product(ESTIMATE_EPSILON_VALUES,
+                                                  ADBF_LENGTH_LIST):
+    configs.append(
+        _exp_same_key_aggregator(max_frequency, global_epsilon, length))
 
   return tuple(configs)
 

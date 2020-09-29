@@ -410,6 +410,15 @@ class EvaluationConfigTest(parameterized.TestCase):
         'stratified_sketch_vector_of_counts-1024-sequential_clip'
         '-local_dp_1.0986-no_global_dp-3')
 
+  def test_exp_same_key_aggregator(self):
+    conf = evaluation_configs._exp_same_key_aggregator(
+        max_frequency=3, length=1e2, global_epsilon=1)
+    self.assertEqual(conf.max_frequency, 3)
+    self.assertEqual(
+        conf.name,
+        'exp_same_key_aggregator-100_10-standardized_histogram'
+        '-no_local_dp-global_dp_1.0000-3')
+
 
 if __name__ == '__main__':
   absltest.main()
