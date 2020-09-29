@@ -45,16 +45,27 @@ SKETCH_ESTIMATOR_CONFIG_NAMES_FORMAT = (
 
 NUM_RUNS_VALUE = 100
 SMOKE_TEST_UNIVERSE_SIZE = 200_000
-UNIVERSE_SIZE_VALUE = 1000000
+UNIVERSE_SIZE_VALUE = 1_000_000
 NUM_SETS_VALUE = 20
+
+# Smoke test reach percent.
+SMALL_REACH_RATE_SMOKE_TEST = 0.1
+LARGE_REACH_RATE_SMOKE_TEST = 0.2
+
+# Complete reach estimator evaluation reach percent.
 SMALL_REACH_RATE_VALUE = 0.01
 LARGE_REACH_RATE_VALUE = 0.2
+
+# Frequency test reach percent.
+REACH_RATE_FREQ_END_TO_END_TEST = 0.1
+REACH_RATE_FREQ_SMOKE_TEST = 0.1
+
 SHARED_PROP_LIST_VALUE = (0.25, 0.5, 0.75)
 REMARKETING_RATE_VALUE = 0.2
 
 NUM_SETS_VALUE_FREQ = 10
-SET_SIZE_FOR_FREQ = 20000
-FREQ_UNIVERSE_SIZE = 200000
+SET_SIZE_FOR_FREQ = 20_000
+FREQ_UNIVERSE_SIZE = 200_000
 
 NO_GLOBAL_DP_STR = 'no_global_dp'
 GLOBAL_DP_STR = 'global_dp'
@@ -73,10 +84,10 @@ ESTIMATE_EPSILON_VALUES = (math.log(3), None)
 # The length of the Any Distribution Bloom Filters.
 # We use the np.array with dtype so as to make sure that the lengths are all
 # integers.
-ADBF_LENGTH_LIST = np.array([1e5, 2.5e5], dtype=np.int64)
+ADBF_LENGTH_LIST = np.array([100_000, 250_000], dtype=np.int64)
 
 # The length of the bloom filters.
-BLOOM_FILTERS_LENGTH_LIST = np.array([5e6], dtype=np.int64)
+BLOOM_FILTERS_LENGTH_LIST = np.array([5_000_000], dtype=np.int64)
 VOC_LENGTH_LIST = np.array([1024, 4096], dtype=np.int64)
 
 
@@ -96,8 +107,8 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE,
   Returns:
     An EvaluationConfig.
   """
-  set_size = int(universe_size * 0.2)
-  seq_corr_set_size = int(universe_size * 0.1)
+  set_size = int(universe_size * LARGE_REACH_RATE_SMOKE_TEST)
+  seq_corr_set_size = int(universe_size * SMALL_REACH_RATE_SMOKE_TEST)
   return EvaluationConfig(
       name='smoke_test',
       num_runs=num_runs,
@@ -156,7 +167,7 @@ def _frequency_smoke_test(num_runs=NUM_RUNS_VALUE,
   Returns:
     An EvaluationConfig.
   """
-  set_size = int(universe_size * 0.1)
+  set_size = int(universe_size * REACH_RATE_FREQ_SMOKE_TEST)
   return EvaluationConfig(
       name='frequency_smoke_test',
       num_runs=num_runs,
@@ -644,7 +655,7 @@ def _complete_test_with_selected_parameters(
 def _frequency_end_to_end_test(universe_size=10000, num_runs=NUM_RUNS_VALUE):
   """EvaluationConfig of end-to-end test of frequency evaluation code."""
   num_sets = 3
-  set_size = int(universe_size * 0.5)
+  set_size = int(universe_size * REACH_RATE_FREQ_END_TO_END_TEST)
   freq_rates = [1, 2, 3]
   freq_cap = 5
   return EvaluationConfig(

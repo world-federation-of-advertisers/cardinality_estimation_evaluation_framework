@@ -106,7 +106,7 @@ def _run(run_evaluation, run_analysis, generate_html_report, evaluation_out_dir,
   """Run evaluation."""
   evaluation_config_args = {'num_runs': num_runs}
   if universe_size is not None:
-    evaluation_config_args.update({'universe_size': universe_size})
+    evaluation_config_args.update({'universe_size': int(universe_size)})
   evaluation_config = evaluation_configs.get_evaluation_config(
       evaluation_config)(**evaluation_config_args)
 
