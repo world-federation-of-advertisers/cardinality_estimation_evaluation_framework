@@ -552,7 +552,7 @@ def _generate_freq_configs_scenario_3(universe_size, num_sets, set_size):
     scenario_config_list.append(
         ScenarioConfig(
             name='-'.join([
-                'per_publisher_frequency_cap',
+                'publisher_constant_frequency',
                 'universe_size:' + str(universe_size),
                 'num_sets:' + str(num_sets),
                 'frequency:' + str(frequency),
