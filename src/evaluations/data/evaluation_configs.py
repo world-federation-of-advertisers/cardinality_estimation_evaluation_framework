@@ -531,8 +531,8 @@ def _generate_freq_configs_scenario_2(universe_size, num_sets, set_size):
 def _generate_freq_configs_scenario_3(universe_size, num_sets, set_size):
   """Generate configs of Frequency Scenario 3.
 
-  This is a stress testing, in which each publisher serves X impressions to
-  every reached id.
+  This is a stress testing, in which each publisher serves a fixed number of
+  impressions to every reached id.
 
   See Frequency Scenario 3: Per-publisher frequency capping:
   https://github.com/world-federation-of-advertisers/cardinality_estimation_evaluation_framework/blob/master/doc/cardinality_and_frequency_estimation_evaluation_framework.md#frequency-scenario-3-per-publisher-frequency-capping
