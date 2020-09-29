@@ -63,7 +63,7 @@ class EvaluationConfigTest(parameterized.TestCase):
     _ = evaluation_configs._complete_frequency_test_with_selected_parameters(
         num_runs=1)
     self.assertTrue(scenario_config_1.called, 'Scenario 1 not included.')
-    self.assertTrue(scenario_config_2.called, 'Scenario 3 not included.')
+    self.assertTrue(scenario_config_2.called, 'Scenario 2 not included.')
     self.assertTrue(scenario_config_3.called, 'Scenario 3 not included.')
 
   @parameterized.parameters(
