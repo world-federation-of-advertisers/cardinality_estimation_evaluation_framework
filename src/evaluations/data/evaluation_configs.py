@@ -44,6 +44,7 @@ SKETCH_ESTIMATOR_CONFIG_NAMES_FORMAT = (
     MAX_FREQUENCY)
 
 NUM_RUNS_VALUE = 100
+SMOKE_TEST_UNIVERSE_SIZE = 200_000
 UNIVERSE_SIZE_VALUE = 1000000
 NUM_SETS_VALUE = 20
 SMALL_REACH_RATE_VALUE = 0.01
@@ -80,7 +81,8 @@ VOC_LENGTH_LIST = np.array([1024, 4096], dtype=np.int64)
 
 
 # Document the evaluation configurations.
-def _smoke_test(num_runs=NUM_RUNS_VALUE, universe_size=200000):
+def _smoke_test(num_runs=NUM_RUNS_VALUE,
+                universe_size=SMOKE_TEST_UNIVERSE_SIZE):
   """Smoke test evaluation configurations.
 
   We set the smoke test parameters according to Appendix 3: Example
@@ -141,7 +143,8 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE, universe_size=200000):
       )
 
 
-def _frequency_smoke_test(num_runs=NUM_RUNS_VALUE, universe_size=int(2e5)):
+def _frequency_smoke_test(num_runs=NUM_RUNS_VALUE,
+                          universe_size=FREQ_UNIVERSE_SIZE):
   """Smoke test frequency evaluation configurations.
 
   Args:
