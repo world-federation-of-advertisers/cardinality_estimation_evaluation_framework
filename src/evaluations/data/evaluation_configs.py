@@ -44,16 +44,28 @@ SKETCH_ESTIMATOR_CONFIG_NAMES_FORMAT = (
     MAX_FREQUENCY)
 
 NUM_RUNS_VALUE = 100
-UNIVERSE_SIZE_VALUE = 1000000
+SMOKE_TEST_UNIVERSE_SIZE = 200_000
+UNIVERSE_SIZE_VALUE = 1_000_000
 NUM_SETS_VALUE = 20
+
+# Smoke test reach percent.
+SMALL_REACH_RATE_SMOKE_TEST = 0.1
+LARGE_REACH_RATE_SMOKE_TEST = 0.2
+
+# Complete reach estimator evaluation reach percent.
 SMALL_REACH_RATE_VALUE = 0.01
 LARGE_REACH_RATE_VALUE = 0.2
+
+# Frequency test reach percent.
+REACH_RATE_FREQ_END_TO_END_TEST = 0.1
+REACH_RATE_FREQ_SMOKE_TEST = 0.1
+
 SHARED_PROP_LIST_VALUE = (0.25, 0.5, 0.75)
 REMARKETING_RATE_VALUE = 0.2
 
 NUM_SETS_VALUE_FREQ = 10
-SET_SIZE_FOR_FREQ = 20000
-FREQ_UNIVERSE_SIZE = 200000
+SET_SIZE_FOR_FREQ = 20_000
+FREQ_UNIVERSE_SIZE = 200_000
 
 NO_GLOBAL_DP_STR = 'no_global_dp'
 GLOBAL_DP_STR = 'global_dp'
@@ -72,15 +84,16 @@ ESTIMATE_EPSILON_VALUES = (math.log(3), None)
 # The length of the Any Distribution Bloom Filters.
 # We use the np.array with dtype so as to make sure that the lengths are all
 # integers.
-ADBF_LENGTH_LIST = np.array([1e5, 2.5e5], dtype=np.int64)
+ADBF_LENGTH_LIST = np.array([100_000, 250_000], dtype=np.int64)
 
 # The length of the bloom filters.
-BLOOM_FILTERS_LENGTH_LIST = np.array([5e6], dtype=np.int64)
+BLOOM_FILTERS_LENGTH_LIST = np.array([5_000_000], dtype=np.int64)
 VOC_LENGTH_LIST = np.array([1024, 4096], dtype=np.int64)
 
 
 # Document the evaluation configurations.
-def _smoke_test(num_runs=NUM_RUNS_VALUE):
+def _smoke_test(num_runs=NUM_RUNS_VALUE,
+                universe_size=SMOKE_TEST_UNIVERSE_SIZE):
   """Smoke test evaluation configurations.
 
   We set the smoke test parameters according to Appendix 3: Example
@@ -89,10 +102,13 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE):
 
   Args:
     num_runs: the number of runs per scenario.
+    universe_size: the size of universe.
 
   Returns:
     An EvaluationConfig.
   """
+  set_size = int(universe_size * LARGE_REACH_RATE_SMOKE_TEST)
+  seq_corr_set_size = int(universe_size * SMALL_REACH_RATE_SMOKE_TEST)
   return EvaluationConfig(
       name='smoke_test',
       num_runs=num_runs,
@@ -102,19 +118,22 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE):
               set_generator_factory=(
                   set_generator.IndependentSetGenerator.
                   get_generator_factory_with_num_and_size(
-                      universe_size=200000, num_sets=20, set_size=20000))),
+                      universe_size=universe_size, num_sets=20,
+                      set_size=set_size))),
           ScenarioConfig(
               name='remarketing',
               set_generator_factory=(
                   set_generator.IndependentSetGenerator.
                   get_generator_factory_with_num_and_size(
-                      universe_size=40000, num_sets=20, set_size=20000))),
+                      universe_size=int(universe_size * REMARKETING_RATE_VALUE),
+                      num_sets=20, set_size=set_size))),
           ScenarioConfig(
               name='fully_overlapping',
               set_generator_factory=(
                   set_generator.FullyOverlapSetGenerator.
                   get_generator_factory_with_num_and_size(
-                      universe_size=200000, num_sets=20, set_size=20000))),
+                      universe_size=universe_size, num_sets=20,
+                      set_size=set_size))),
           ScenarioConfig(
               name='sequentially_correlated_all',
               set_generator_factory=(
@@ -122,7 +141,7 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE):
                   .get_generator_factory_with_num_and_size(
                       order=set_generator.ORDER_ORIGINAL,
                       correlated_sets=set_generator.CORRELATED_SETS_ALL,
-                      num_sets=20, set_size=10000,
+                      num_sets=20, set_size=seq_corr_set_size,
                       shared_prop=0.5))),
           ScenarioConfig(
               name='sequentially_correlated_one',
@@ -131,21 +150,24 @@ def _smoke_test(num_runs=NUM_RUNS_VALUE):
                   .get_generator_factory_with_num_and_size(
                       order=set_generator.ORDER_ORIGINAL,
                       correlated_sets=set_generator.CORRELATED_SETS_ONE,
-                      num_sets=20, set_size=10000,
+                      num_sets=20, set_size=seq_corr_set_size,
                       shared_prop=0.5))),
           )
       )
 
 
-def _frequency_smoke_test(num_runs=NUM_RUNS_VALUE):
+def _frequency_smoke_test(num_runs=NUM_RUNS_VALUE,
+                          universe_size=FREQ_UNIVERSE_SIZE):
   """Smoke test frequency evaluation configurations.
 
   Args:
     num_runs: the number of runs per scenario.
+    universe_size: the size of the universe.
 
   Returns:
     An EvaluationConfig.
   """
+  set_size = int(universe_size * REACH_RATE_FREQ_SMOKE_TEST)
   return EvaluationConfig(
       name='frequency_smoke_test',
       num_runs=num_runs,
@@ -153,24 +175,25 @@ def _frequency_smoke_test(num_runs=NUM_RUNS_VALUE):
           ScenarioConfig(
               name='homogeneous',
               set_generator_factory=(
-                frequency_set_generator.HomogeneousMultiSetGenerator.
-                get_generator_factory_with_num_and_size(
-                    universe_size=int(2e5), num_sets=10, set_size=int(2e4),
-                    freq_rates=[1]*10, freq_cap=3))),
+                  frequency_set_generator.HomogeneousMultiSetGenerator
+                  .get_generator_factory_with_num_and_size(
+                      universe_size=universe_size, num_sets=10,
+                      set_size=set_size, freq_rates=[1]*10, freq_cap=3))),
           ScenarioConfig(
               name='heterogeneous',
               set_generator_factory=(
-                frequency_set_generator.HeterogeneousMultiSetGenerator.
-                get_generator_factory_with_num_and_size(
-                    universe_size=int(2e5), num_sets=10, set_size=int(2e4),
-                    gamma_params=[[1,1]]*10, freq_cap=3))),
+                  frequency_set_generator.HeterogeneousMultiSetGenerator
+                  .get_generator_factory_with_num_and_size(
+                      universe_size=universe_size, num_sets=10,
+                      set_size=set_size, gamma_params=[[1, 1]]*10,
+                      freq_cap=3))),
           ScenarioConfig(
               name='publisher_constant',
               set_generator_factory=(
-                frequency_set_generator.PublisherConstantFrequencySetGenerator.
-                get_generator_factory_with_num_and_size(
-                    universe_size=int(2e5), num_sets=10, set_size=int(2e4),
-                    frequency=3))),
+                  frequency_set_generator.PublisherConstantFrequencySetGenerator
+                  .get_generator_factory_with_num_and_size(
+                      universe_size=universe_size, num_sets=10,
+                      set_size=set_size, frequency=3))),
       )
     )
 
@@ -673,11 +696,10 @@ def _complete_test_with_selected_parameters(
       scenario_config_list=scenario_config_list)
 
 
-def _frequency_end_to_end_test(num_runs=NUM_RUNS_VALUE):
+def _frequency_end_to_end_test(universe_size=10000, num_runs=NUM_RUNS_VALUE):
   """EvaluationConfig of end-to-end test of frequency evaluation code."""
   num_sets = 3
-  universe_size = 10000
-  set_size = 5000
+  set_size = int(universe_size * REACH_RATE_FREQ_END_TO_END_TEST)
   freq_rates = [1, 2, 3]
   freq_cap = 5
   return EvaluationConfig(

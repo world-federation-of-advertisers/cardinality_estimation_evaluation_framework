@@ -58,6 +58,8 @@ flags.DEFINE_string('evaluation_run_name', None,
                     'The name of this evaluation run.')
 flags.DEFINE_integer('num_runs', None,
                      'The number of runs per scenario.', lower_bound=1)
+flags.DEFINE_integer('universe_size', None, 'Size of the universe.',
+                     lower_bound=0)
 flags.DEFINE_integer(
     'num_workers', 0,
     'The number of processes to use in parallel. If 1, runs serially.'
@@ -99,10 +101,14 @@ def _run(run_evaluation, run_analysis, generate_html_report, evaluation_out_dir,
          boxplot_xlabel_rotate, boxplot_size_width_inch,
          boxplot_size_height_inch, analysis_type,
          max_frequency, barplot_size_width_inch=None,
-         barplot_size_height_inch=None):
+         barplot_size_height_inch=None,
+         universe_size=None):
   """Run evaluation."""
+  evaluation_config_args = {'num_runs': num_runs}
+  if universe_size is not None:
+    evaluation_config_args.update({'universe_size': int(universe_size)})
   evaluation_config = evaluation_configs.get_evaluation_config(
-      evaluation_config)(num_runs)
+      evaluation_config)(**evaluation_config_args)
 
   sketch_estimator_config_list = evaluation_configs.get_estimator_configs(
       sketch_estimator_configs, max_frequency)
@@ -178,6 +184,7 @@ def main(argv):
       sketch_estimator_configs=FLAGS.sketch_estimator_configs,
       evaluation_run_name=FLAGS.evaluation_run_name,
       num_runs=FLAGS.num_runs,
+      universe_size=FLAGS.universe_size,
       num_workers=FLAGS.num_workers,
       error_margin=FLAGS.error_margin,
       proportion_of_runs=FLAGS.proportion_of_runs,
