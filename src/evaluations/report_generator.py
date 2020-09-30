@@ -207,18 +207,20 @@ class ReportGenerator:
     assert analysis_type in (ANALYSIS_TYPE_CARDINALITY,
                              ANALYSIS_TYPE_FREQUENCY)
 
-    sketch_estimator_df = pd.DataFrame(
-        [], columns=evaluation_configs.SKETCH_ESTIMATOR_CONFIG_NAMES_FORMAT)
+    parsed_colnames = list(evaluation_configs
+                           .SKETCH_ESTIMATOR_CONFIG_NAMES_FORMAT)
+    if analysis_type == ANALYSIS_TYPE_CARDINALITY:
+      parsed_colnames = [colname for colname in parsed_colnames
+                         if colname != evaluation_configs.MAX_FREQUENCY]
+
+    sketch_estimator_df = pd.DataFrame([], columns=parsed_colnames)
     for sketch_estimator in sketch_estimator_list:
       sketch_estimator_df = sketch_estimator_df.append(
           ReportGenerator.parse_sketch_estimator_name(sketch_estimator),
           ignore_index=True)
 
     def _generate_plots_html(row):
-      sketch_estimator_name = '-'.join([
-          str(row[i]) for i in (
-              evaluation_configs.SKETCH_ESTIMATOR_CONFIG_NAMES_FORMAT)
-      ])
+      sketch_estimator_name = '-'.join([str(row[i]) for i in parsed_colnames])
       if sketch_estimator_name not in description_to_file_dir[
           evaluator.KEY_ESTIMATOR_DIRS]:
         return None
