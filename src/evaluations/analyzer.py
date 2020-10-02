@@ -16,6 +16,7 @@
 import os
 import shutil
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -51,7 +52,7 @@ BARPLOT_MAX_SETS_FILENAME = 'barplot_max_sets.png'
 
 XLABEL_ROTATE = 'xlabel_rotate'
 BOXPLOT_SIZE_WIDTH_INCH = 'boxplot_size_width_inch'
-BOXPLOT_SIZE_HEIGHT_INCH = 'boxplot_size_width_inch'
+BOXPLOT_SIZE_HEIGHT_INCH = 'boxplot_size_height_inch'
 BARPLOT_SIZE_WIDTH_INCH = 'barplot_size_width_inch'
 BARPLOT_SIZE_HEIGHT_INCH = 'barplot_size_height_inch'
 PLOT_PARAMS = {
@@ -259,6 +260,7 @@ class EstimatorEvaluationAnalyzer(object):
           w=self.plot_params[BOXPLOT_SIZE_WIDTH_INCH],
           h=self.plot_params[BOXPLOT_SIZE_HEIGHT_INCH])
       fig.savefig(plot_file)
+      plt.close(fig)
 
     self.raw_df.groupby([SKETCH_ESTIMATOR_NAME, SCENARIO_NAME]).apply(
         plot_one_estimator_under_one_scenario)
@@ -456,6 +458,7 @@ class FrequencyEstimatorEvaluationAnalyzer(EstimatorEvaluationAnalyzer):
           w=self.plot_params[BARPLOT_SIZE_WIDTH_INCH],
           h=self.plot_params[BARPLOT_SIZE_HEIGHT_INCH])
       fig.savefig(plot_file)
+      plt.close(fig)
 
     # Generate plots for all estimator and scenario combinations.
     raw_df_long.groupby([SKETCH_ESTIMATOR_NAME, SCENARIO_NAME]).apply(
