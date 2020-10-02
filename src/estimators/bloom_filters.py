@@ -175,6 +175,33 @@ class GeometricBloomFilter(AnyDistributionBloomFilter):
         random_seed)
 
 
+class UniformCountingBloomFilter(any_sketch.AnySketch):
+  """Implement a Uniform Counting Bloom Filter."""
+
+  @classmethod
+  def get_sketch_factory(cls, length):
+
+    def f(random_seed):
+      return cls(length, random_seed)
+
+    return f
+
+  def __init__(self, length, random_seed=None):
+    """Creates a Uniform Counting BloomFilter.
+
+    Args:
+       length: The length of bit vector for the bloom filter
+       random_seed: An optional integer specifying the random seed for
+         generating the random seeds for hash functions.
+    """
+    super().__init__(
+        any_sketch.SketchConfig([
+            any_sketch.IndexSpecification(
+                any_sketch.UniformDistribution(length), "uniformcbf")
+        ], num_hashes=1, value_functions=[any_sketch.SumFunction()]),
+        random_seed)
+
+
 class LogarithmicBloomFilter(AnyDistributionBloomFilter):
   """Implement an Logarithmic Bloom Filter."""
 
