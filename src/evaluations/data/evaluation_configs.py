@@ -93,6 +93,8 @@ SKETCH_OPERATOR_BAYESIAN = 'bayesian'
 SKETCH_OPERATOR_LIST = [SKETCH_OPERATOR_EXPECTATION, SKETCH_OPERATOR_BAYESIAN]
 GEO_LENGTH_PROB_PRODUCT = 4
 
+GEO_BLOOM_FILTER_CONFIG = [(10000, .0012)]
+
 # The length of the bloom filters.
 BLOOM_FILTERS_LENGTH_LIST = np.array([5_000_000], dtype=np.int64)
 VOC_LENGTH_LIST = np.array([1024, 4096], dtype=np.int64)
@@ -1221,6 +1223,66 @@ def _stratiefied_sketch_vector_of_counts(max_frequency, clip, length,
   )
 
 
+def _stratiefied_sketch_geo_adbf(
+    max_frequency, length, probability, sketch_epsilon,
+    epsilon_split=STRATIFIED_EXP_ADBF_EPSILON_SPLIT):
+  """Construct configs of StratifiedSketch based on geometric ADBF.
+
+  Args:
+    max_frequency: an integer indicating the maximum frequency to estimate.
+    length: the length of geometric ADBF.
+    sketch_epsilon: the DP epsilon for noising the geometric ADBF sketch.
+    epsilon_split : Ratio of privacy budget to spend to noise 1+ sketch. When
+      epsilon_split=0 the 1+ sketch is created from the underlying exact set
+      directly. epsilon_split should be smaller than 1.
+
+  Returns:
+    A SketchEstimatorConfig for stratified sketch with geometric ADBF as its
+    base sketch.
+  """
+  if sketch_epsilon:
+    sketch_epsilon_float = sketch_epsilon
+    # The following denoiser is used by the cardinality estimator,
+    # so the epsilon should be that after privacy budget (epsilon) splitting.
+    sketch_denoiser = bloom_filters.SurrealDenoiser(
+        epsilon=sketch_epsilon * epsilon_split)
+  else:
+    sketch_epsilon_float = float('inf')
+    sketch_denoiser = None
+
+  sketch_operator = (
+      bloom_filter_sketch_operators.ExpectationApproximationSketchOperator(
+          estimation_method=bloom_filters.FirstMomentEstimator.METHOD_GEO))
+
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='stratified_sketch_geo_adbf',
+          sketch_config=f'{length}_{probability}',
+          estimator_name='first_moment_estimator_geo_expectation',
+          sketch_epsilon=sketch_epsilon,
+          max_frequency=str(max_frequency)),
+      sketch_factory=stratified_sketch.StratifiedSketch.get_sketch_factory(
+          max_freq=max_frequency,
+          cardinality_sketch_factory=(
+              bloom_filters.GeometricBloomFilter.get_sketch_factory(
+                  length=length, probability=probability)
+          ),
+          noiser_class=bloom_filters.BlipNoiser,
+          epsilon=sketch_epsilon_float,
+          epsilon_split=epsilon_split,
+          union=sketch_operator.union,
+      ),
+      estimator=stratified_sketch.SequentialEstimator(
+          sketch_operator=sketch_operator,
+          cardinality_estimator=bloom_filters.FirstMomentEstimator(
+              method=bloom_filters.FirstMomentEstimator.METHOD_GEO,
+              denoiser=sketch_denoiser,
+          ),
+      ),
+      max_frequency=max_frequency,
+  )
+
+
 def _stratiefied_sketch_exponential_adbf(
     max_frequency, length, sketch_epsilon, global_epsilon,
     sketch_operator_type,
@@ -1379,6 +1441,12 @@ def _generate_frequency_estimator_configs(max_frequency):
                                              sketch_operator_type)
     )
 
+  for sketch_epsilon, sketch_config in itertools.product(
+      SKETCH_EPSILON_VALUES, GEO_BLOOM_FILTER_CONFIG):
+    configs.append(
+        _stratiefied_sketch_geo_adbf(max_frequency, sketch_config[0],
+                                     sketch_config[1], sketch_epsilon)
+    )
   # Exact set.
   configs.append(_exact_multi_set(max_frequency))
 

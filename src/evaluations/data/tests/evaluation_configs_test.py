@@ -474,5 +474,16 @@ class EvaluationConfigTest(parameterized.TestCase):
           max_frequency=3, length=100, sketch_epsilon=1, global_epsilon=1,
           sketch_operator_type='other_type')
 
+  def test_stratiefied_sketch_geo_adbf(self):
+    conf = evaluation_configs._stratiefied_sketch_geo_adbf(
+        max_frequency=3, length=100, probability=0.02, sketch_epsilon=1)
+    self.assertEqual(conf.max_frequency, 3)
+    self.assertEqual(
+        conf.name,
+        'stratified_sketch_geo_adbf-100_0.02'
+        '-first_moment_estimator_geo_expectation'
+        '-local_dp_1.0000-no_global_dp-3')
+
+
 if __name__ == '__main__':
   absltest.main()
