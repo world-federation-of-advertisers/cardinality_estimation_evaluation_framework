@@ -280,10 +280,12 @@ class PairwiseEstimator(EstimatorBase):
     merged.stats = this.stats + that.stats - share
     return merged
 
+  def _get_std_of_sketch_sum(self, sketch):
+    return  np.sqrt(sketch.num_buckets * 2) / self.epsilon
+
   def clip_empty_vector_of_count(self, sketch):
     assert isinstance(sketch, VectorOfCounts), 'Not a VectorOfCounts.'
-    z_score = np.sum(sketch.stats) / np.sqrt(sketch.num_buckets * 2) / (
-        self.epsilon)
+    z_score = np.sum(sketch.stats) / self._get_std_of_sketch_sum(sketch)
     if z_score < self.clip_threshold:
       sketch.stats = np.zeros(sketch.num_buckets)
     return sketch
