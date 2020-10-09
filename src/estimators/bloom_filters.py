@@ -334,13 +334,11 @@ class FirstMomentEstimator(EstimatorBase):
     """
     EstimatorBase.__init__(self)
 
-    # The METHOD_ANY and METHOD_GEO estimators both require bucket
+    # The METHOD_ANY requires bucket
     # weights. However, the global noise scenario is supposed to
     # simulate an MPC protocol, which cannot know any bucket
     # weights as this would undo the effects of shuffling.
-    if ((method == FirstMomentEstimator.METHOD_ANY
-         or method == FirstMomentEstimator.METHOD_GEO)
-        and noiser is not None):
+    if (method == FirstMomentEstimator.METHOD_ANY and noiser is not None):
       raise ValueError(
           "METHOD_ANY and METHOD_GEO are both incompatible with a noiser.")
 
@@ -445,15 +443,16 @@ class FirstMomentEstimator(EstimatorBase):
     return invert_monotonic(first_moment, lower_bound)(0)
 
   @classmethod
-  def _estimate_cardinality_geo(cls, sketch, weights):
+  def _estimate_cardinality_geo(cls, sketch, noiser):
     """Estimate cardinality of a Bloom Filter with geometric distribution."""
     register_probs = sketch.config.index_specs[0].distribution.register_probs
-    n = np.mean(sketch.sketch)
+    n_sum = noiser(sum(sketch.sketch))
+    n = n_sum / len(sketch.sketch)
 
     if(n >= 1):
       return 0
     def first_moment(u):
-      return np.sum(1 - np.power(1 - register_probs, u) - sketch.sketch)
+      return np.sum(1 - np.power(1 - register_probs, u)) - n_sum
 
     lower_bound = (np.log(1 - n) / np.log(1 - np.mean(register_probs)))
     # In case lower bound is already larger due to noise, we just return
@@ -478,7 +477,7 @@ class FirstMomentEstimator(EstimatorBase):
       return [FirstMomentEstimator._estimate_cardinality_uniform(union, self._noiser)]
     if self._method == FirstMomentEstimator.METHOD_GEO:
       return [FirstMomentEstimator._estimate_cardinality_geo(
-        union, self._weights)]
+        union, self._noiser)]
     return [FirstMomentEstimator._estimate_cardinality_any(
         union, self._weights)]
 

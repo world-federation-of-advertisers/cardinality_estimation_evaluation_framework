@@ -295,6 +295,7 @@ class FirstMomentEstimatorTest(parameterized.TestCase):
       (UniformBloomFilter, {}, 'uniform', 1.151),
       (LogarithmicBloomFilter, {}, 'log', 1.333),
       (ExponentialBloomFilter, {'decay_rate': 1}, 'exp', 1.1645),
+      (GeometricBloomFilter, {'probability': 0.5}, 'geo', 1.0005),
   )
   def test_estimate_cardinality_with_global_noise(
       self, bf, bf_kwargs, method, truth):
