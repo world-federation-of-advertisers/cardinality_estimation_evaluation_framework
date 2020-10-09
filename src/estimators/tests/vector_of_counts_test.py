@@ -157,6 +157,18 @@ class PairwiseEstimatorTest(parameterized.TestCase):
     self.assertEqual(res, expected)
 
   @parameterized.parameters(
+      (1, 3, [0, 0]),
+      (1, 1.5, [2, 2]),
+      (0.5, 1.5, [0, 0]))
+  def test_clip_empty_vector_of_count(self, epsilon, clip_threshold, expected):
+    sketch = VectorOfCounts(num_buckets=2, random_seed=0)
+    sketch.stats = np.array([2, 2])
+    pairwise_estimator = PairwiseEstimator(
+        clip=True, epsilon=epsilon, clip_threshold=clip_threshold)
+    res = pairwise_estimator.clip_empty_vector_of_count(sketch)
+    np.testing.assert_array_equal(res.stats, expected)
+
+  @parameterized.parameters(
       (1, 0, 6),
       (1, 4, 6.325),
       (0.5, 0, 18),
@@ -188,7 +200,6 @@ class PairwiseEstimatorTest(parameterized.TestCase):
         intersection_cardinality, value_to_compare_with,
         this_sketch, that_sketch)
     self.assertAlmostEqual(res, expected, 2)
-
 
 
 class SequentialEstimatorTest(absltest.TestCase):
