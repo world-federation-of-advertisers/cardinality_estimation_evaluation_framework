@@ -192,7 +192,7 @@ class ExpectationApproximationSketchOperator(SketchOperator):
     x = max(np.sum(register_probs * this.sketch * that.sketch),
             self.threshold, np.min(register_probs))
     y = SketchOperator._predict_registers(
-        register_probs=register_probs / x,
+        register_probs=np.minimum(1, register_probs / x),
         cardinality=self.intersection_cardinality)
     result.sketch = this.sketch * that.sketch * y
     return result
@@ -220,7 +220,7 @@ class ExpectationApproximationSketchOperator(SketchOperator):
          - np.dot(this.sketch, 1 - that.sketch))
     s = max(0, min(self.this_cardinality - self.intersection_cardinality, s))
     y = SketchOperator._predict_registers(
-        register_probs=register_probs / x, cardinality=s)
+        register_probs=np.minimum(1, register_probs / x), cardinality=s)
     result.sketch = (this.sketch * (1 - that.sketch)
                      + this.sketch * that.sketch * y)
     return result

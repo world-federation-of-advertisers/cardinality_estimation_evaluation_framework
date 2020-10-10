@@ -90,6 +90,7 @@ EXP_ADBF_DECAY_RATE = 10
 STRATIFIED_EXP_ADBF_EPSILON_SPLIT = 0.5
 SKETCH_OPERATOR_EXPECTATION = 'expectation'
 SKETCH_OPERATOR_BAYESIAN = 'bayesian'
+GEO_LENGTH_PROB_PRODUCT = 4
 
 # The length of the bloom filters.
 BLOOM_FILTERS_LENGTH_LIST = np.array([5_000_000], dtype=np.int64)
@@ -939,7 +940,9 @@ def _log_bloom_filter_first_moment_log(length, sketch_epsilon=None,
   )
 
 
-def _geo_bloom_filter_first_moment_geo(sketch_epsilon=None):
+def _geo_bloom_filter_first_moment_geo(length,
+                                       sketch_epsilon=None,
+                                       estimate_epsilon=None):
   """Generate a SketchEstimatorConfig for Geometric Bloom Filters.
 
   The length of the Geometric Bloom Filters sketch will be set to 10**4 and the
@@ -958,16 +961,25 @@ def _geo_bloom_filter_first_moment_geo(sketch_epsilon=None):
   else:
     sketch_noiser, sketch_denoiser = None, None
 
+  if estimate_epsilon:
+    estimate_noiser = estimator_noisers.GeometricEstimateNoiser(
+        epsilon=estimate_epsilon)
+  else:
+    estimate_noiser = None
+
+  probability = GEO_LENGTH_PROB_PRODUCT / length
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='geo_bloom_filter',
-          sketch_config='1e4_0.0012',
+          sketch_config=f'{length}_{probability:.6f}',
           estimator_name='first_moment_geo',
-          sketch_epsilon=sketch_epsilon),
+          sketch_epsilon=sketch_epsilon,
+          estimate_epsilon=estimate_epsilon),
       sketch_factory=bloom_filters.GeometricBloomFilter.get_sketch_factory(
-          10000, 0.0012),
+          length, probability),
       estimator=bloom_filters.FirstMomentEstimator(
           method=bloom_filters.FirstMomentEstimator.METHOD_GEO,
+          noiser=estimate_noiser,
           denoiser=sketch_denoiser),
       sketch_noiser=sketch_noiser
   )
@@ -1128,6 +1140,7 @@ def _generate_cardinality_estimator_configs():
   adbf_config_constructors = [
       _log_bloom_filter_first_moment_log,
       _exp_bloom_filter_first_moment_exp,
+      _geo_bloom_filter_first_moment_geo,
   ]
   for config_constructor in adbf_config_constructors:
     for length in ADBF_LENGTH_LIST:
@@ -1135,10 +1148,6 @@ def _generate_cardinality_estimator_configs():
         for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
           configs.append(config_constructor(length, sketch_epsilon,
                                             estimate_epsilon))
-
-  # Construct configs for estimators that currently doesn't support global DP.
-  for sketch_epsilon in SKETCH_EPSILON_VALUES:
-    configs.append(_geo_bloom_filter_first_moment_geo(sketch_epsilon))
 
   # Configs of Vector-of-Counts.
   for sketch_epsilon in SKETCH_EPSILON_VALUES:
@@ -1358,7 +1367,7 @@ def _generate_frequency_estimator_configs(max_frequency):
                                              epsilon)
     )
 
-  # Stratified Sketch based on Vector-of-Counts.
+  # Stratified Sketch based on exponential ADBF.
   for sketch_epsilon, global_epsilon, length, sketch_operator_type in (
       itertools.product(
           SKETCH_EPSILON_VALUES, ESTIMATE_EPSILON_VALUES, ADBF_LENGTH_LIST)):

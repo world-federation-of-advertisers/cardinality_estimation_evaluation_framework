@@ -32,6 +32,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters im
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import LogarithmicBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import SurrealDenoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import UniformBloomFilter
+from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import UniformCountingBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import UnionEstimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import GeometricEstimateNoiser
 
@@ -153,6 +154,23 @@ class GeometricBloomFilterTest(absltest.TestCase):
     b2 = GeometricBloomFilter(length=15, probability=0.08, random_seed=2)
     self.assertTrue(b1.assert_compatible(b2))
     self.assertTrue(b2.assert_compatible(b1))
+
+
+class UniformCountingBloomFilterTest(absltest.TestCase):
+  def test_insert(self):
+    cbf = UniformCountingBloomFilter(length=2, random_seed=1)
+    self.assertEqual(np.sum(cbf.sketch), 0)
+    cbf.add(1)
+    cbf.add(1)
+    self.assertEqual(np.sum(cbf.sketch), 2)
+
+  def test_factory(self):
+    factory = UniformCountingBloomFilter.get_sketch_factory(length=4)
+    cbf = factory(2)
+    self.assertEqual(np.sum(cbf.sketch), 0)
+    cbf.add(1)
+    cbf.add(1)
+    self.assertEqual(np.sum(cbf.sketch), 2)
 
 
 class UnionEstimatorTest(absltest.TestCase):
@@ -277,6 +295,7 @@ class FirstMomentEstimatorTest(parameterized.TestCase):
       (UniformBloomFilter, {}, 'uniform', 1.151),
       (LogarithmicBloomFilter, {}, 'log', 1.333),
       (ExponentialBloomFilter, {'decay_rate': 1}, 'exp', 1.1645),
+      (GeometricBloomFilter, {'probability': 0.5}, 'geo', 1.0005),
   )
   def test_estimate_cardinality_with_global_noise(
       self, bf, bf_kwargs, method, truth):

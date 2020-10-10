@@ -35,18 +35,21 @@ class ReportGeneratorTest(parameterized.TestCase):
   def setUp(self):
     super(ReportGeneratorTest, self).setUp()
     exact_set_lossless = configs.SketchEstimatorConfig(
-        name='exact_set-infty-lossless-infty-infty',
+        name=evaluation_configs.construct_sketch_estimator_config_name(
+            sketch_name='exact_set',
+            sketch_config='set',
+            estimator_name='lossless'),
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
-        estimator=exact_set.LosslessEstimator(),
-        sketch_noiser=None,
-        estimate_noiser=None)
+        estimator=exact_set.LosslessEstimator())
     exact_set_less_one = configs.SketchEstimatorConfig(
-        name='exact_set-infty-less_one-infty-infty',
+        name=evaluation_configs.construct_sketch_estimator_config_name(
+            sketch_name='exact_set',
+            sketch_config='set',
+            estimator_name='less_one'),
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LessOneEstimator(),
         sketch_noiser=exact_set.AddRandomElementsNoiser(
-            num_random_elements=0, random_state=np.random.RandomState()),
-        estimate_noiser=None)
+            num_random_elements=0, random_state=np.random.RandomState()))
     self.sketch_estimator_config_list = (exact_set_lossless, exact_set_less_one)
 
     self.evaluation_config = configs.EvaluationConfig(
@@ -88,19 +91,24 @@ class ReportGeneratorTest(parameterized.TestCase):
     self.run_evaluation_and_simulation = _run_evaluation_and_simulation
 
     exact_set_lossless_freq3 = configs.SketchEstimatorConfig(
-        name='exact_set-infty-lossless-infty-infty',
+        name=evaluation_configs.construct_sketch_estimator_config_name(
+            sketch_name='exact_set',
+            sketch_config='set',
+            estimator_name='lossless',
+            max_frequency=3),
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LosslessEstimator(),
-        sketch_noiser=None,
-        estimate_noiser=None,
         max_frequency=3)
     exact_set_less_one_freq3 = configs.SketchEstimatorConfig(
-        name='exact_set-infty-less_one-infty-infty',
+        name=evaluation_configs.construct_sketch_estimator_config_name(
+            sketch_name='exact_set',
+            sketch_config='set',
+            estimator_name='less_one',
+            max_frequency=3),
         sketch_factory=exact_set.ExactMultiSet.get_sketch_factory(),
         estimator=exact_set.LessOneEstimator(),
         sketch_noiser=exact_set.AddRandomElementsNoiser(
             num_random_elements=0, random_state=np.random.RandomState()),
-        estimate_noiser=None,
         max_frequency=3)
     self.frequency_sketch_estimator_config_list = (exact_set_lossless_freq3,
                                                    exact_set_less_one_freq3)
@@ -191,16 +199,25 @@ class ReportGeneratorTest(parameterized.TestCase):
       (report_generator.ANALYSIS_TYPE_FREQUENCY,),
   )
   def test_generate_plots_html(self, analysis_type):
-    out_dir = self.create_tempdir('test_generate_plots_html')
-    self.run_evaluation_and_simulation(out_dir.full_path)
+    out_dir = self.create_tempdir('test_generate_plots_html_' + analysis_type)
+    if analysis_type == report_generator.ANALYSIS_TYPE_CARDINALITY:
+      self.run_evaluation_and_simulation(out_dir.full_path)
+      sketch_estimator_list = [
+          i.name for i in self.sketch_estimator_config_list]
+      run_name = self.evaluation_run_name
+    else:
+      self.run_frequency_evaluation_and_simulation(out_dir.full_path)
+      sketch_estimator_list = [
+          i.name for i in self.frequency_sketch_estimator_config_list]
+      run_name = self.frequency_evaluation_run_name
+
     analysis_results = analyzer.get_analysis_results(
         analysis_out_dir=out_dir.full_path,
-        evaluation_run_name=self.evaluation_run_name,
+        evaluation_run_name=run_name,
         evaluation_name=self.evaluation_config.name)
     # Generate plots html.
     description_to_file_dir = analysis_results[
         report_generator.KEY_DESCRIPTION_TO_FILE_DIR]
-    sketch_estimator_list = [i.name for i in self.sketch_estimator_config_list]
     scenario_list = [
         conf.name for conf in self.evaluation_config.scenario_config_list]
     plot_html = report_generator.ReportGenerator.generate_plots_html(
@@ -216,6 +233,8 @@ class ReportGeneratorTest(parameterized.TestCase):
       tab = pd.read_html(h.group(0), header=[0, 1])[0]
       self.assertGreater(tab.shape[0], 0,
                          'The html table is empty table.')
+      self.assertIn(f'<img src="{run_name}/test_evaluation', h.group(0),
+                    'Table link is missing.')
 
   def test_generate_and_save_html_cardinality_report(self):
     analysis_out_dir = self.create_tempdir('analysis_dir')

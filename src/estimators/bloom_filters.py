@@ -175,6 +175,33 @@ class GeometricBloomFilter(AnyDistributionBloomFilter):
         random_seed)
 
 
+class UniformCountingBloomFilter(any_sketch.AnySketch):
+  """Implement a Uniform Counting Bloom Filter."""
+
+  @classmethod
+  def get_sketch_factory(cls, length):
+
+    def f(random_seed):
+      return cls(length, random_seed)
+
+    return f
+
+  def __init__(self, length, random_seed=None):
+    """Creates a Uniform Counting BloomFilter.
+
+    Args:
+       length: The length of bit vector for the bloom filter
+       random_seed: An optional integer specifying the random seed for
+         generating the random seeds for hash functions.
+    """
+    super().__init__(
+        any_sketch.SketchConfig([
+            any_sketch.IndexSpecification(
+                any_sketch.UniformDistribution(length), "uniformcbf")
+        ], num_hashes=1, value_functions=[any_sketch.SumFunction()]),
+        random_seed)
+
+
 class LogarithmicBloomFilter(AnyDistributionBloomFilter):
   """Implement an Logarithmic Bloom Filter."""
 
@@ -307,13 +334,11 @@ class FirstMomentEstimator(EstimatorBase):
     """
     EstimatorBase.__init__(self)
 
-    # The METHOD_ANY and METHOD_GEO estimators both require bucket
+    # The METHOD_ANY requires bucket
     # weights. However, the global noise scenario is supposed to
     # simulate an MPC protocol, which cannot know any bucket
     # weights as this would undo the effects of shuffling.
-    if ((method == FirstMomentEstimator.METHOD_ANY
-         or method == FirstMomentEstimator.METHOD_GEO)
-        and noiser is not None):
+    if (method == FirstMomentEstimator.METHOD_ANY and noiser is not None):
       raise ValueError(
           "METHOD_ANY and METHOD_GEO are both incompatible with a noiser.")
 
@@ -418,15 +443,16 @@ class FirstMomentEstimator(EstimatorBase):
     return invert_monotonic(first_moment, lower_bound)(0)
 
   @classmethod
-  def _estimate_cardinality_geo(cls, sketch, weights):
+  def _estimate_cardinality_geo(cls, sketch, noiser):
     """Estimate cardinality of a Bloom Filter with geometric distribution."""
     register_probs = sketch.config.index_specs[0].distribution.register_probs
-    n = np.mean(sketch.sketch)
+    n_sum = noiser(sum(sketch.sketch))
+    n = n_sum / len(sketch.sketch)
 
     if(n >= 1):
       return 0
     def first_moment(u):
-      return np.sum(1 - np.power(1 - register_probs, u) - sketch.sketch)
+      return np.sum(1 - np.power(1 - register_probs, u)) - n_sum
 
     lower_bound = (np.log(1 - n) / np.log(1 - np.mean(register_probs)))
     # In case lower bound is already larger due to noise, we just return
@@ -451,7 +477,7 @@ class FirstMomentEstimator(EstimatorBase):
       return [FirstMomentEstimator._estimate_cardinality_uniform(union, self._noiser)]
     if self._method == FirstMomentEstimator.METHOD_GEO:
       return [FirstMomentEstimator._estimate_cardinality_geo(
-        union, self._weights)]
+        union, self._noiser)]
     return [FirstMomentEstimator._estimate_cardinality_any(
         union, self._weights)]
 

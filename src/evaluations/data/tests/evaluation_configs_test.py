@@ -163,6 +163,24 @@ class EvaluationConfigTest(parameterized.TestCase):
 
     self.assertEqual(result, expected)
 
+  @parameterized.parameters(
+      (100000, None, None, "geo_bloom_filter-100000_0.000040"
+      "-first_moment_geo-no_local_dp-no_global_dp"),
+      (250000, None, None, "geo_bloom_filter-250000_0.000016"
+      "-first_moment_geo-no_local_dp-no_global_dp"),
+      (250000, math.log(3), math.log(3), "geo_bloom_filter-"
+      "250000_0.000016-first_moment_geo-no_local_dp-no_global_dp"),
+      (250000, math.log(3), None, "geo_bloom_filter-"
+      "250000_0.000016-first_moment_geo-no_local_dp-no_global_dp"),
+      (250000, None, math.log(3), "geo_bloom_filter-250000_0.000016"
+      "-first_moment_geo-no_local_dp-no_global_dp"),
+  )
+  def test_geo_bloom_filter_first_moment_geo(self,
+      length, sketch_epsilon, estimate_epsilon, expected):
+    conf = evaluation_configs._geo_bloom_filter_first_moment_geo(
+        length, None, None)
+    self.assertEqual(conf.name, expected)
+
   def test_generate_configs_scenario_4b_set_sizes_correct(self):
     conf_list = evaluation_configs._generate_configs_scenario_4b(
         universe_size=10,
@@ -449,8 +467,6 @@ class EvaluationConfigTest(parameterized.TestCase):
       conf = evaluation_configs._stratiefied_sketch_exponential_adbf(
           max_frequency=3, length=100, sketch_epsilon=1, global_epsilon=1,
           sketch_operator='expectation')
-      
-
 
 if __name__ == '__main__':
   absltest.main()
