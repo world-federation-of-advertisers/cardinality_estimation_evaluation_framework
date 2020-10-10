@@ -434,13 +434,22 @@ class EvaluationConfigTest(parameterized.TestCase):
 
   def test_stratiefied_sketch_exp_adbf(self):
     conf = evaluation_configs._stratiefied_sketch_exponential_adbf(
-        max_frequency=3, length=100, sketch_epsilon=1, global_epsilon=1)
+        max_frequency=3, length=100, sketch_epsilon=1, global_epsilon=1,
+        sketch_operator='expectation')
     self.assertEqual(conf.max_frequency, 3)
     self.assertEqual(
         conf.name,
         'stratified_sketch_exp_adbf-100_10'
         '-first_moment_estimator_exp_expectation'
         '-local_dp_1.0000-global_dp_1.0000-3')
+
+  def test_stratiefied_sketch_exp_adbf_sketch_operator(self):
+    for sketch_operator in (evaluation_configs.SKETCH_OPERATOR_EXPECTATION,
+                            evaluation_configs.SKETCH_OPERATOR_BAYESIAN):
+      conf = evaluation_configs._stratiefied_sketch_exponential_adbf(
+          max_frequency=3, length=100, sketch_epsilon=1, global_epsilon=1,
+          sketch_operator='expectation')
+      
 
 
 if __name__ == '__main__':
