@@ -90,6 +90,7 @@ EXP_ADBF_DECAY_RATE = 10
 STRATIFIED_EXP_ADBF_EPSILON_SPLIT = 0.5
 SKETCH_OPERATOR_EXPECTATION = 'expectation'
 SKETCH_OPERATOR_BAYESIAN = 'bayesian'
+SKETCH_OPERATOR_LIST = [SKETCH_OPERATOR_EXPECTATION, SKETCH_OPERATOR_BAYESIAN]
 GEO_LENGTH_PROB_PRODUCT = 4
 
 # The length of the bloom filters.
@@ -1222,7 +1223,7 @@ def _stratiefied_sketch_vector_of_counts(max_frequency, clip, length,
 
 def _stratiefied_sketch_exponential_adbf(
     max_frequency, length, sketch_epsilon, global_epsilon,
-    sketch_operator,
+    sketch_operator_type,
     epsilon_split=STRATIFIED_EXP_ADBF_EPSILON_SPLIT):
   """Construct configs of StratifiedSketch based on Exponential ADBF.
 
@@ -1231,7 +1232,7 @@ def _stratiefied_sketch_exponential_adbf(
     length: the length of Exponential ADBF.
     sketch_epsilon: the DP epsilon for noising the Exponential ADBF sketch.
     global_epsilon: the global DP epsilon parameter.
-    sketch_operator: one of 'bayesian' and 'expectation'.
+    sketch_operator_type: one of 'bayesian' and 'expectation'.
     epsilon_split : Ratio of privacy budget to spend to noise 1+ sketch. When
       epsilon_split=0 the 1+ sketch is created from the underlying exact set
       directly. epsilon_split should be smaller than 1.
@@ -1262,11 +1263,11 @@ def _stratiefied_sketch_exponential_adbf(
   else:
     estimate_noiser = None
 
-  if sketch_operator == SKETCH_OPERATOR_EXPECTATION:
+  if sketch_operator_type == SKETCH_OPERATOR_EXPECTATION:
     sketch_operator = (
         bloom_filter_sketch_operators.ExpectationApproximationSketchOperator(
             estimation_method=bloom_filters.FirstMomentEstimator.METHOD_EXP))
-  elif sketch_operator == SKETCH_OPERATOR_BAYESIAN:
+  elif sketch_operator_type == SKETCH_OPERATOR_BAYESIAN:
     sketch_operator = (
         bloom_filter_sketch_operators.BayesianApproximationSketchOperator(
             estimation_method=bloom_filters.FirstMomentEstimator.METHOD_EXP))
@@ -1279,7 +1280,7 @@ def _stratiefied_sketch_exponential_adbf(
       name=construct_sketch_estimator_config_name(
           sketch_name='stratified_sketch_exp_adbf',
           sketch_config=f'{length}_{EXP_ADBF_DECAY_RATE}',
-          estimator_name=f'first_moment_estimator_exp_{sketch_operator}',
+          estimator_name=f'first_moment_estimator_exp_{sketch_operator_type}',
           sketch_epsilon=sketch_epsilon,
           estimate_epsilon=global_epsilon,
           max_frequency=str(max_frequency)),
@@ -1370,7 +1371,8 @@ def _generate_frequency_estimator_configs(max_frequency):
   # Stratified Sketch based on exponential ADBF.
   for sketch_epsilon, global_epsilon, length, sketch_operator_type in (
       itertools.product(
-          SKETCH_EPSILON_VALUES, ESTIMATE_EPSILON_VALUES, ADBF_LENGTH_LIST)):
+          SKETCH_EPSILON_VALUES, ESTIMATE_EPSILON_VALUES, ADBF_LENGTH_LIST,
+          SKETCH_OPERATOR_LIST)):
     configs.append(
         _stratiefied_sketch_exponential_adbf(max_frequency, length,
                                              sketch_epsilon, global_epsilon,
