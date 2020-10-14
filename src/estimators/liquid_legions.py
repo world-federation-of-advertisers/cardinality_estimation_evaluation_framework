@@ -109,7 +109,7 @@ class LiquidLegions(base.SketchBase):
         a = self.a
         z = 1 - (-special.expi(- a * t / (numpy.exp(a) - 1))
                 +special.expi(-a * numpy.exp(a) * t / (numpy.exp(a) - 1))) / a
-        self.memoized_cardinality[cache_key] = r
+        self.memoized_cardinality[cache_key] = z
     return self.memoized_cardinality[cache_key]
 
   def add_dp_noise(self, p):
