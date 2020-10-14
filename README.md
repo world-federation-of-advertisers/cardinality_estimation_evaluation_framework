@@ -35,7 +35,9 @@ After these steps, the code and its dependencies will be installed as Python pac
 To start with and get a sense for how this code all works together, check out:
 examples/basic_comparison.py
 
-Which will run the same experiments across multiple different estimation methods
+Which will run the same experiments across multiple different estimation methods.
+
+See [this example](examples/notebooks/install_framework_on_colab.ipynb) for how to install the framework on Google CoLab.
 
 ## Contributing
 
