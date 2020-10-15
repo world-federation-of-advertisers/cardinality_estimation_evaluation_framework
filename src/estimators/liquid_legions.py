@@ -105,10 +105,10 @@ class LiquidLegions(base.SketchBase):
     if cache_key not in self.memoized_cardinality:
       a = self.a
       z = 1 - (-special.expi(- a * t / (numpy.exp(a) - 1))
-              +special.expi(-a * numpy.exp(a) * t / (numpy.exp(a) - 1))) / a
+               +special.expi(-a * numpy.exp(a) * t / (numpy.exp(a) - 1))) / a
       r = numpy.where(t == 0, 0, z)
       self.memoized_cardinality[cache_key] = r
-      return self.memoized_cardinality[cache_key]
+    return self.memoized_cardinality[cache_key]
 
   def add_dp_noise(self, p):
     """Adding noise via flipping each bit with probability p."""
