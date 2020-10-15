@@ -37,7 +37,7 @@ examples/basic_comparison.py
 
 Which will run the same experiments across multiple different estimation methods.
 
-See [this example](examples/notebooks/install_framework_on_colab.ipynb) for how to install the framework on Google CoLab.
+See [this example](examples/notebooks/install_on_google_colab.ipynb) for how to install the framework on Google CoLab.
 
 ## Contributing
 
