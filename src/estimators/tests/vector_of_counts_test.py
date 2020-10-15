@@ -15,6 +15,7 @@
 """Tests for wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts."""
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.estimators.vector_of_counts import IdentityNoiser
@@ -67,7 +68,7 @@ class NoiserTest(absltest.TestCase):
       self.assertNotEqual(o, n)
 
 
-class PairwiseEstimatorTest(absltest.TestCase):
+class PairwiseEstimatorTest(parameterized.TestCase):
 
   def test_assert_compatible_not_vector_of_count(self):
     sketch = VectorOfCounts(num_buckets=4, random_seed=2)
@@ -144,6 +145,61 @@ class PairwiseEstimatorTest(absltest.TestCase):
     np.testing.assert_array_equal(
         x=merged.stats, y=this_sketch.stats,
         err_msg='Fail to detect the full-intersection case.')
+
+  @parameterized.parameters(
+      (1, 2),
+      (0.5, 4))
+  def test_get_std_of_sketch_sum(self, epsilon, expected):
+    sketch = VectorOfCounts(num_buckets=2, random_seed=0)
+    sketch.stats = np.array([2, 2])
+    pairwise_estimator = PairwiseEstimator(clip=True, epsilon=epsilon)
+    res = pairwise_estimator._get_std_of_sketch_sum(sketch)
+    self.assertEqual(res, expected)
+
+  @parameterized.parameters(
+      (1, 3, [0, 0]),
+      (1, 1.5, [2, 2]),
+      (0.5, 1.5, [0, 0]))
+  def test_clip_empty_vector_of_count(self, epsilon, clip_threshold, expected):
+    sketch = VectorOfCounts(num_buckets=2, random_seed=0)
+    sketch.stats = np.array([2, 2])
+    pairwise_estimator = PairwiseEstimator(
+        clip=True, epsilon=epsilon, clip_threshold=clip_threshold)
+    res = pairwise_estimator.clip_empty_vector_of_count(sketch)
+    np.testing.assert_array_equal(res.stats, expected)
+
+  @parameterized.parameters(
+      (1, 0, 6),
+      (1, 4, 6.325),
+      (0.5, 0, 18),
+      (0.5, 4, 18.111))
+  def test_get_std_of_intersection(
+      self, epsilon, intersection_cardinality, expected):
+    this_sketch = VectorOfCounts(num_buckets=4, random_seed=0)
+    this_sketch.stats = np.array([2, 2, 0, 0])
+    that_sketch = VectorOfCounts(num_buckets=4, random_seed=0)
+    that_sketch.stats = np.array([2, 0, 2, 0])
+    pairwise_estimator = PairwiseEstimator(clip=True, epsilon=epsilon)
+    res = pairwise_estimator._get_std_of_intersection(
+        intersection_cardinality, this_sketch, that_sketch)
+    self.assertAlmostEqual(res, expected, 2)
+
+  @parameterized.parameters(
+      (1, 0, 0, 0),
+      (1, 0, 4, -0.632),
+      (0.5, 4, 0, 0.222),
+      (0.5, 4, 4, 0))
+  def test_evaluate_closeness_to_a_value(
+      self, epsilon, intersection_cardinality, value_to_compare_with, expected):
+    this_sketch = VectorOfCounts(num_buckets=4, random_seed=0)
+    this_sketch.stats = np.array([2, 2, 0, 0])
+    that_sketch = VectorOfCounts(num_buckets=4, random_seed=0)
+    that_sketch.stats = np.array([2, 0, 2, 0])
+    pairwise_estimator = PairwiseEstimator(clip=True, epsilon=epsilon)
+    res = pairwise_estimator.evaluate_closeness_to_a_value(
+        intersection_cardinality, value_to_compare_with,
+        this_sketch, that_sketch)
+    self.assertAlmostEqual(res, expected, 2)
 
 
 class SequentialEstimatorTest(absltest.TestCase):
