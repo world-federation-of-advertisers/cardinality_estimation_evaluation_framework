@@ -103,14 +103,11 @@ class LiquidLegions(base.SketchBase):
     """Expected number of legionaries activated for cardinality."""
     cache_key = (self.a, self.m, t)
     if cache_key not in self.memoized_cardinality:
-      if t == 0:
-        self.memoized_cardinality[cache_key] = 0
-      else:
-        a = self.a
-        z = 1 - (-special.expi(- a * t / (numpy.exp(a) - 1))
-                +special.expi(-a * numpy.exp(a) * t / (numpy.exp(a) - 1))) / a
-        r = numpy.where(t == 0, 0, z)
-        self.memoized_cardinality[cache_key] = r
+      a = self.a
+      z = 1 - (-special.expi(- a * t / (numpy.exp(a) - 1))
+              +special.expi(-a * numpy.exp(a) * t / (numpy.exp(a) - 1))) / a
+      r = numpy.where(t == 0, 0, z)
+      self.memoized_cardinality[cache_key] = r
       return self.memoized_cardinality[cache_key]
 
   def add_dp_noise(self, p):
