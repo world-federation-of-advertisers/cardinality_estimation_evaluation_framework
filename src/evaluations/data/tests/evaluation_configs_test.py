@@ -164,15 +164,15 @@ class EvaluationConfigTest(parameterized.TestCase):
     self.assertEqual(result, expected)
 
   @parameterized.parameters(
-      (100000, None, None, "geo_bloom_filter-100000_0.000040"
+      (100000, None, None, "geo_bloom_filter-100000_0.000020"
       "-first_moment_geo-no_local_dp-no_global_dp"),
-      (250000, None, None, "geo_bloom_filter-250000_0.000016"
+      (250000, None, None, "geo_bloom_filter-250000_0.000008"
       "-first_moment_geo-no_local_dp-no_global_dp"),
       (250000, math.log(3), math.log(3), "geo_bloom_filter-"
-      "250000_0.000016-first_moment_geo-no_local_dp-no_global_dp"),
+      "250000_0.000008-first_moment_geo-no_local_dp-no_global_dp"),
       (250000, math.log(3), None, "geo_bloom_filter-"
-      "250000_0.000016-first_moment_geo-no_local_dp-no_global_dp"),
-      (250000, None, math.log(3), "geo_bloom_filter-250000_0.000016"
+      "250000_0.000008-first_moment_geo-no_local_dp-no_global_dp"),
+      (250000, None, math.log(3), "geo_bloom_filter-250000_0.000008"
       "-first_moment_geo-no_local_dp-no_global_dp"),
   )
   def test_geo_bloom_filter_first_moment_geo(self,
@@ -476,10 +476,10 @@ class EvaluationConfigTest(parameterized.TestCase):
 
   @parameterized.parameters(
       (3, 100, 1, 1, 'stratified_sketch_geo_adbf-'
-      '100_0.040000-first_moment_estimator_geo_expectation-local_dp_1.0000-'
+      '100_0.020000-first_moment_estimator_geo_expectation-local_dp_1.0000-'
       'global_dp_1.0000-3'),
       (3, 4000, 1, None, 'stratified_sketch_geo_adbf-'
-      '4000_0.001000-first_moment_estimator_geo_expectation-local_dp_1.0000-'
+      '4000_0.000500-first_moment_estimator_geo_expectation-local_dp_1.0000-'
       'no_global_dp-3'),
   )
   def test_stratiefied_sketch_geo_adbf(
