@@ -54,6 +54,7 @@ class SetGeneratorTest(parameterized.TestCase):
        {'order': 'reversed', 'correlated_sets': 'one', 'shared_prop': 0.2}),
       (set_generator.SequentiallyCorrelatedSetGenerator,
        {'order': 'random', 'correlated_sets': 'one', 'shared_prop': 0.2}),
+      (set_generator.DisjointSetGenerator, {}),
       (frequency_set_generator.HomogeneousMultiSetGenerator,
        {'universe_size': TEST_UNIVERSE_SIZE,
         'freq_rates': np.ones_like(TEST_SET_SIZE_LIST), 'freq_cap': 2}),
@@ -457,6 +458,14 @@ class SetGeneratorTest(parameterized.TestCase):
     self.assertLen(np.intersect1d(set_ids_list[0], set_ids_list[1]),
                    1,
                    f'{correlation_type}: Overlap set size not correct.')
+
+  def test_disjoint_set_generator(self):
+    gen = set_generator.DisjointSetGenerator(set_sizes=[1, 2])
+    set_ids_list = [set_ids for set_ids in gen]
+    expected = [np.array(ids) for ids in [[0], [1, 2]]]
+    self.assertEqual(len(set_ids_list), len(expected))
+    for x, y in zip(set_ids_list, expected):
+      self.assertTrue(all(x == y))
 
 
 if __name__ == '__main__':
