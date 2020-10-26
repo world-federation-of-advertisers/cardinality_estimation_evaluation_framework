@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import numpy as np
 
 
@@ -29,7 +30,7 @@ class LaplaceMechanism:
   """
 
   def __init__(self, f, delta_f, epsilon, random_state=None):
-    """Instantiates a LaplaceMechanism
+    """Instantiates a LaplaceMechanism.
 
     Args:
       f: A function which takes as input a database and which returns as output
@@ -99,10 +100,20 @@ class GeometricMechanism:
       random_state:  Optional instance of numpy.random.RandomState that is
         used to seed the random number generator.
     """
-    self._func_with_noise = LaplaceMechanism(f, delta_f, epsilon, random_state)
+    self._func = f
+    self._delta_f = delta_f
+    self._epsilon = epsilon
+    if random_state:
+      self._random_state = random_state
+    else:
+      self._random_state = np.random.RandomState()
 
   def __call__(self, x):
-    return np.round(self._func_with_noise(x))
+    z = self._func(x)
+    p_geometric = 1 - math.exp(-self._epsilon / self._delta_f)
+    x = self._random_state.geometric(size=z.shape, p=p_geometric)
+    y = self._random_state.geometric(size=z.shape, p=p_geometric)
+    return z + x - y
 
 
 def main(argv):
