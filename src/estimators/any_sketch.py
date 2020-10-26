@@ -327,6 +327,7 @@ class AnySketch(SketchBase):
     """
     assert len(config.value_functions) == 1, 'Now we support one ValueFunction.'
     self.config = config
+    self.random_seed = random_seed
     random_state = np.random.RandomState(random_seed)
     self.sketch = np.zeros(
         tuple(len(i.distribution) for i in config.index_specs),
