@@ -292,10 +292,10 @@ class FirstMomentEstimatorTest(parameterized.TestCase):
     self.assertAlmostEqual(truth, np.mean(results), delta=truth * 0.1)
 
   @parameterized.parameters(
-      (UniformBloomFilter, {}, 'uniform', 1.151),
-      (LogarithmicBloomFilter, {}, 'log', 1.333),
-      (ExponentialBloomFilter, {'decay_rate': 1}, 'exp', 1.1645),
-      (GeometricBloomFilter, {'probability': 0.5}, 'geo', 1.0005),
+      (UniformBloomFilter, {}, 'uniform', 2.773),
+      (LogarithmicBloomFilter, {}, 'log', 4.0),
+      (ExponentialBloomFilter, {'decay_rate': 1}, 'exp', 2.85),
+      (GeometricBloomFilter, {'probability': 0.5}, 'geo', 2.89),
   )
   def test_estimate_cardinality_with_global_noise(
       self, bf, bf_kwargs, method, truth):
