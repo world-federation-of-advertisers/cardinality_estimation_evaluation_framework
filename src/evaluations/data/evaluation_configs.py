@@ -23,6 +23,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
 from wfa_cardinality_estimation_evaluation_framework.estimators import hyper_log_log
 from wfa_cardinality_estimation_evaluation_framework.estimators import independent_set_estimator
 from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_legions
+from wfa_cardinality_estimation_evaluation_framework.estimators import meta_estimators
 from wfa_cardinality_estimation_evaluation_framework.estimators import same_key_aggregator
 from wfa_cardinality_estimation_evaluation_framework.estimators import stratified_sketch
 from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts
@@ -1125,6 +1126,29 @@ def _vector_of_counts_4096_sequential(sketch_epsilon=None,
       estimator=vector_of_counts.SequentialEstimator(),
       sketch_noiser=sketch_noiser,
       estimate_noiser=estimate_noiser
+  )
+
+
+def _meta_voc_for_exp_adbf(adbf_length, adbf_decay_rate, voc_length, estimate_epsilon):
+  """Construct Meta VoC sketch for the Exponential ADBF.
+
+  Args:
+    adbf_length: the length of the Exp-ADBF sketch.
+    adbf_decay_rate: the decay rate of the Exp-ADBF sketch.
+    voc_length: the length of the VoC sketch.
+    estimate_epsilon: the global DP epsilon value.
+  """
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='exp_bloom_filter',
+          sketch_config=f'{adbf_length}_{adbf_decay_rate}',
+          estimator_name=f'meta_voc_{voc_length}',
+          estimate_epsilon=estimate_epsilon),
+      sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
+          length=length, decay_rate=adbf_decay_rate),
+      estimator=meta_estimators.MetaVoCEstimator(
+          num_buckets=voc_length,
+          method=bloom_filters.FirstMomentEstimator.METHOD_EXP),
   )
 
 
