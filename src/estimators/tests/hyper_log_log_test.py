@@ -181,7 +181,7 @@ class HyperLogLogPlusPlusEstimatorTest(absltest.TestCase):
   def test_estimator_large(self):
     self.estimator_tester_helper(100_000)
 
-  def test_estimator_cardinality(self):
+  def test_estimator_cardinality_sparse_mode(self):
     estimator = HllCardinality()
     for truth in [0, 1, 1024]:
       hll = HyperLogLogPlusPlus(random_seed=89, length=1024)
@@ -189,6 +189,15 @@ class HyperLogLogPlusPlusEstimatorTest(absltest.TestCase):
         hll.add(i)
       estimated = estimator([hll])[0]
       self.assertEqual(estimated, truth)
+
+  def test_estimator_cardinality_dense_mode(self):
+    estimator = HllCardinality()
+    for truth in [1025, 2048]:
+      hll = HyperLogLogPlusPlus(random_seed=89, length=1024)
+      for i in range(truth):
+        hll.add(i)
+      estimated = estimator([hll])[0]
+      self.assertAlmostEqual(estimated, truth, delta=truth * 0.05)
 
 
 if __name__ == '__main__':
