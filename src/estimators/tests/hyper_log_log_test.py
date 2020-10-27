@@ -157,6 +157,65 @@ class HyperLogLogPlusPlusTest(absltest.TestCase):
   def test_insert_huge(self):
     self.insertion_test_helper(1_000_000)
 
+  def test_merge_sparse_with_sparse_to_sparse(self):
+    hll1 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    hll1.add(1)
+    hll2 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    hll2.add(1)
+    merged_hll = hll1.merge(hll2)
+    self.assertTrue(merged_hll.sparse_mode,
+                    'Merged sketch is not in sparse mode.')
+    self.assertTrue(all(hll1.buckets == merged_hll.buckets),
+                    'Merged sketch is not correct.')
+    self.assertSameElements(hll1.temp_set, set([1]), 'Temp set is not correct.')
+
+  def test_merge_sparse_with_sparse_to_dense(self):
+    hll1 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    hll2 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    for i in range(int(16 * 6 / 2)):
+      hll1.add(i)
+      hll2.add(i + 100)
+
+    merged_hll = hll1.merge(hll2)
+    self.assertTrue(merged_hll.sparse_mode,
+                    'Merged sketch should be in sparse mode.')
+
+    hll1.add(1000)
+    merged_hll = hll1.merge(hll2)
+    self.assertFalse(merged_hll.sparse_mode,
+                     'Merged sketch should not be in sparse mode.')
+
+  def test_merge_sparse_with_dense(self):
+    hll1 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    hll1.add(100)
+    hll2 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    for i in range(16 * 6 + 1):
+      hll2.add(i)
+
+    merged_hll = hll1.merge(hll2)
+    self.assertFalse(merged_hll.sparse_mode,
+                     'Merged sketch should not be in sparse mode.')
+    # Should change one bucket value given this random seed.
+    self.assertEqual(sum(hll2.buckets == merged_hll.buckets), 16 - 1,
+                     'Merged sketch is not correct.')
+    self.assertSameElements(merged_hll.temp_set, set(),
+                            'Temp set is not correct.')
+
+  def test_merge_dense_with_dense(self):
+    hll1 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    hll2 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    for i in range(16 * 6 + 1):
+      hll1.add(i)
+      hll2.add(i + 100)
+
+    merged_hll = hll1.merge(hll2)
+    self.assertFalse(merged_hll.sparse_mode,
+                     'Merged sketch should not be in sparse mode.')
+    self.assertGreater(sum(hll2.buckets == merged_hll.buckets), 0,
+                       'Merged sketch is not correct.')
+    self.assertSameElements(merged_hll.temp_set, set(),
+                            'Temp set is not correct.')
+
 
 class HyperLogLogPlusPlusEstimatorTest(absltest.TestCase):
   """Note this could be more comprehensive."""
