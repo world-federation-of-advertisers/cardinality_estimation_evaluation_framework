@@ -1129,15 +1129,26 @@ def _vector_of_counts_4096_sequential(sketch_epsilon=None,
   )
 
 
-def _meta_voc_for_exp_adbf(adbf_length, adbf_decay_rate, voc_length, estimate_epsilon):
-  """Construct Meta VoC sketch for the Exponential ADBF.
+def _meta_voc_for_exp_adbf(adbf_length, adbf_decay_rate, voc_length,
+                           estimate_epsilon=None):
+  """Construct Meta VoC estimator for the Exponential ADBF sketches.
 
   Args:
     adbf_length: the length of the Exp-ADBF sketch.
     adbf_decay_rate: the decay rate of the Exp-ADBF sketch.
     voc_length: the length of the VoC sketch.
-    estimate_epsilon: the global DP epsilon value.
+    estimate_epsilon: the global DP epsilon value. By default, set to None,
+      meaning that there won't be global noise used.
+
+  Returns:
+    A SketchEstimatorConfig for the Exp-ADBF using the Meta VoC estimator.
   """
+  if estimate_epsilon is None:
+    global_noiser = None
+  else:
+    global_noiser = estimator_noisers.LaplaceEstimateNoiser(
+        epsilon=estimate_epsilon)
+
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='exp_bloom_filter',
@@ -1145,10 +1156,13 @@ def _meta_voc_for_exp_adbf(adbf_length, adbf_decay_rate, voc_length, estimate_ep
           estimator_name=f'meta_voc_{voc_length}',
           estimate_epsilon=estimate_epsilon),
       sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
-          length=length, decay_rate=adbf_decay_rate),
+          length=adbf_length, decay_rate=adbf_decay_rate),
       estimator=meta_estimators.MetaVoCEstimator(
-          num_buckets=voc_length,
-          method=bloom_filters.FirstMomentEstimator.METHOD_EXP),
+          num_buckets=int(voc_length),
+          adbf_estimator=bloom_filters.FirstMomentEstimator(
+              method=bloom_filters.FirstMomentEstimator.METHOD_EXP,
+              noiser=global_noiser),
+          )
   )
 
 
@@ -1189,6 +1203,16 @@ def _generate_cardinality_estimator_configs():
   # Configs of hyper-log-log-plus.
   for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
     configs.append(_hll_plus(estimate_epsilon))
+
+  # Configs of Meta VoC.
+  for voc_length in VOC_LENGTH_LIST:
+    for adbf_length in ADBF_LENGTH_LIST:
+      for global_epsilon in ESTIMATE_EPSILON_VALUES:
+        configs.append(_meta_voc_for_exp_adbf(
+            adbf_length=adbf_length,
+            adbf_decay_rate=EXP_ADBF_DECAY_RATE,
+            voc_length=voc_length,
+            estimate_epsilon=global_epsilon))
 
   return tuple(configs)
 
