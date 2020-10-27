@@ -104,6 +104,7 @@ class HyperLogLogPlusPlusTest(absltest.TestCase):
 
     one_vector = np.ones(self.vector_length)
     hll.buckets = one_vector
+    hll.sparse_mode = False
     alpha_16 = 0.673
     hll_should_estimate = alpha_16 * self.vector_length**2 * 2 / self.vector_length
 
@@ -119,6 +120,7 @@ class HyperLogLogPlusPlusTest(absltest.TestCase):
 
     thirty_vector = 30 * np.ones(m)
     hll.buckets = thirty_vector
+    hll.sparse_mode = False
     alpha_m = 0.7213 / (1 + 1.079 / m)
     hll_should_estimate = alpha_m * m**2 * 2**30 / m
 
@@ -178,6 +180,15 @@ class HyperLogLogPlusPlusEstimatorTest(absltest.TestCase):
 
   def test_estimator_large(self):
     self.estimator_tester_helper(100_000)
+
+  def test_estimator_cardinality(self):
+    estimator = HllCardinality()
+    for truth in [0, 1, 1024]:
+      hll = HyperLogLogPlusPlus(random_seed=89, length=1024)
+      for i in range(truth):
+        hll.add(i)
+      estimated = estimator([hll])[0]
+      self.assertEqual(estimated, truth)
 
 
 if __name__ == '__main__':

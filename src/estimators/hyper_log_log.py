@@ -28,9 +28,9 @@ class HyperLogLogPlusPlus(SketchBase):
   """HyperLogLogPlusPlus Sketch.
 
   More accurately referred to as HyperLogLogPartialPlusPlus.  We do not
-  implement several of the ++ improvements, namely bias estimation and our sparse
-  mode is much simpler at the cost of using extra memory.
-  
+  implement several of the ++ improvements, namely bias estimation and our
+  sparse mode is much simpler at the cost of using extra memory.
+
   Also technically has to be 64 bits to be ++, but for testing and
   experimentation purposes, we allow changing the number of bits here.
 
@@ -122,7 +122,7 @@ class HyperLogLogPlusPlus(SketchBase):
     # Int to get the p most significant bits
     self._idx_helper_int = int(
         '1' * self.log2_vector_length_p + '0' * self.num_bucket_bits, 2)
-    
+
     # Items for our simpler version of sparse mode:
     self.sparse_mode = True
     self.temp_set = set()
@@ -162,7 +162,7 @@ class HyperLogLogPlusPlus(SketchBase):
       if len(self.temp_set) > self.vector_length_m * 6:
         self.sparse_mode = False
         self.temp_set.clear()
-    
+
     # Then do normal HLL calculation no matter if sparse mode is on
     # (another simplification we made from the paper at the cost of memory)
     hash_value = self.my_hasher(value)
@@ -193,7 +193,7 @@ class HyperLogLogPlusPlus(SketchBase):
     """
     if self.sparse_mode:
       return len(self.temp_set)
-      
+
     raw_estimate_e = self._raw_hll_cardinality_estimate()
 
     if raw_estimate_e <= 5 * self.vector_length_m:
@@ -230,19 +230,19 @@ class HyperLogLogPlusPlus(SketchBase):
 
     output_hll = copy.deepcopy(other_hll)
     output_hll.buckets = np.max([self.buckets, output_hll.buckets], axis=0)
-    
+
     # Handle sparse mode merging:
     output_hll.sparse_mode = output_hll.sparse_mode and self.sparse_mode
     if output_hll.sparse_mode:
       output_hll.temp_set = output_hll.temp_set.union(self.temp_set)
       # To cover the case where the new HLL shouldn't be in sparse mode, pop a
       # random item from the set and add it back to trigger the check
-      if len(output_hll.temp_set) > 0:
+      if output_hll.temp_set:
         random_item = output_hll.temp_set.pop()
         output_hll.add(random_item)
     else:
       output_hll.temp_set = set()
-    
+
     return output_hll
 
 
