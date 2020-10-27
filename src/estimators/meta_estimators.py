@@ -32,9 +32,7 @@ class MetaEstimatorBase(EstimatorBase):
   def __init__(self,
                meta_sketch_factory,
                meta_sketch_estimator,
-               method,
-               denoiser=None,
-               weights=None):
+               adbf_estimator):
     """Initializes a MetaEstimator using the given FirstMomentEstimator method.
 
     Args:
@@ -42,16 +40,11 @@ class MetaEstimatorBase(EstimatorBase):
         buckets.
       meta_sketch_estimator: an estimator to estimate the union cardinality
         given a list of meta sketches.
-      method: the FirstMomentEstimator method. See estimators.bloom_filters for
-        valid methods.
-      denoiser: a FirstMomentEstimator denoiser.
-      weights: FirstMomentEstimator weights.
+      adbf_estimator: an estimator to estimate the cardinality of a list of
+        AnyDistributionBloomFilter sketches.
     """
     super().__init__()
-    assert method != 'any', ('\'any\' method is not supported for '
-                             'FirstMomentEstimator in MetaEstimator')
-
-    self.adbf_estimator = bf.FirstMomentEstimator(method, denoiser, weights)
+    self.adbf_estimator = adbf_estimator
     self.meta_sketch_factory = meta_sketch_factory
     self.meta_sketch_estimator = meta_sketch_estimator
 
@@ -153,30 +146,25 @@ class MetaVoCEstimator(MetaEstimatorBase):
 
   def __init__(self,
                num_buckets,
-               method,
+               adbf_estimator,
                clip=False,
                epsilon=np.log(3),
-               clip_threshold=3,
-               denoiser=None,
-               weights=None):
+               clip_threshold=3):
     """Initializes this MetaVoCEstimator.
 
     Args:
       num_buckets: Number of buckets in each Meta-VoC
-      method: Method to estimate Bloom Filter cardinality. See
-        bloom_filters.FirstMomentEstimator for valid methods.
+      adbf_estimator: an estimator to estimate the cardinality of a list of
+        AnyDistributionBloomFilter sketches.
       clip: Whether to clip the intersection when merging two VectorOfCounts.
       epsilon: Value of epsilon in differential privacy.
       clip_threshold: Threshold of z-score in clipping. The larger threshold,
         the more chance of clipping.
-      denoiser: FirstMomentEstimator denoiser.
-      weights: FirstMomentEstimator weights.
     """
     assert num_buckets > 0, 'MetaVoCEstimator must have at least one bucket.'
     super().__init__(
         voc.VectorOfCounts.get_sketch_factory(num_buckets),
         voc.SequentialEstimator(
             clip=clip, epsilon=epsilon, clip_threshold=clip_threshold),
-        method,
-        denoiser=denoiser,
-        weights=weights)
+        adbf_estimator,
+    )

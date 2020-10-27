@@ -35,8 +35,9 @@ class MetaVoCTest(parameterized.TestCase):
     # Inserting only a single element into MetaEstimator should be
     # equivalent to FirstMomentEstimator for any number of buckets.
     for num_buckets in range(50, 100):
-      estimator = MetaVoCEstimator(num_buckets=num_buckets, method=method)
       true_estimator = FirstMomentEstimator(method=method)
+      estimator = MetaVoCEstimator(num_buckets=num_buckets,
+                                   adbf_estimator=true_estimator)
       factory = bf.get_sketch_factory(length=num_buckets, **bf_kwargs)
 
       b1 = factory(random_seed=0)
@@ -48,7 +49,9 @@ class MetaVoCTest(parameterized.TestCase):
 
   @parameterized.parameters(*test_params)
   def test_incompatible_different_lengths(self, bf, bf_kwargs, method):
-    estimator = MetaVoCEstimator(num_buckets=10, method=method)
+    estimator = MetaVoCEstimator(
+        num_buckets=10,
+        adbf_estimator=FirstMomentEstimator(method=method))
 
     factory1 = bf.get_sketch_factory(length=10, **bf_kwargs)
     factory2 = bf.get_sketch_factory(length=15, **bf_kwargs)
@@ -60,7 +63,9 @@ class MetaVoCTest(parameterized.TestCase):
 
   @parameterized.parameters(*test_params)
   def test_incompatible_different_seeds(self, bf, bf_kwargs, method):
-    estimator = MetaVoCEstimator(num_buckets=10, method=method)
+    estimator = MetaVoCEstimator(
+        num_buckets=10,
+        adbf_estimator=FirstMomentEstimator(method=method))
 
     factory = bf.get_sketch_factory(length=10, **bf_kwargs)
 
@@ -68,18 +73,6 @@ class MetaVoCTest(parameterized.TestCase):
     b2 = factory(random_seed=1)
     with self.assertRaises(AssertionError):
       estimator([b1, b2])
-
-  def test_any_method_asserts(self):
-    with self.assertRaises(AssertionError):
-      MetaVoCEstimator(num_buckets=1, method='any')
-
-  def test_zero_bucket_asserts(self):
-    with self.assertRaises(AssertionError):
-      MetaVoCEstimator(num_buckets=0, method='uniform')
-
-  def test_invalid_method_asserts(self):
-    with self.assertRaises(AssertionError):
-      MetaVoCEstimator(num_buckets=0, method='abcdefghijklmnop')
 
 
 if __name__ == '__main__':
