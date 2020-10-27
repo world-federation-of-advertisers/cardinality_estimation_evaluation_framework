@@ -8,11 +8,23 @@ from absl.testing import absltest
 
 
 class FakeLaplaceRandomState:
+
   def __init__(self, return_value):
     self.return_value = np.array(return_value)
 
   def laplace(self, size, scale):
     return self.return_value
+
+
+class FakeGeometricRandomState:
+
+  def __init__(self, return_values):
+    self.return_values = return_values
+    self.calls_count = 0
+
+  def geometric(self, size, p):
+    self.calls_count += 1
+    return self.return_values[self.calls_count - 1]
 
 
 class EstimatorNoisersTest(absltest.TestCase):
@@ -31,13 +43,13 @@ class EstimatorNoisersTest(absltest.TestCase):
 
   def test_geometric_estimate_noiser_accepts_scalar_argument(self):
     le = estimator_noisers.GeometricEstimateNoiser(
-        1.0, random_state=FakeLaplaceRandomState([1.]))
+        1.0, random_state=FakeGeometricRandomState([[4.], [3.]]))
     result = le(10.)
     self.assertEqual(result, 11)
 
   def test_geometric_estimate_noiser_accepts_array_argument(self):
     le = estimator_noisers.GeometricEstimateNoiser(
-        1.0, random_state=FakeLaplaceRandomState([1., -1.]))
+        1.0, random_state=FakeGeometricRandomState([[3., -2.], [2., -1.]]))
     result = le(np.array([10., 20.]))
     np.testing.assert_array_equal(result, [11, 19])
 
