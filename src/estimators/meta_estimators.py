@@ -153,13 +153,14 @@ class MetaVoCEstimator(MetaEstimatorBase):
     """Initializes this MetaVoCEstimator.
 
     Args:
-      num_buckets: Number of buckets in each Meta-VoC
+      num_buckets: the number of buckets in each Meta-VoC
       adbf_estimator: an estimator to estimate the cardinality of a list of
         AnyDistributionBloomFilter sketches.
-      clip: Whether to clip the intersection when merging two VectorOfCounts.
-      epsilon: Value of epsilon in differential privacy.
-      clip_threshold: Threshold of z-score in clipping. The larger threshold,
-        the more chance of clipping.
+      clip: A boolean indicating whether to clip the intersection when merging
+        two VectorOfCounts.
+      epsilon: a value of epsilon in differential privacy.
+      clip_threshold: the threshold of z-score in clipping. The larger
+        threshold, the more chance of clipping.
     """
     assert num_buckets > 0, 'MetaVoCEstimator must have at least one bucket.'
     super().__init__(
