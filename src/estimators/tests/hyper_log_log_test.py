@@ -167,7 +167,10 @@ class HyperLogLogPlusPlusTest(absltest.TestCase):
                     'Merged sketch is not in sparse mode.')
     self.assertTrue(all(hll1.buckets == merged_hll.buckets),
                     'Merged sketch is not correct.')
-    self.assertSameElements(hll1.temp_set, set([1]), 'Temp set is not correct.')
+    self.assertSameElements(merged_hll.temp_set, set([1]),
+                            'Temp set is not correct.')
+    self.assertEqual(merged_hll.estimate_cardinality(), 1,
+                     'Estimated cardinality is not correct.')
 
   def test_merge_sparse_with_sparse_to_dense(self):
     hll1 = HyperLogLogPlusPlus(length=16, random_seed=234)
@@ -179,6 +182,8 @@ class HyperLogLogPlusPlusTest(absltest.TestCase):
     merged_hll = hll1.merge(hll2)
     self.assertTrue(merged_hll.sparse_mode,
                     'Merged sketch should be in sparse mode.')
+    self.assertEqual(merged_hll.estimate_cardinality(), 96,
+                     'Estimated cardinality not correct under sparse mode.')
 
     hll1.add(1000)
     merged_hll = hll1.merge(hll2)
