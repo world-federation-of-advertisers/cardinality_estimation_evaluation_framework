@@ -158,6 +158,17 @@ class AnySketchTest(absltest.TestCase):
     for i, sketch in enumerate(expected):
       np.testing.assert_equal(s1.sketch[i], sketch)
 
+  def test_get_active_register_indices(self):
+    # One dimension.
+
+    s = AnySketch(
+        SketchConfig([IndexSpecification(UniformDistribution(2), 'uniform')],
+                     num_hashes=1,
+                     value_functions=[SumFunction()]), 42)
+    s.add(1)
+    expected = np.array([1])
+    np.testing.assert_equal(s.get_active_register_indices(), expected)
+
 
 class ValueFunctionTest(parameterized.TestCase):
 

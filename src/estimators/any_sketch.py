@@ -402,3 +402,8 @@ class AnySketch(SketchBase):
     assert self.hash_functions == other.hash_functions, (
         'hash functions are not the same')
     return True
+
+  def get_active_register_indices(self):
+    """Get the indices of the active registers."""
+    assert self.sketch.ndim == 1, 'Currently only support 1-dimensional sketch.'
+    return np.flatnonzero(self.sketch)
