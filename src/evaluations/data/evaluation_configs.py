@@ -1130,39 +1130,38 @@ def _vector_of_counts_4096_sequential(sketch_epsilon=None,
 
 
 def _meta_voc_for_exp_adbf(adbf_length, adbf_decay_rate, voc_length,
-                           estimate_epsilon=None):
+                           sketch_epsilon=None):
   """Construct Meta VoC estimator for the Exponential ADBF sketches.
 
   Args:
     adbf_length: the length of the Exp-ADBF sketch.
     adbf_decay_rate: the decay rate of the Exp-ADBF sketch.
     voc_length: the length of the VoC sketch.
-    estimate_epsilon: the global DP epsilon value. By default, set to None,
-      meaning that there won't be global noise used.
+    sketch_epsilon: the local DP epsilon value. By default, set to None,
+      meaning that there won't be local noise used.
 
   Returns:
     A SketchEstimatorConfig for the Exp-ADBF using the Meta VoC estimator.
   """
-  if estimate_epsilon is None:
-    global_noiser = None
+  if sketch_epsilon is None:
+    local_noiser = None
   else:
-    global_noiser = estimator_noisers.LaplaceEstimateNoiser(
-        epsilon=estimate_epsilon)
+    local_noiser = vector_of_counts.LaplaceNoiser(epsilon=sketch_epsilon)
 
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='exp_bloom_filter',
           sketch_config=f'{adbf_length}_{adbf_decay_rate}',
           estimator_name=f'meta_voc_{voc_length}',
-          estimate_epsilon=estimate_epsilon),
+          sketch_epsilon=sketch_epsilon),
       sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
           length=adbf_length, decay_rate=adbf_decay_rate),
-      estimator=meta_estimators.MetaVoCEstimator(
+      estimator=meta_estimators.MetaVectorOfCountsEstimator(
           num_buckets=int(voc_length),
           adbf_estimator=bloom_filters.FirstMomentEstimator(
-              method=bloom_filters.FirstMomentEstimator.METHOD_EXP,
-              noiser=global_noiser),
-          )
+              method=bloom_filters.FirstMomentEstimator.METHOD_EXP),
+          meta_sketch_noiser=local_noiser,
+      )
   )
 
 
@@ -1207,12 +1206,12 @@ def _generate_cardinality_estimator_configs():
   # Configs of Meta VoC.
   for voc_length in VOC_LENGTH_LIST:
     for adbf_length in ADBF_LENGTH_LIST:
-      for global_epsilon in ESTIMATE_EPSILON_VALUES:
+      for local_epsilon in SKETCH_EPSILON_VALUES:
         configs.append(_meta_voc_for_exp_adbf(
             adbf_length=adbf_length,
             adbf_decay_rate=EXP_ADBF_DECAY_RATE,
             voc_length=voc_length,
-            estimate_epsilon=global_epsilon))
+            sketch_epsilon=local_epsilon))
 
   return tuple(configs)
 

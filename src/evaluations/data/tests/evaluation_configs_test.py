@@ -424,10 +424,10 @@ class EvaluationConfigTest(parameterized.TestCase):
         adbf_length=16,
         adbf_decay_rate=2,
         voc_length=4,
-        estimate_epsilon=1)
+        sketch_epsilon=1)
     self.assertEqual(
         conf.name,
-        'exp_bloom_filter-16_2-meta_voc_4-no_local_dp-global_dp_1.0000',
+        'exp_bloom_filter-16_2-meta_voc_4-local_dp_1.0000-no_global_dp',
         'Config name is not correct.')
     exp_adbf = conf.sketch_factory(1)
     self.assertLen(exp_adbf.sketch, 16)
