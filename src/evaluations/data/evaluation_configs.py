@@ -86,7 +86,7 @@ ESTIMATE_EPSILON_VALUES = (math.log(3), None)
 # We use the np.array with dtype so as to make sure that the lengths are all
 # integers.
 ADBF_LENGTH_LIST = np.array([100_000, 250_000], dtype=np.int64)
-EXP_ADBF_DECAY_RATE = 10
+EXP_ADBF_DECAY_RATE_LIST = np.array([2, 10], dtype=np.int64)
 STRATIFIED_EXP_ADBF_EPSILON_SPLIT = 0.5
 SKETCH_OPERATOR_EXPECTATION = 'expectation'
 SKETCH_OPERATOR_BAYESIAN = 'bayesian'
@@ -1030,7 +1030,7 @@ def _bloom_filter_first_moment_estimator_uniform(length, sketch_epsilon=None,
   )
 
 
-def _exp_bloom_filter_first_moment_exp(length, sketch_epsilon=None,
+def _exp_bloom_filter_first_moment_exp(length, decay_rate, sketch_epsilon=None,
                                        estimate_epsilon=None):
   """Generate a SketchEstimatorConfig for Exponential Bloom Filters.
 
@@ -1038,6 +1038,7 @@ def _exp_bloom_filter_first_moment_exp(length, sketch_epsilon=None,
 
   Args:
     length: the length of the exponential bloom filters.
+    decay_rate: the decay rate of the exponential distribution.
     sketch_epsilon: a differential private parameter for the sketch.
     estimate_epsilon: a differential private parameter for the estimated
       cardinality.
@@ -1061,12 +1062,12 @@ def _exp_bloom_filter_first_moment_exp(length, sketch_epsilon=None,
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='exp_bloom_filter',
-          sketch_config=str(length) + '_10',
+          sketch_config=f'{length}_{decay_rate}',
           estimator_name='first_moment_exp',
           sketch_epsilon=sketch_epsilon,
           estimate_epsilon=estimate_epsilon),
       sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
-          length=length, decay_rate=EXP_ADBF_DECAY_RATE),
+          length=length, decay_rate=decay_rate),
       estimator=bloom_filters.FirstMomentEstimator(
           method=bloom_filters.FirstMomentEstimator.METHOD_EXP,
           noiser=estimate_noiser,
@@ -1140,7 +1141,6 @@ def _generate_cardinality_estimator_configs():
   # and estimate epsilon.
   adbf_config_constructors = [
       _log_bloom_filter_first_moment_log,
-      _exp_bloom_filter_first_moment_exp,
       _geo_bloom_filter_first_moment_geo,
   ]
   for config_constructor in adbf_config_constructors:
@@ -1149,6 +1149,12 @@ def _generate_cardinality_estimator_configs():
         for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
           configs.append(config_constructor(length, sketch_epsilon,
                                             estimate_epsilon))
+  for length in ADBF_LENGTH_LIST:
+    for decay_rate in EXP_ADBF_DECAY_RATE_LIST:
+      for sketch_epsilon in SKETCH_EPSILON_VALUES:
+        for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
+          configs.append(_exp_bloom_filter_first_moment_exp(
+              length, decay_rate, sketch_epsilon, estimate_epsilon))
 
   # Configs of Vector-of-Counts.
   for sketch_epsilon in SKETCH_EPSILON_VALUES:
@@ -1293,7 +1299,7 @@ def _stratiefied_sketch_geo_adbf(
 
 
 def _stratiefied_sketch_exponential_adbf(
-    max_frequency, length, sketch_epsilon, global_epsilon,
+    max_frequency, length, decay_rate, sketch_epsilon, global_epsilon,
     sketch_operator_type,
     epsilon_split=STRATIFIED_EXP_ADBF_EPSILON_SPLIT):
   """Construct configs of StratifiedSketch based on Exponential ADBF.
@@ -1301,6 +1307,7 @@ def _stratiefied_sketch_exponential_adbf(
   Args:
     max_frequency: an integer indicating the maximum frequency to estimate.
     length: the length of Exponential ADBF.
+    decay_rate: the decay rate of the exponential distribution.
     sketch_epsilon: the DP epsilon for noising the Exponential ADBF sketch.
     global_epsilon: the global DP epsilon parameter.
     sketch_operator_type: one of 'bayesian' and 'expectation'.
@@ -1350,7 +1357,7 @@ def _stratiefied_sketch_exponential_adbf(
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='stratified_sketch_exp_adbf',
-          sketch_config=f'{length}_{EXP_ADBF_DECAY_RATE}',
+          sketch_config=f'{length}_{decay_rate}',
           estimator_name=f'first_moment_estimator_exp_{sketch_operator_type}',
           sketch_epsilon=sketch_epsilon,
           estimate_epsilon=global_epsilon,
@@ -1359,7 +1366,7 @@ def _stratiefied_sketch_exponential_adbf(
           max_freq=max_frequency,
           cardinality_sketch_factory=(
               bloom_filters.ExponentialBloomFilter.get_sketch_factory(
-                  length=length, decay_rate=EXP_ADBF_DECAY_RATE)
+                  length=length, decay_rate=decay_rate)
           ),
           noiser_class=bloom_filters.BlipNoiser,
           epsilon=sketch_epsilon_float,
@@ -1391,13 +1398,14 @@ def _exact_multi_set(max_frequency):
   )
 
 
-def _exp_same_key_aggregator(max_frequency, global_epsilon, length):
+def _exp_same_key_aggregator(max_frequency, global_epsilon, length, decay_rate):
   """Create an ExponentialSameKeyAggregator config.
 
   Args:
     max_frequency: the maximum frequency to estimate.
     global_epsilon: the global DP epsilon parameter.
     length: the length of the ExponentialSameKeyAggregator.
+    decay_rate: the decay rate of the exponential distribution.
 
   Returns:
     A SketchEstimatorConfig of ExponentialSameKeyAggregator.
@@ -1410,13 +1418,13 @@ def _exp_same_key_aggregator(max_frequency, global_epsilon, length):
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='exp_same_key_aggregator',
-          sketch_config='_'.join([str(int(length)), '10']),
+          sketch_config=f'{length}_{decay_rate}',
           estimator_name='standardized_histogram',
           estimate_epsilon=global_epsilon,
           max_frequency=str(max_frequency)),
       sketch_factory=(
           same_key_aggregator.ExponentialSameKeyAggregator.get_sketch_factory(
-              length, decay_rate=EXP_ADBF_DECAY_RATE)),
+              length, decay_rate=decay_rate)),
       estimator=same_key_aggregator.StandardizedHistogramEstimator(
           max_freq=max_frequency,
           noiser_class=estimate_noiser_class,
@@ -1440,12 +1448,12 @@ def _generate_frequency_estimator_configs(max_frequency):
     )
 
   # Stratified Sketch based on exponential ADBF.
-  for sketch_epsilon, global_epsilon, length, sketch_operator_type in (
-      itertools.product(
-          SKETCH_EPSILON_VALUES, ESTIMATE_EPSILON_VALUES, ADBF_LENGTH_LIST,
-          SKETCH_OPERATOR_LIST)):
+  for (sketch_epsilon, global_epsilon, length, decay_rate,
+       sketch_operator_type) in itertools.product(
+           SKETCH_EPSILON_VALUES, ESTIMATE_EPSILON_VALUES, ADBF_LENGTH_LIST,
+           EXP_ADBF_DECAY_RATE_LIST, SKETCH_OPERATOR_LIST):
     configs.append(
-        _stratiefied_sketch_exponential_adbf(max_frequency, length,
+        _stratiefied_sketch_exponential_adbf(max_frequency, length, decay_rate,
                                              sketch_epsilon, global_epsilon,
                                              sketch_operator_type)
     )
@@ -1458,10 +1466,11 @@ def _generate_frequency_estimator_configs(max_frequency):
   configs.append(_exact_multi_set(max_frequency))
 
   # Same-key-aggregator.
-  for global_epsilon, length in itertools.product(ESTIMATE_EPSILON_VALUES,
-                                                  ADBF_LENGTH_LIST):
+  for global_epsilon, decay_rate, length in itertools.product(
+      ESTIMATE_EPSILON_VALUES, ADBF_LENGTH_LIST, EXP_ADBF_DECAY_RATE_LIST):
     configs.append(
-        _exp_same_key_aggregator(max_frequency, global_epsilon, length))
+        _exp_same_key_aggregator(max_frequency, global_epsilon, length,
+                                 decay_rate))
 
   return tuple(configs)
 
