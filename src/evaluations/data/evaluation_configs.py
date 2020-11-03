@@ -85,7 +85,8 @@ SKETCH_EPSILON_VALUES = (math.log(3), math.log(3) / 4, math.log(3) / 10, None)
 # implementation could be different and more complicated.
 # As such, we use a small epsilon so as to be conservative on the result.
 ESTIMATE_EPSILON_VALUES = [
-    math.log(3) / x for x in [1, 2, 4, 10] + [(i + 1) * 100 for i in range(10)]
+    math.log(3) / x for x in [
+        1, 2, 4, 10, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
 ] + [None]
 
 # The length of the Any Distribution Bloom Filters.
