@@ -523,8 +523,8 @@ class DisjointSetGenerator(SetGeneratorBase):
 
   def __iter__(self):
     for set_size in self.set_sizes:
-      set_ids = np.arange(self.start_id, self.start_id + set_size, dtype=int)
-      self.union_ids = self.union_ids.union(set_ids)
+      set_ids = range(self.start_id, self.start_id + set_size)
+      self.union_ids = range(self.start_id+set_size)
       self.start_id += set_size
       yield set_ids
     return self
