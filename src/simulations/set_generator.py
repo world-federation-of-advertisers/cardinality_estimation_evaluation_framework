@@ -488,7 +488,13 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
 
 
 class DisjointSetGenerator(SetGeneratorBase):
-  """Disjoint set generator."""
+  """Disjoint set generator.
+
+  This set generator can be used to
+  (1) evaluate cardinality estimators under the disjoint scenario,
+  (2) fast test the relative error of the estimates, as it is a deterministic
+    algorithm, and hence is fast.
+  """
 
   @classmethod
   def get_generator_factory_with_set_size_list(cls, set_sizes):
