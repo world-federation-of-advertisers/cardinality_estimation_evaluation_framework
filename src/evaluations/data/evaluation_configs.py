@@ -57,6 +57,10 @@ LARGE_REACH_RATE_SMOKE_TEST = 0.2
 SMALL_REACH_RATE_VALUE = 0.01
 LARGE_REACH_RATE_VALUE = 0.2
 
+# Global DP stress test.
+US_INTERNET_POPULATION = 2_000_000_000
+REACH_STRESS_TEST = [1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000]
+
 # Frequency test reach percent.
 REACH_RATE_FREQ_END_TO_END_TEST = 0.1
 REACH_RATE_FREQ_SMOKE_TEST = 0.1
@@ -80,7 +84,9 @@ SKETCH_EPSILON_VALUES = (math.log(3), math.log(3) / 4, math.log(3) / 10, None)
 # mimic the global differential privacy use case. In the real world, the
 # implementation could be different and more complicated.
 # As such, we use a small epsilon so as to be conservative on the result.
-ESTIMATE_EPSILON_VALUES = (math.log(3), None)
+ESTIMATE_EPSILON_VALUES = [
+    math.log(3) / x for x in [1, 2, 4, 10] + [(i + 1) * 100 for i in range(10)]
+] + [None]
 
 # The length of the Any Distribution Bloom Filters.
 # We use the np.array with dtype so as to make sure that the lengths are all
@@ -703,6 +709,26 @@ def _complete_test_with_selected_parameters(
       scenario_config_list=scenario_config_list)
 
 
+def _stress_test_cardinality_global_dp(universe_size=None,
+                                       num_runs=NUM_RUNS_VALUE):
+  """Stress test for cardinality estimator under global DP."""
+  # The universe_size argument is included to conform to the run_evaluation
+  # module.
+  _ = universe_size
+  scenario_config_list = []
+  for scenario_id, reach in enumerate(sorted(REACH_STRESS_TEST)):
+    scenario_config_list.append(ScenarioConfig(
+        name=f'{scenario_id}-reach:{reach}',
+        set_generator_factory=(
+            set_generator.DisjointSetGenerator
+            .get_generator_factory_with_set_size_list(
+                set_sizes=[reach]))))
+  return EvaluationConfig(
+      name='global_dp_stress_test',
+      num_runs=num_runs,
+      scenario_config_list=scenario_config_list)
+
+
 def _frequency_end_to_end_test(universe_size=10000, num_runs=NUM_RUNS_VALUE):
   """EvaluationConfig of end-to-end test of frequency evaluation code."""
   num_sets = 3
@@ -734,6 +760,7 @@ def _generate_evaluation_configs():
   return (
       _smoke_test,
       _complete_test_with_selected_parameters,
+      _stress_test_cardinality_global_dp,
       _frequency_end_to_end_test,
       _frequency_smoke_test,
       _complete_frequency_test_with_selected_parameters,

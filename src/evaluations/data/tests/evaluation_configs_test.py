@@ -20,6 +20,7 @@ import numpy as np
 
 from wfa_cardinality_estimation_evaluation_framework.evaluations import configs
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data import evaluation_configs
+from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import _stress_test_cardinality_global_dp
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import _complete_test_with_selected_parameters
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import GLOBAL_DP_STR
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import LOCAL_DP_STR
@@ -344,6 +345,19 @@ class EvaluationConfigTest(parameterized.TestCase):
     eval_configs = _complete_test_with_selected_parameters(num_runs=1)
     for scenario_config in eval_configs.scenario_config_list:
       self.assertIsInstance(scenario_config, configs.ScenarioConfig)
+
+  def test_cardinality_global_dp_stress_test(self):
+    universe_size = 1000
+    eval_configs = _stress_test_cardinality_global_dp(
+        universe_size=universe_size, num_runs=1)
+    for scenario_config in eval_configs.scenario_config_list:
+      self.assertIsInstance(scenario_config, configs.ScenarioConfig)
+      gen = scenario_config.set_generator_factory(np.random.RandomState(0))
+      reach_rate = float(scenario_config.name.split('-')[1]
+                         .lstrip('reach_rate:'))
+      set_ids_list = [set_ids for set_ids in gen]
+      self.assertLen(set_ids_list, 1)
+      self.assertLen(set_ids_list[0], int(universe_size * reach_rate))
 
   @parameterized.parameters(
       (LOCAL_DP_STR, None, NO_LOCAL_DP_STR),
