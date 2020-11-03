@@ -347,17 +347,15 @@ class EvaluationConfigTest(parameterized.TestCase):
       self.assertIsInstance(scenario_config, configs.ScenarioConfig)
 
   def test_cardinality_global_dp_stress_test(self):
-    universe_size = 1000
     eval_configs = _stress_test_cardinality_global_dp(
-        universe_size=universe_size, num_runs=1)
+        universe_size=None, num_runs=1)
     for scenario_config in eval_configs.scenario_config_list:
       self.assertIsInstance(scenario_config, configs.ScenarioConfig)
       gen = scenario_config.set_generator_factory(np.random.RandomState(0))
-      reach_rate = float(scenario_config.name.split('-')[1]
-                         .lstrip('reach_rate:'))
+      reach = float(scenario_config.name.split('-')[1].lstrip('reach:'))
       set_ids_list = [set_ids for set_ids in gen]
       self.assertLen(set_ids_list, 1)
-      self.assertLen(set_ids_list[0], int(universe_size * reach_rate))
+      self.assertLen(set_ids_list[0], reach)
 
   @parameterized.parameters(
       (LOCAL_DP_STR, None, NO_LOCAL_DP_STR),
