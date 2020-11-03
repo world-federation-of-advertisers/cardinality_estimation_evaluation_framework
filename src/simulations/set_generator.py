@@ -486,3 +486,45 @@ class SequentiallyCorrelatedSetGenerator(SetGeneratorBase):
       yield set_ids_list[i]
     return self
 
+
+class DisjointSetGenerator(SetGeneratorBase):
+  """Disjoint set generator.
+
+  This set generator can be used to
+  (1) evaluate cardinality estimators under the disjoint scenario,
+  (2) fast test the relative error of the estimates, as it is a deterministic
+    algorithm, and hence is fast.
+  """
+
+  @classmethod
+  def get_generator_factory_with_set_size_list(cls, set_sizes):
+    def _f(random_state):
+      return cls(set_sizes, random_state)
+    return _f
+
+  @classmethod
+  def get_generator_factory_with_num_and_size(cls, num_sets, set_size):
+    def _f(random_state):
+      return cls(_SetSizeGenerator(num_sets, set_size), random_state)
+    return _f
+
+  def __init__(self, set_sizes, random_state=None):
+    """Create a disjoint set generator.
+
+    Args:
+      set_sizes: an iterable of the set sizes.
+      random_state: a numpy random state instance. It is not used, but only to
+        conform to the set generator constructor arguments.
+    """
+    self.union_ids = set()
+    _ = random_state
+    self.set_sizes = set_sizes
+    self.start_id = 0
+
+  def __iter__(self):
+    for set_size in self.set_sizes:
+      set_ids = range(self.start_id, self.start_id + set_size)
+      self.union_ids = range(self.start_id+set_size)
+      self.start_id += set_size
+      yield set_ids
+    return self
