@@ -44,10 +44,7 @@ class LaplaceMechanism:
     self._func = f
     self._delta_f = delta_f
     self._epsilon = epsilon
-    if random_state:
-      self._random_state = random_state
-    else:
-      self._random_state = np.random.RandomState()
+    self._random_state = random_state or np.random.RandomState()
 
   def __call__(self, x):
     z = self._func(x)
@@ -103,10 +100,7 @@ class GeometricMechanism:
     self._func = f
     self._delta_f = delta_f
     self._epsilon = epsilon
-    if random_state:
-      self._random_state = random_state
-    else:
-      self._random_state = np.random.RandomState()
+    self._random_state = random_state or np.random.RandomState()
 
   def __call__(self, x):
     z = self._func(x)
@@ -152,10 +146,7 @@ class GaussianMechanism:
     # Set the standard deviation sigma, following Appendix A of Dwork and Roth.
     self._sigma = (math.sqrt(2 * math.log(1.25 / delta)) * delta_f *
       math.sqrt(num_queries) / epsilon)
-    if random_state:
-      self._random_state = random_state
-    else:
-      self._random_state = np.random.RandomState()
+    self._random_state = random_state or np.random.RandomState()
 
   def __call__(self, x):
     z = self._func(x)
