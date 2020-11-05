@@ -32,7 +32,7 @@ class LaplaceEstimateNoiser(base.EstimateNoiserBase):
     """
     # Note that any cardinality estimator will have sensitivity (delta_f) of 1.
     self._noiser = noisers.LaplaceMechanism(lambda x: x, 1.0, epsilon,
-                                            random_state)
+                                            random_state=random_state)
 
   def __call__(self, cardinality_estimate):
     """Returns a cardinality estimate with Laplace noise."""
@@ -55,10 +55,34 @@ class GeometricEstimateNoiser(base.EstimateNoiserBase):
     """
     # Note that any cardinality estimator will have sensitivity (delta_f) of 1.
     self._noiser = noisers.GeometricMechanism(lambda x: x, 1.0, epsilon,
-                                              random_state)
+                                              random_state=random_state)
 
   def __call__(self, cardinality_estimate):
-    """Returns a cardinality estimate with Laplace noise."""
+    """Returns a cardinality estimate with discrete Laplace noise."""
+    if type(cardinality_estimate) == float:
+      return self._noiser(np.array([cardinality_estimate]))[0]
+    else:
+      return self._noiser(cardinality_estimate)
+
+
+class GaussianEstimateNoiser(base.EstimateNoiserBase):
+  """A noiser that adds Gaussian noise to a cardinality estimate."""
+
+  def __init__(self, epsilon, delta, random_state=None):
+    """Instantiates a GaussianEstimateNoiser object.
+
+    Args:
+      epsilon:  The differential privacy level.
+      delta:  The differential privacy level.
+      random_state:  Optional instance of numpy.random.RandomState that is used
+        to seed the random number generator.
+    """
+    # Note that any cardinality estimator will have sensitivity (delta_f) of 1.
+    self._noiser = noisers.GaussianMechanism(
+      lambda x: x, 1.0, epsilon, delta, random_state=random_state)
+
+  def __call__(self, cardinality_estimate):
+    """Returns a cardinality estimate with Gaussian noise."""
     if type(cardinality_estimate) == float:
       return self._noiser(np.array([cardinality_estimate]))[0]
     else:

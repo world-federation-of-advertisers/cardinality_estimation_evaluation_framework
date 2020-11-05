@@ -44,10 +44,7 @@ class LaplaceMechanism:
     self._func = f
     self._delta_f = delta_f
     self._epsilon = epsilon
-    if random_state:
-      self._random_state = random_state
-    else:
-      self._random_state = np.random.RandomState()
+    self._random_state = random_state or np.random.RandomState()
 
   def __call__(self, x):
     z = self._func(x)
@@ -103,10 +100,7 @@ class GeometricMechanism:
     self._func = f
     self._delta_f = delta_f
     self._epsilon = epsilon
-    if random_state:
-      self._random_state = random_state
-    else:
-      self._random_state = np.random.RandomState()
+    self._random_state = random_state or np.random.RandomState()
 
   def __call__(self, x):
     z = self._func(x)
@@ -114,6 +108,49 @@ class GeometricMechanism:
     x = self._random_state.geometric(size=z.shape, p=p_geometric)
     y = self._random_state.geometric(size=z.shape, p=p_geometric)
     return z + x - y
+
+
+class GaussianMechanism:
+  """Transforms a function using the gaussian mechanism.
+
+  If f(x) = (Z[1], Z[2], ..., Z[k]), then returns a function that computes
+  (Z'[1], Z'[2], ..., Z'[k]), where
+      Z'[i] = Z[i] + Y[i],
+      Y[i] ~ N(x | sigma),
+  and N(x | sigma) is given by the probability density function
+      N(x | sigma) = exp(-0.5 x^2 / sigma^2) / (sigma * sqrt(2 * pi))
+
+  See Appendix A of Dwork and Roth.
+  """
+
+  def __init__(
+    self, f, delta_f, epsilon, delta, num_queries=1, random_state=None):
+    """Instantiates a gaussian mechanism.
+
+    Args:
+      f: A function which takes as input a database and which returns as output
+        a numpy array.
+      delta_f: The sensitivity paramater, e.g., the maximum value by which the
+        function can change for two databases that differ by only one row.
+      epsilon: Differential privacy parameter.
+      delta: Differential privacy paramter.
+      num_queries: The number of queries for which the mechanism is used. Note
+        that the constructed mechanism will be (epsilon, delta)-differentially
+        private when answering (no more than) num_queries queries.
+      random_state:  Optional instance of numpy.random.RandomState that is
+        used to seed the random number generator.
+    """
+    self._func = f
+    self._delta_f = delta_f
+    # TODO(pasin30055): Use tight computation of sigma.
+    # Set the standard deviation sigma, following Appendix A of Dwork and Roth.
+    self._sigma = (math.sqrt(2 * math.log(1.25 / delta)) * delta_f *
+      math.sqrt(num_queries) / epsilon)
+    self._random_state = random_state or np.random.RandomState()
+
+  def __call__(self, x):
+    z = self._func(x)
+    return z + self._random_state.normal(size=z.shape, scale=self._sigma)
 
 
 def main(argv):
