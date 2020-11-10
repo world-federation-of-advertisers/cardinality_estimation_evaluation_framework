@@ -4,15 +4,27 @@
 
 ## Table of Contents
 
+- [**Objectives**](#objectives)
+- [**Add New Estimators/Data/etc**](#add-new-estimators-data-etc)
+    - [**Sketches, Estimators and Local Noisers**](#sketches-estimators-local-noisers)
+    - [**Simulation Data Generator**](#simulation-data-generator)
+    - [**Global Noisers**](#global-noisers)
+- [**Add New Configurations**](#add-new-configurations)
+    - [**SketchEstimatorConfig**](#sketch-estimator-config)
+    - [**EvaluationConfig**](#evaluation-config)
+    - [**Unit testing**](#unit-testing)
+
 <br>
 
 ## Objectives
 
-In this document, we describe the modules of the evaluation framework, how to add new sketches, estimators, noisers, simulation scenarios, and configurations to framework, and run unit testings to make sure that the new components work smoothly.
+In this document, we describe the modules of the evaluation framework, how to add new sketches, estimators, noisers, simulation scenarios, and configurations to the framework, and run unit testings to make sure that the new components work smoothly.
 
-## Adding New Estimators/Data/etc
+<br>
 
-### Add New Sketches, Estimators and Local Noisers
+## Add New Estimators/Data/etc
+
+### Sketches, Estimators and Local Noisers
 
 All the sketches and estimators are defined in the folder [src/estimators](../src/estimators). All sketches and estimators defined in the file should inherit from the `SketchBase` and `EstimatorBase` defined in [base.py](../src/estimators/base.py) respectively. An example can be found in the [src/estimators/exact_set.py](../src/estimators/exact_set.py). The `ExactMultiSet` defines a sketch supports instance methods including `add` (or `add_ids`). The sketch constructor (`__init__`) should take a `random_seed` for reproducibility.
 
@@ -21,15 +33,17 @@ A certain sketch type may have multiple estimators, and they should be defined i
 In the local DP theme, sketches are noised before being sent to the estimator. A noiser instance takes a sketch and returns a (copy of) noised sketch. Any new local noisers should conform to `SketchNoiserBase` defined in [src/estimators/base.py](../src/estimators/base.py). The constructor should take a `random_state` for reproducibility.
 
 
-### Add New Simulation Data Generator
+### Simulation Data Generator
 
 All the simulation data generators are defined in [src/simulations/set_generator.py](../src/simulations/set_generator.py) and [src/simulations/frequency_set_generator.py](../src/simulations/frequency_set_generator.py) for reach and frequency evaluation respectively, which should inherit from the `SetGeneratorBase` in the [src/simulations/set_generator_base.py](../src/simulations/set_generator_base.py).
 
-### Add Global Noisers
+### Global Noisers
 
 In MPC, one variant of a global DP noiser takes a merged sketch and adds noises to it. In our framework, the feature of a global DP noiser can be added in the estimator. An example is the `FirstMomentEstimator` defined in [src/estimators/bloom_filters.py](../src/estimators/bloom_filters.py). It has an argument `noiser` which takes the sum of active registers of the merged Any Distribution Bloom Filter, and returns a noised sum.
 
-## Adding New Configurations
+<br>
+
+## Add New Configurations
 
 Once the developers add new estimators, noisers, estimators, or set generators, they may want to test the new components. Some developers may also want to try out new parameters for the existing or new components. This evaluation framework can run evaluations, which consists of one or more simulations with different sketches, noisers, estimators and set generators, analyzes the results, and generates an HTML report. To run the evaluation, analysis and to generate report, developers need to use the existing or write new configurations in [src/evaluations/data/evaluation_configs.py](../src/evaluations/data/evaluation_configs.py).
 
