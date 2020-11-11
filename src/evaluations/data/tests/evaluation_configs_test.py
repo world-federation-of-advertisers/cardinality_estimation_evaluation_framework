@@ -22,6 +22,7 @@ from wfa_cardinality_estimation_evaluation_framework.evaluations import configs
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data import evaluation_configs
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import _stress_test_cardinality_global_dp
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import _complete_test_with_selected_parameters
+from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import GAUSSIAN_NOISE
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import GLOBAL_DP_STR
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import LOCAL_DP_STR
 from wfa_cardinality_estimation_evaluation_framework.evaluations.data.evaluation_configs import NO_GLOBAL_DP_STR
@@ -371,6 +372,25 @@ class EvaluationConfigTest(parameterized.TestCase):
     self.assertEqual(evaluation_configs._format_epsilon(dp_type, epsilon),
                      expected)
 
+  @parameterized.parameters(
+      (LOCAL_DP_STR, None, None, None, None, NO_LOCAL_DP_STR),
+      (GLOBAL_DP_STR, None, None, None, None, NO_GLOBAL_DP_STR),
+      (LOCAL_DP_STR, math.log(3), None, None, None,
+       LOCAL_DP_STR + '_1.0986,0.0000'),
+      (GLOBAL_DP_STR, math.log(3), 0.1, None, None,
+       GLOBAL_DP_STR + '_1.0986,0.1000'),
+      (LOCAL_DP_STR, 1.09, 0.01, 3, None,
+       LOCAL_DP_STR + '_1.0900,0.0100-budget_split-3'),
+      (GLOBAL_DP_STR, 3.055, 0.001, 5, GAUSSIAN_NOISE,
+       GLOBAL_DP_STR + '_3.0550,0.0010-' + GAUSSIAN_NOISE + '-budget_split-5'),
+  )
+  def test_format_privacy_parameters_correct(
+    self, dp_type, epsilon, delta, num_queries, noise_type, expected):
+    self.assertEqual(evaluation_configs._format_privacy_parameters(
+      dp_type, epsilon=epsilon, delta=delta, num_queries=num_queries,
+      noise_type=noise_type, decimals=4),
+    expected)
+
   def test_construct_sketch_estimator_config_name_cardinality_estimator(self):
     name = evaluation_configs.construct_sketch_estimator_config_name(
         sketch_name='vector_of_counts',
@@ -430,6 +450,15 @@ class EvaluationConfigTest(parameterized.TestCase):
     expected = [x * evaluation_configs.UNIVERSE_SIZE_VALUE for x in expected]
     for x, y in zip(estimated, expected):
       self.assertAlmostEqual(x, y)
+
+  def test_exp_bloom_filter_first_moment_exp_with_budget_split(self):
+    conf = evaluation_configs._exp_bloom_filter_first_moment_exp(
+        length=5, estimate_epsilon=0.5, estimate_delta=0.03,
+        noise_type=GAUSSIAN_NOISE, num_estimate_queries=25)
+    self.assertEqual(
+        conf.name,
+        'exp_bloom_filter-5_10-first_moment_exp-no_local_dp-global_dp_'
+        f'0.5000000,0.0300000-gaussian_noise-budget_split-25')
 
   def test_get_estimator_configs_return_configs(self):
     expected_sketch_estimator_configs = [conf.name for conf in (
