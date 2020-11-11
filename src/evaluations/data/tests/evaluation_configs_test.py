@@ -431,6 +431,15 @@ class EvaluationConfigTest(parameterized.TestCase):
     for x, y in zip(estimated, expected):
       self.assertAlmostEqual(x, y)
 
+  def test_exp_bloom_filter_first_moment_exp(self):
+    conf = evaluation_configs._exp_bloom_filter_first_moment_exp(
+        length=8, sketch_epsilon=1, estimate_epsilon=2,
+        epsilon_decimals=2)
+    self.assertEqual(
+        conf.name,
+        'exp_bloom_filter-8_10-first_moment_exp-local_dp_1.00'
+        '-global_dp_2.00')
+
   def test_get_estimator_configs_return_configs(self):
     expected_sketch_estimator_configs = [conf.name for conf in (
         evaluation_configs._generate_cardinality_estimator_configs())]
