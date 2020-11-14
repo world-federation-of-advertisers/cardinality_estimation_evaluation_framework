@@ -1591,6 +1591,9 @@ def _generate_frequency_estimator_configs(max_frequency):
                                              sketch_operator_type)
     )
 
+  for sketch_epsilon, global_epsilon, length in (
+      itertools.product(
+          SKETCH_EPSILON_VALUES, ESTIMATE_EPSILON_VALUES, ADBF_LENGTH_LIST)):
     configs.append(
         _stratiefied_sketch_geo_adbf(max_frequency, length,
                                      sketch_epsilon, global_epsilon)
