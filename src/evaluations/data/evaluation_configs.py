@@ -60,7 +60,7 @@ LARGE_REACH_RATE_VALUE = 0.2
 
 # Global DP stress test.
 US_INTERNET_POPULATION = 2_000_000_000
-REACH_STRESS_TEST = [1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000]
+REACH_STRESS_TEST = [1_000, 10_000, 100_000, 1_000_000, 10_000_000]
 
 # Frequency test reach percent.
 REACH_RATE_FREQ_END_TO_END_TEST = 0.1
@@ -85,10 +85,17 @@ SKETCH_EPSILON_VALUES = (math.log(3), math.log(3) / 4, math.log(3) / 10, None)
 # mimic the global differential privacy use case. In the real world, the
 # implementation could be different and more complicated.
 # As such, we use a small epsilon so as to be conservative on the result.
-ESTIMATE_EPSILON_VALUES = [
+ESTIMATE_EPSILON_VALUES = (math.log(3), None)
+GLOBAL_DP_LIMIT_TEST_EPSILON_VALUES = [
     math.log(3) / x for x in [
-        1, 2, 4, 10, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
-] + [None]
+        1, 2, 4, 10, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,
+        2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
+]
+
+# The number of decimal points to keep of the epsilon part of the
+# SketchEstimatorConfig name.
+EPSILON_DECIMALS = 4
+EPSILON_DECIMALS_LIMIT_TEST = 8
 
 # The length of the Any Distribution Bloom Filters.
 # We use the np.array with dtype so as to make sure that the lengths are all
@@ -789,14 +796,14 @@ def get_evaluation_config(config_name):
   return config[0]
 
 
-def _format_epsilon(dp_type, epsilon=None, decimals=4):
+def _format_epsilon(dp_type, epsilon=None, decimals=EPSILON_DECIMALS):
   """Format epsilon value to string.
 
   Args:
     dp_type: one of LOCAL_DP_STR and GLOBAL_DP_STR.
     epsilon: an optional differential private parameter. By default set to None.
     decimals: an integer value which set the number of decimal points of the
-      epsilon to keep.
+      epsilon to keep. By default, set to EPSILON_DECIMALS.
 
   Returns:
     A string representation of epsilon.
@@ -820,7 +827,8 @@ def _format_epsilon(dp_type, epsilon=None, decimals=4):
 def construct_sketch_estimator_config_name(sketch_name, sketch_config,
                                            estimator_name, sketch_epsilon=None,
                                            estimate_epsilon=None,
-                                           max_frequency=None):
+                                           max_frequency=None,
+                                           decimals=EPSILON_DECIMALS):
   """Construct the name attribute for SketchEstimatorConfig.
 
   The name will be in the format of
@@ -837,6 +845,8 @@ def construct_sketch_estimator_config_name(sketch_name, sketch_config,
       estimate. By default, set to None, i.e., not add noise to the estimate.
     max_frequency: an optional maximum frequency level. If not given, will not
       be added to the name.
+    decimals: an integer value which set the number of decimal points of the
+      epsilon to keep. By default, set to EPSILON_DECIMALS.
 
   Returns:
     The name of the SketchEstimatorConfig.
@@ -846,8 +856,8 @@ def construct_sketch_estimator_config_name(sketch_name, sketch_config,
   """
   for s in [sketch_name, sketch_config, estimator_name]:
     assert '-' not in s, f'Input should not contain "-", given {s}.'
-  sketch_epsilon = _format_epsilon(LOCAL_DP_STR, sketch_epsilon)
-  estimate_epsilon = _format_epsilon(GLOBAL_DP_STR, estimate_epsilon)
+  sketch_epsilon = _format_epsilon(LOCAL_DP_STR, sketch_epsilon, decimals)
+  estimate_epsilon = _format_epsilon(GLOBAL_DP_STR, estimate_epsilon, decimals)
   result = '-'.join([sketch_name, sketch_config, estimator_name, sketch_epsilon,
                      estimate_epsilon])
   if max_frequency is not None:
@@ -1059,8 +1069,10 @@ def _bloom_filter_first_moment_estimator_uniform(length, sketch_epsilon=None,
   )
 
 
-def _exp_bloom_filter_first_moment_exp(length, sketch_epsilon=None,
-                                       estimate_epsilon=None):
+def _exp_bloom_filter_first_moment_exp(
+    length, sketch_epsilon=None,
+    estimate_epsilon=None,
+    epsilon_decimals=EPSILON_DECIMALS):
   """Generate a SketchEstimatorConfig for Exponential Bloom Filters.
 
   The decay rate is 10.
@@ -1070,6 +1082,9 @@ def _exp_bloom_filter_first_moment_exp(length, sketch_epsilon=None,
     sketch_epsilon: a differential private parameter for the sketch.
     estimate_epsilon: a differential private parameter for the estimated
       cardinality.
+    epsilon_decimals: an integer value which set the number of decimal
+      points of the global epsilon to keep. By default, set to
+      EPSILON_DECIMALS.
 
   Returns:
     A SketchEstimatorConfig for Exponential Bloom Filters of with decay rate
@@ -1093,7 +1108,8 @@ def _exp_bloom_filter_first_moment_exp(length, sketch_epsilon=None,
           sketch_config=str(length) + '_10',
           estimator_name='first_moment_exp',
           sketch_epsilon=sketch_epsilon,
-          estimate_epsilon=estimate_epsilon),
+          estimate_epsilon=estimate_epsilon,
+          decimals=epsilon_decimals),
       sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
           length=length, decay_rate=EXP_ADBF_DECAY_RATE),
       estimator=bloom_filters.FirstMomentEstimator(
@@ -1248,6 +1264,13 @@ def _generate_cardinality_estimator_configs():
         for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
           configs.append(config_constructor(length, sketch_epsilon,
                                             estimate_epsilon))
+
+  # Construct configs for limit test under the global DP theme.
+  for length in ADBF_LENGTH_LIST:
+    for estimate_epsilon in GLOBAL_DP_LIMIT_TEST_EPSILON_VALUES:
+      configs.append(_exp_bloom_filter_first_moment_exp(
+          length, None, estimate_epsilon,
+          EPSILON_DECIMALS_LIMIT_TEST))
 
   # Configs of Vector-of-Counts.
   for sketch_epsilon in SKETCH_EPSILON_VALUES:
