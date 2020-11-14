@@ -460,6 +460,47 @@ class EvaluationConfigTest(parameterized.TestCase):
         'exp_bloom_filter-5_10-first_moment_exp-no_local_dp-global_dp_'
         f'0.5000000,0.0300000-gaussian_noise-budget_split-25')
 
+  def test_exp_bloom_filter_first_moment_exp(self):
+    conf = evaluation_configs._exp_bloom_filter_first_moment_exp(
+        length=8, sketch_epsilon=1, estimate_epsilon=2,
+        epsilon_decimals=2)
+    self.assertEqual(
+        conf.name,
+        'exp_bloom_filter-8_10-first_moment_exp-local_dp_1.00'
+        '-global_dp_2.00')
+
+  def test_meta_voc_for_exp_adbf(self):
+    conf = evaluation_configs._meta_voc_for_exp_adbf(
+        adbf_length=16,
+        adbf_decay_rate=2,
+        voc_length=4,
+        sketch_epsilon=1)
+    self.assertEqual(
+        conf.name,
+        'exp_bloom_filter-16_2-meta_voc_4-local_dp_1.0000-no_global_dp',
+        'Config name is not correct.')
+    exp_adbf = conf.sketch_factory(1)
+    self.assertLen(exp_adbf.sketch, 16)
+    self.assertEqual(conf.estimator.adbf_estimator._method, 'exp')
+    voc_sketch = conf.estimator.meta_sketch_factory(1)
+    self.assertLen(voc_sketch.stats, 4)
+
+  def test_meta_voc_for_bf(self):
+    conf = evaluation_configs._meta_voc_for_bf(
+        bf_length=16,
+        voc_length=4,
+        sketch_epsilon=1)
+    self.assertEqual(
+        conf.name,
+        'bloom_filter-16-meta_voc_4-local_dp_1.0000-no_global_dp',
+        'Config name is not correct.')
+    bf = conf.sketch_factory(1)
+    self.assertLen(bf.sketch, 16)
+    bf.add(1)
+    self.assertAlmostEqual(conf.estimator([bf])[0], 1.03, delta=1.03 * 0.1)
+    voc_sketch = conf.estimator.meta_sketch_factory(1)
+    self.assertLen(voc_sketch.stats, 4)
+
   def test_get_estimator_configs_return_configs(self):
     expected_sketch_estimator_configs = [conf.name for conf in (
         evaluation_configs._generate_cardinality_estimator_configs())]
