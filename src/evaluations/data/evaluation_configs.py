@@ -23,6 +23,7 @@ from wfa_cardinality_estimation_evaluation_framework.estimators import exact_set
 from wfa_cardinality_estimation_evaluation_framework.estimators import hyper_log_log
 from wfa_cardinality_estimation_evaluation_framework.estimators import independent_set_estimator
 from wfa_cardinality_estimation_evaluation_framework.estimators import liquid_legions
+from wfa_cardinality_estimation_evaluation_framework.estimators import meta_estimators
 from wfa_cardinality_estimation_evaluation_framework.estimators import same_key_aggregator
 from wfa_cardinality_estimation_evaluation_framework.estimators import stratified_sketch
 from wfa_cardinality_estimation_evaluation_framework.estimators import vector_of_counts
@@ -1172,6 +1173,76 @@ def _vector_of_counts_4096_sequential(sketch_epsilon=None,
   )
 
 
+def _meta_voc_for_exp_adbf(adbf_length, adbf_decay_rate, voc_length,
+                           sketch_epsilon=None):
+  """Construct Meta VoC estimator for the Exponential ADBF sketches.
+
+  Args:
+    adbf_length: the length of the Exp-ADBF sketch.
+    adbf_decay_rate: the decay rate of the Exp-ADBF sketch.
+    voc_length: the length of the VoC sketch.
+    sketch_epsilon: the local DP epsilon value. By default, set to None,
+      meaning that there won't be local noise used.
+
+  Returns:
+    A SketchEstimatorConfig for the Exp-ADBF using the Meta VoC estimator.
+  """
+  if sketch_epsilon is None:
+    local_noiser = None
+  else:
+    local_noiser = vector_of_counts.LaplaceNoiser(epsilon=sketch_epsilon)
+
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='exp_bloom_filter',
+          sketch_config=f'{adbf_length}_{adbf_decay_rate}',
+          estimator_name=f'meta_voc_{voc_length}',
+          sketch_epsilon=sketch_epsilon),
+      sketch_factory=bloom_filters.ExponentialBloomFilter.get_sketch_factory(
+          length=adbf_length, decay_rate=adbf_decay_rate),
+      estimator=meta_estimators.MetaVectorOfCountsEstimator(
+          num_buckets=int(voc_length),
+          adbf_estimator=bloom_filters.FirstMomentEstimator(
+              method=bloom_filters.FirstMomentEstimator.METHOD_EXP),
+          meta_sketch_noiser=local_noiser,
+      )
+  )
+
+
+def _meta_voc_for_bf(bf_length, voc_length, sketch_epsilon=None):
+  """Construct Meta VoC estimator for the Bloom Filter sketches.
+
+  Args:
+    bf_length: the length of the Bloom Filter sketch.
+    voc_length: the length of the VoC sketch.
+    sketch_epsilon: the local DP epsilon value. By default, set to None,
+      meaning that there won't be local noise used.
+
+  Returns:
+    A SketchEstimatorConfig for the Bloom Filter using the Meta VoC estimator.
+  """
+  if sketch_epsilon is None:
+    local_noiser = None
+  else:
+    local_noiser = vector_of_counts.LaplaceNoiser(epsilon=sketch_epsilon)
+
+  return SketchEstimatorConfig(
+      name=construct_sketch_estimator_config_name(
+          sketch_name='bloom_filter',
+          sketch_config=f'{bf_length}',
+          estimator_name=f'meta_voc_{voc_length}',
+          sketch_epsilon=sketch_epsilon),
+      sketch_factory=(bloom_filters.UniformBloomFilter
+                      .get_sketch_factory(length=int(bf_length))),
+      estimator=meta_estimators.MetaVectorOfCountsEstimator(
+          num_buckets=int(voc_length),
+          adbf_estimator=bloom_filters.FirstMomentEstimator(
+              method=bloom_filters.FirstMomentEstimator.METHOD_UNIFORM),
+          meta_sketch_noiser=local_noiser,
+      )
+  )
+
+
 def _generate_cardinality_estimator_configs():
   """Generate a tuple of cardinality estimator configs.
 
@@ -1216,6 +1287,25 @@ def _generate_cardinality_estimator_configs():
   # Configs of hyper-log-log-plus.
   for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
     configs.append(_hll_plus(estimate_epsilon))
+
+  # Configs of Meta VoC for Exp-ADBF.
+  for voc_length in VOC_LENGTH_LIST:
+    for adbf_length in ADBF_LENGTH_LIST:
+      for local_epsilon in SKETCH_EPSILON_VALUES:
+        configs.append(_meta_voc_for_exp_adbf(
+            adbf_length=adbf_length,
+            adbf_decay_rate=EXP_ADBF_DECAY_RATE,
+            voc_length=voc_length,
+            sketch_epsilon=local_epsilon))
+
+  # Configs of Meta VoC for BF.
+  for voc_length in VOC_LENGTH_LIST:
+    for bf_length in BLOOM_FILTERS_LENGTH_LIST:
+      for local_epsilon in SKETCH_EPSILON_VALUES:
+        configs.append(_meta_voc_for_bf(
+            bf_length=bf_length,
+            voc_length=voc_length,
+            sketch_epsilon=local_epsilon))
 
   return tuple(configs)
 
