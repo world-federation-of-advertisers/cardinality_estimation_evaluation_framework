@@ -271,6 +271,17 @@ class FirstMomentEstimatorTest(parameterized.TestCase):
     estimate = estimator([adbf])[0]
     self.assertAlmostEqual(estimate, truth, 3, msg=method)
 
+  def test_uniform_bf_corner_cases(self):
+    adbf = UniformBloomFilter(length=2, random_seed=0)
+    # Test if the sketch is full.
+    adbf.sketch = np.array([1, 1])
+    estimator = FirstMomentEstimator(method='uniform')
+    self.assertTrue(math.isnan(estimator([adbf])[0]))
+    # Test if the register is negative.
+    adbf.sketch = np.array([-1, 0])
+    estimator = FirstMomentEstimator(method='uniform')
+    self.assertTrue(math.isnan(estimator([adbf])[0]))
+
   def test_denoise_and_union(self):
     noiser = BlipNoiser(
         epsilon=math.log(3), random_state=np.random.RandomState(5))

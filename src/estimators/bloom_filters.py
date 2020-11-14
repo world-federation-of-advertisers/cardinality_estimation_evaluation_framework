@@ -384,7 +384,9 @@ class FirstMomentEstimator(EstimatorBase):
     """Estimate cardinality of a Uniform Bloom Filter."""
     x = noiser(sum(sketch.sketch))
     m = len(sketch.sketch)
-    return - m * math.log(1 - x / m)
+    if x >= m or x < 0:
+      return float("NaN")
+    return -m * math.log(1 - x / m)
 
   @classmethod
   def _estimate_cardinality_log(cls, sketch, noiser):
