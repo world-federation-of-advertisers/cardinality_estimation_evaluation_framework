@@ -28,8 +28,10 @@ class HyperLogLogPlusPlus(SketchBase):
   """HyperLogLogPlusPlus Sketch.
 
   More accurately referred to as HyperLogLogPartialPlusPlus.  We do not
-  implement several of the ++ improvements, namely bias estimation and sparse
-  mode.  Also technically has to be 64 bits to be ++, but for testing and
+  implement several of the ++ improvements, namely bias estimation and our
+  sparse mode is much simpler at the cost of using extra memory.
+
+  Also technically has to be 64 bits to be ++, but for testing and
   experimentation purposes, we allow changing the number of bits here.
 
   Paper reference can be found here:
@@ -121,6 +123,10 @@ class HyperLogLogPlusPlus(SketchBase):
     self._idx_helper_int = int(
         '1' * self.log2_vector_length_p + '0' * self.num_bucket_bits, 2)
 
+    # Items for our simpler version of sparse mode:
+    self.sparse_mode = True
+    self.temp_set = set()
+
   def assert_compatible(self, other):
     """Performs check on other to make sure its compatible with self."""
     assert self.log2_vector_length_p == other.log2_vector_length_p, ('Vectors '
@@ -149,6 +155,16 @@ class HyperLogLogPlusPlus(SketchBase):
     return self._count_leading_zeros(w) + 1
 
   def add(self, value):
+    # Handle sparse mode first if needed
+    if self.sparse_mode:
+      self.temp_set.add(value)
+      # Check if we're at the threshold yet for normal mode
+      if len(self.temp_set) > self.vector_length_m * 6:
+        self.sparse_mode = False
+        self.temp_set.clear()
+
+    # Then do normal HLL calculation no matter if sparse mode is on
+    # (another simplification we made from the paper at the cost of memory)
     hash_value = self.my_hasher(value)
 
     bucket_index = self.get_idx_bits(hash_value)
@@ -173,9 +189,11 @@ class HyperLogLogPlusPlus(SketchBase):
   def estimate_cardinality(self):
     """Returns the estimated cardinality of this sketch.
 
-    Note we have decided not to implement the bias estimate or sparse mode for
-    small numbers of added items.
+    Note we have decided not to implement the bias estimate for now.
     """
+    if self.sparse_mode:
+      return len(self.temp_set)
+
     raw_estimate_e = self._raw_hll_cardinality_estimate()
 
     if raw_estimate_e <= 5 * self.vector_length_m:
@@ -212,6 +230,19 @@ class HyperLogLogPlusPlus(SketchBase):
 
     output_hll = copy.deepcopy(other_hll)
     output_hll.buckets = np.max([self.buckets, output_hll.buckets], axis=0)
+
+    # Handle sparse mode merging:
+    output_hll.sparse_mode = output_hll.sparse_mode and self.sparse_mode
+    if output_hll.sparse_mode:
+      output_hll.temp_set = output_hll.temp_set.union(self.temp_set)
+      # To cover the case where the new HLL shouldn't be in sparse mode, pop a
+      # random item from the set and add it back to trigger the check
+      if output_hll.temp_set:
+        random_item = output_hll.temp_set.pop()
+        output_hll.add(random_item)
+    else:
+      output_hll.temp_set = set()
+
     return output_hll
 
 

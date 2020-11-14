@@ -104,6 +104,7 @@ class HyperLogLogPlusPlusTest(absltest.TestCase):
 
     one_vector = np.ones(self.vector_length)
     hll.buckets = one_vector
+    hll.sparse_mode = False
     alpha_16 = 0.673
     hll_should_estimate = alpha_16 * self.vector_length**2 * 2 / self.vector_length
 
@@ -119,6 +120,7 @@ class HyperLogLogPlusPlusTest(absltest.TestCase):
 
     thirty_vector = 30 * np.ones(m)
     hll.buckets = thirty_vector
+    hll.sparse_mode = False
     alpha_m = 0.7213 / (1 + 1.079 / m)
     hll_should_estimate = alpha_m * m**2 * 2**30 / m
 
@@ -155,6 +157,79 @@ class HyperLogLogPlusPlusTest(absltest.TestCase):
   def test_insert_huge(self):
     self.insertion_test_helper(1_000_000)
 
+  def test_merge_sparse_with_sparse_to_sparse(self):
+    hll1 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    hll1.add(1)
+    hll2 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    hll2.add(1)
+    merged_hll = hll1.merge(hll2)
+    self.assertTrue(merged_hll.sparse_mode,
+                    'Merged sketch is not in sparse mode.')
+    self.assertTrue(all(hll1.buckets == merged_hll.buckets),
+                    'Merged sketch is not correct.')
+    self.assertSameElements(merged_hll.temp_set, set([1]),
+                            'Temp set is not correct.')
+    self.assertEqual(merged_hll.estimate_cardinality(), 1,
+                     'Estimated cardinality is not correct.')
+
+  def test_merge_sparse_with_sparse_to_dense(self):
+    hll1 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    hll2 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    for i in range(int(16 * 6 / 2)):
+      hll1.add(i)
+      hll2.add(i + 100)
+
+    merged_hll = hll1.merge(hll2)
+    self.assertTrue(merged_hll.sparse_mode,
+                    'Merged sketch should be in sparse mode.')
+    self.assertEqual(merged_hll.estimate_cardinality(), 96,
+                     'Estimated cardinality not correct under sparse mode.')
+
+    hll1.add(1000)
+    merged_hll = hll1.merge(hll2)
+    self.assertFalse(merged_hll.sparse_mode,
+                     'Merged sketch should not be in sparse mode.')
+    self.assertAlmostEqual(
+        merged_hll.estimate_cardinality(), 97, delta=97 * 0.05,
+        msg='Estimated cardinality not correct under dense mode.'
+    )
+
+  def test_merge_sparse_with_dense(self):
+    hll1 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    hll1.add(100)
+    hll2 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    for i in range(16 * 6 + 1):
+      hll2.add(i)
+
+    merged_hll = hll1.merge(hll2)
+    self.assertFalse(merged_hll.sparse_mode,
+                     'Merged sketch should not be in sparse mode.')
+    # Should change one bucket value given this random seed.
+    self.assertEqual(sum(hll2.buckets == merged_hll.buckets), 16 - 1,
+                     'Merged sketch is not correct.')
+    self.assertSameElements(merged_hll.temp_set, set(),
+                            'Temp set is not correct.')
+    self.assertGreater(merged_hll.estimate_cardinality(),
+                       hll2.estimate_cardinality())
+
+  def test_merge_dense_with_dense(self):
+    hll1 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    hll2 = HyperLogLogPlusPlus(length=16, random_seed=234)
+    for i in range(16 * 6 + 1):
+      hll1.add(i)
+      hll2.add(i + 100)
+
+    merged_hll = hll1.merge(hll2)
+    self.assertFalse(merged_hll.sparse_mode,
+                     'Merged sketch should not be in sparse mode.')
+    self.assertGreater(sum(hll2.buckets == merged_hll.buckets), 0,
+                       'Merged sketch is not correct.')
+    self.assertSameElements(merged_hll.temp_set, set(),
+                            'Temp set is not correct.')
+    self.assertAlmostEqual(
+        merged_hll.estimate_cardinality(), 194, delta=194 * 0.1
+        )
+
 
 class HyperLogLogPlusPlusEstimatorTest(absltest.TestCase):
   """Note this could be more comprehensive."""
@@ -178,6 +253,24 @@ class HyperLogLogPlusPlusEstimatorTest(absltest.TestCase):
 
   def test_estimator_large(self):
     self.estimator_tester_helper(100_000)
+
+  def test_estimator_cardinality_sparse_mode(self):
+    estimator = HllCardinality()
+    for truth in [0, 1, 1024]:
+      hll = HyperLogLogPlusPlus(random_seed=89, length=1024)
+      for i in range(truth):
+        hll.add(i)
+      estimated = estimator([hll])[0]
+      self.assertEqual(estimated, truth)
+
+  def test_estimator_cardinality_dense_mode(self):
+    estimator = HllCardinality()
+    for truth in [1025, 2048]:
+      hll = HyperLogLogPlusPlus(random_seed=89, length=1024)
+      for i in range(truth):
+        hll.add(i)
+      estimated = estimator([hll])[0]
+      self.assertAlmostEqual(estimated, truth, delta=truth * 0.05)
 
 
 if __name__ == '__main__':

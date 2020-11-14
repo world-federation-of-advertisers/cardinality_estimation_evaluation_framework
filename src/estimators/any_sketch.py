@@ -327,6 +327,7 @@ class AnySketch(SketchBase):
     """
     assert len(config.value_functions) == 1, 'Now we support one ValueFunction.'
     self.config = config
+    self.random_seed = random_seed
     random_state = np.random.RandomState(random_seed)
     self.sketch = np.zeros(
         tuple(len(i.distribution) for i in config.index_specs),
@@ -401,3 +402,8 @@ class AnySketch(SketchBase):
     assert self.hash_functions == other.hash_functions, (
         'hash functions are not the same')
     return True
+
+  def get_active_register_indices(self):
+    """Get the indices of the active registers."""
+    assert self.sketch.ndim == 1, 'Currently only support 1-dimensional sketch.'
+    return np.flatnonzero(self.sketch)
