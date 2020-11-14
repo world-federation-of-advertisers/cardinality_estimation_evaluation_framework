@@ -443,7 +443,7 @@ class EvaluationConfigTest(parameterized.TestCase):
 
   def test_exp_same_key_aggregator(self):
     conf = evaluation_configs._exp_same_key_aggregator(
-        max_frequency=3, length=1e2, global_epsilon=1)
+        max_frequency=3, length=100, global_epsilon=1, decay_rate=10)
     self.assertEqual(conf.max_frequency, 3)
     self.assertEqual(
         conf.name,
@@ -453,7 +453,7 @@ class EvaluationConfigTest(parameterized.TestCase):
   def test_stratiefied_sketch_exp_adbf(self):
     conf = evaluation_configs._stratiefied_sketch_exponential_adbf(
         max_frequency=3, length=100, sketch_epsilon=1, global_epsilon=1,
-        sketch_operator_type='expectation')
+        decay_rate=10, sketch_operator_type='expectation')
     self.assertEqual(conf.max_frequency, 3)
     self.assertEqual(
         conf.name,
@@ -466,13 +466,13 @@ class EvaluationConfigTest(parameterized.TestCase):
                                  evaluation_configs.SKETCH_OPERATOR_BAYESIAN):
       conf = evaluation_configs._stratiefied_sketch_exponential_adbf(
           max_frequency=3, length=100, sketch_epsilon=1, global_epsilon=1,
-          sketch_operator_type=sketch_operator_type)
+          decay_rate=10, sketch_operator_type=sketch_operator_type)
       self.assertIn(sketch_operator_type, conf.name)
 
     with self.assertRaises(ValueError):
       _ = evaluation_configs._stratiefied_sketch_exponential_adbf(
           max_frequency=3, length=100, sketch_epsilon=1, global_epsilon=1,
-          sketch_operator_type='other_type')
+          decay_rate=10, sketch_operator_type='other_type')
 
   @parameterized.parameters(
       (3, 100, 1, 1, 'stratified_sketch_geo_adbf-'
