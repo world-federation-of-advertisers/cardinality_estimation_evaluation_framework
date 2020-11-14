@@ -435,6 +435,22 @@ class EvaluationConfigTest(parameterized.TestCase):
     voc_sketch = conf.estimator.meta_sketch_factory(1)
     self.assertLen(voc_sketch.stats, 4)
 
+  def test_meta_voc_for_bf(self):
+    conf = evaluation_configs._meta_voc_for_bf(
+        bf_length=16,
+        voc_length=4,
+        sketch_epsilon=1)
+    self.assertEqual(
+        conf.name,
+        'bloom_filter-16-meta_voc_4-local_dp_1.0000-no_global_dp',
+        'Config name is not correct.')
+    bf = conf.sketch_factory(1)
+    self.assertLen(bf.sketch, 16)
+    bf.add(1)
+    self.assertAlmostEqual(conf.estimator([bf])[0], 1.03, delta=1.03 * 0.1)
+    voc_sketch = conf.estimator.meta_sketch_factory(1)
+    self.assertLen(voc_sketch.stats, 4)
+
   def test_get_estimator_configs_return_configs(self):
     expected_sketch_estimator_configs = [conf.name for conf in (
         evaluation_configs._generate_cardinality_estimator_configs())]
