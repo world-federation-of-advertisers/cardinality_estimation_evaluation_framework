@@ -14,6 +14,8 @@
 
 import math
 import numpy as np
+from dp_accounting import accountant
+from dp_accounting import common
 
 
 class LaplaceMechanism:
@@ -142,10 +144,9 @@ class GaussianMechanism:
     """
     self._func = f
     self._delta_f = delta_f
-    # TODO(pasin30055): Use tight computation of sigma.
-    # Set the standard deviation sigma, following Appendix A of Dwork and Roth.
-    self._sigma = (math.sqrt(2 * math.log(1.25 / delta)) * delta_f *
-      math.sqrt(num_queries) / epsilon)
+    self._sigma = accountant.get_smallest_gaussian_noise(
+      common.DifferentialPrivacyParameters(epsilon, delta),
+      num_queries, sensitivity=delta_f)
     self._random_state = random_state or np.random.RandomState()
 
   def __call__(self, x):
