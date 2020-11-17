@@ -133,7 +133,7 @@ class GaussianMechanism:
       delta_f: The sensitivity paramater, e.g., the maximum value by which the
         function can change for two databases that differ by only one row.
       epsilon: Differential privacy parameter.
-      delta: Differential privacy paramter.
+      delta: Differential privacy parameter.
       num_queries: The number of queries for which the mechanism is used. Note
         that the constructed mechanism will be (epsilon, delta)-differentially
         private when answering (no more than) num_queries queries.
