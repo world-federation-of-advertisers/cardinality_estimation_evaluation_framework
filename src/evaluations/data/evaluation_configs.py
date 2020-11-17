@@ -907,7 +907,7 @@ def _independent_set_estimator(sketch_epsilon=None, estimate_epsilon=None):
   )
 
 
-def _hll_plus(estimate_epsilon=None):
+def _hll_plus():
   """Generate a SketchEstimatorConfig for HyperLogLogPlus.
 
   Args:
@@ -917,24 +917,16 @@ def _hll_plus(estimate_epsilon=None):
   Returns:
     A SketchEstimatorConfig for HyperLogLogPlus.
   """
-  if estimate_epsilon:
-    estimate_noiser = estimator_noisers.GeometricEstimateNoiser(
-        epsilon=estimate_epsilon)
-  else:
-    estimate_noiser = None
-
   sketch_len = 2**14
 
   return SketchEstimatorConfig(
       name=construct_sketch_estimator_config_name(
           sketch_name='hyper_log_log_plus',
           sketch_config=str(sketch_len),
-          estimator_name='hll_cardinality',
-          estimate_epsilon=estimate_epsilon),
+          estimator_name='hll_cardinality'),
       sketch_factory=hyper_log_log.HyperLogLogPlusPlus.get_sketch_factory(
           length=sketch_len),
       estimator=hyper_log_log.HllCardinality(),
-      estimate_noiser=estimate_noiser,
   )
 
 
@@ -1285,8 +1277,7 @@ def _generate_cardinality_estimator_configs():
                                                 estimate_epsilon))
 
   # Configs of hyper-log-log-plus.
-  for estimate_epsilon in ESTIMATE_EPSILON_VALUES:
-    configs.append(_hll_plus(estimate_epsilon))
+  configs.append(_hll_plus())
 
   # Configs of Meta VoC for Exp-ADBF.
   for voc_length in VOC_LENGTH_LIST:
@@ -1591,6 +1582,9 @@ def _generate_frequency_estimator_configs(max_frequency):
                                              sketch_operator_type)
     )
 
+  for sketch_epsilon, global_epsilon, length in (
+      itertools.product(
+          SKETCH_EPSILON_VALUES, ESTIMATE_EPSILON_VALUES, ADBF_LENGTH_LIST)):
     configs.append(
         _stratiefied_sketch_geo_adbf(max_frequency, length,
                                      sketch_epsilon, global_epsilon)
