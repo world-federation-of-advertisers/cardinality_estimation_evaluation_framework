@@ -93,6 +93,29 @@ class GaussianEstimateNoiser(base.EstimateNoiserBase):
       return self._noiser(cardinality_estimate)
 
 
+class PolyaEstimateNoiser(base.EstimateNoiserBase):
+  """A noiser that adds a difference of two Polya noises to a cardinality estimate."""
+
+  def __init__(self, r, p, random_state=None):
+    """Instantiates a PolyaEstimateNoiser object.
+
+    Args:
+      r:  Parameter of the Polya distribution.
+      p:  Parameter of the Polya distribution.
+      random_state:  Optional instance of numpy.random.RandomState that is used
+        to seed the random number generator.
+    """
+    self._noiser = noisers.PolyaMechanism(
+      lambda x: x, r, p, random_state=random_state)
+
+  def __call__(self, cardinality_estimate):
+    """Returns a cardinality estimate with Polya noise."""
+    if type(cardinality_estimate) == float:
+      return self._noiser(np.array([cardinality_estimate]))[0]
+    else:
+      return self._noiser(cardinality_estimate)
+
+
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')

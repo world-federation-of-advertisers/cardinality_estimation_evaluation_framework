@@ -82,8 +82,8 @@ class GeometricMechanism:
   distribution.  The geometric distribution has PMF
     Pr(X=k | p) = p * (1-p)^k-1.
   There is a connection between the geometric distribution and the discrete
-  Laplace distribution, though.  If X and Y are independent random variables
-  having geometric distribution p, then X-Y is a discrete Laplace random
+  Laplace distribution, though.  If U and V are independent random variables
+  having geometric distribution p, then U-V is a discrete Laplace random
   variable with parameter 1-p.
   """
 
@@ -107,9 +107,9 @@ class GeometricMechanism:
   def __call__(self, x):
     z = self._func(x)
     p_geometric = 1 - math.exp(-self._epsilon / self._delta_f)
-    x = self._random_state.geometric(size=z.shape, p=p_geometric)
-    y = self._random_state.geometric(size=z.shape, p=p_geometric)
-    return z + x - y
+    u = self._random_state.geometric(size=z.shape, p=p_geometric)
+    v = self._random_state.geometric(size=z.shape, p=p_geometric)
+    return z + u - v
 
 
 class GaussianMechanism:
@@ -152,6 +152,57 @@ class GaussianMechanism:
   def __call__(self, x):
     z = self._func(x)
     return z + self._random_state.normal(size=z.shape, scale=self._sigma)
+
+
+class PolyaMechanism:
+  """Transforms a function using the Polya mechanism.
+
+  If f(x) = (Z[1], Z[2], ..., Z[k]), then returns a function that computes
+  (Z'[1], Z'[2], ..., Z'[k]), where
+      Z'[i] = Z[i] + U[i] - V[i],
+      U[i], V[i] ~ Polya(k | r, p),
+  and Polya(k | r, p) is a probability mass function defined on the non-negative
+  integers that is given by
+      Polya(k | r, p) = binom(k + r - 1, k) * (1 - p)^r * p^k
+  where binom denote the binomial coefficient.
+
+  Polya(k | r, p) is also referred to as the negative binomial distribution.
+
+  A key property of Polya mechanism is that, for any positive integer n
+  and positive real number epsilon, if r = 1/n and p = e^{-epsilon}, then when
+  the mechanism is repeatedly applied n times the resulting distribution is
+  the same as that of the Geometric mechanism which is epsilon-differentially
+  private (for sensitivity equal to one).
+
+  See e.g.:
+
+  Goryczka, Slawomir, and Li Xiong. "A comprehensive comparison of multiparty
+  secure additions with differential privacy." IEEE transactions on dependable
+  and secure computing 14.5 (2015): 463-477.
+  """
+
+  def __init__(self, f, r, p, random_state=None):
+    """Instantiates a geometric mechanism.
+
+    Args:
+      f: A function which takes as input a database and which returns as output
+        a numpy array.
+      r:  Parameter of the Polya distribution.
+      p:  Parameter of the Polya distribution.
+      random_state:  Optional instance of numpy.random.RandomState that is
+        used to seed the random number generator.
+    """
+    self._func = f
+    self._r = r
+    self._p = p
+    self._random_state = random_state or np.random.RandomState()
+
+  def __call__(self, x):
+    z = self._func(x)
+    # numpy negative_binomial define p as 1 - p of the standard definition.
+    u = self._random_state.negative_binomial(self._r, 1 - self._p, size=z.shape)
+    v = self._random_state.negative_binomial(self._r, 1 - self._p, size=z.shape)
+    return z + u - v
 
 
 def main(argv):
