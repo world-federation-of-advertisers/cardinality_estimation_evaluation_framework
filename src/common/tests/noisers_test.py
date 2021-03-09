@@ -25,13 +25,29 @@ class FakeGeometricRandomState:
     self.calls_count += 1
     return self.return_values[self.calls_count - 1]
 
-class FakeGaussianRandomState:
 
+class FakeGaussianRandomState:
   def __init__(self, return_value):
     self.return_value = return_value
-
   def normal(self, size, scale):
     return self.return_value
+
+
+class FakeDiscreteGaussianRandomState:
+
+  def __init__(self, return_values_geometric, return_values_binomial):
+    self.return_values_geometric = return_values_geometric
+    self.return_values_binomial = return_values_binomial
+    self.calls_count_geometric = 0
+    self.calls_count_binomial = 0
+
+  def geometric(self, p):
+    self.calls_count_geometric += 1
+    return self.return_values_geometric[self.calls_count_geometric - 1]
+
+  def binomial(self, n, p):
+    self.calls_count_binomial += 1
+    return self.return_values_binomial[self.calls_count_binomial - 1]
 
 
 class NoisersTest(absltest.TestCase):
@@ -115,6 +131,38 @@ class NoisersTest(absltest.TestCase):
         random_state=np.random.RandomState(seed=123))
     result0 = lm0(5.)
     lm1 = noisers.GaussianMechanism(
+        lambda x: np.array([1., 2., 3.]),
+        1.,
+        2.,
+        .1,
+        random_state=np.random.RandomState(seed=123))
+    result1 = lm1(5.)
+    self.assertEqual(list(result0), list(result1))
+    result2 = lm1(5.)
+    self.assertNotEqual(list(result1), list(result2))
+
+  def test_discrete_gaussian_mechanism_works_with_numpy_random(self):
+    lm = noisers.DiscreteGaussianMechanism(
+        lambda x: np.array([1., 2., 3.]), 1., 2., .1)
+    result = lm(5.)
+    self.assertLen(result, 3)
+
+  def test_discrete_gaussian_mechanism_adds_expected_noise(self):
+    rs = FakeDiscreteGaussianRandomState([3., 6., 7., 8., 15., 30.], [1, 0, 1])
+    lm = noisers.DiscreteGaussianMechanism(
+        lambda x: np.array([1., 2.]), 1., 2., .1, random_state=rs)
+    result = lm(5.)
+    np.testing.assert_array_equal(result, np.array([-2., -13.]))
+
+  def test_discrete_gaussian_mechanism_respects_random_state(self):
+    lm0 = noisers.DiscreteGaussianMechanism(
+        lambda x: np.array([1., 2., 3.]),
+        1.,
+        2.,
+        .1,
+        random_state=np.random.RandomState(seed=123))
+    result0 = lm0(5.)
+    lm1 = noisers.DiscreteGaussianMechanism(
         lambda x: np.array([1., 2., 3.]),
         1.,
         2.,
