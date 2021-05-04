@@ -19,6 +19,9 @@ import numpy as np
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import UniqueKeyFunction
 from wfa_cardinality_estimation_evaluation_framework.estimators.same_key_aggregator import ExponentialSameKeyAggregator
 from wfa_cardinality_estimation_evaluation_framework.estimators.same_key_aggregator import StandardizedHistogramEstimator
+from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import DiscreteGaussianEstimateNoiser
+from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import GaussianEstimateNoiser
+from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import GeometricEstimateNoiser
 
 
 class ExponentialSameKeyAggregatorTest(absltest.TestCase):
@@ -171,7 +174,27 @@ class StandardizedHistogramEstimatorTest(absltest.TestCase):
         max_freq=6, noiser_class=None)
     res = estimator([first_ska, second_ska, third_ska])
     expected = [5.877, 2.939, 2.939, 2.939, 2.939, 0]
-    np.testing.assert_almost_equal(res, expected, decimal=3)
+    np.testing.assert_almost_equal(res, expected, decimal=3,
+                                   err_msg='Error in the unnoised case.')
+    estimator = StandardizedHistogramEstimator(
+        max_freq=6, noiser_class=GeometricEstimateNoiser,
+        epsilon=1, epsilon_split=0.5,
+        reach_noiser_para={'random_state': np.random.RandomState(1)},
+        frequency_noiser_para={'random_state': np.random.RandomState(2)})
+    res = estimator([first_ska, second_ska, third_ska])
+    expected = [2.854, 0.951, 1.903, 0.951, 0, -0.951]
+    np.testing.assert_almost_equal(res, expected, decimal=3,
+                                   err_msg='Error for geometric noise.')
+    estimator = StandardizedHistogramEstimator(
+        max_freq=6, noiser_class=GaussianEstimateNoiser,
+        epsilon=1, epsilon_split=0.5,
+        reach_noiser_para={'delta': 1e-5,
+                           'random_state': np.random.RandomState(1)},
+        frequency_noiser_para={'delta': 1e-5,
+                               'random_state': np.random.RandomState(2)})
+    res = estimator([first_ska, second_ska, third_ska])
+    # TODO(pasin) update GaussianEstimator & DiscreteGuassian
+    # TODO(jiayu) complete testing.
 
 
 if __name__ == '__main__':

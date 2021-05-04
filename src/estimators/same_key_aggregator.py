@@ -24,6 +24,8 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.base import Sket
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filter_sketch_operators import SketchOperator
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import ExponentialBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentEstimator
+from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import DiscreteGaussianEstimateNoiser
+from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import GaussianEstimateNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import GeometricEstimateNoiser
 
 
@@ -100,7 +102,9 @@ class StandardizedHistogramEstimator(EstimatorBase):
                max_freq=10,
                noiser_class=GeometricEstimateNoiser,
                epsilon=np.log(3),
-               epsilon_split=0.5):
+               epsilon_split=0.5,
+               reach_noiser_para={},
+               frequency_noiser_para={}):
     """Initiate a StandardizedHistogramEstimator.
 
     Algorithm description:
@@ -123,6 +127,10 @@ class StandardizedHistogramEstimator(EstimatorBase):
       epsilon_split: The proportion of total privacy budget that is assigned to
         the estimate of 1+ reach. The remaining privacy budget is assigned to
         the frequency histogram among effective keys.
+      reach_noiser_para: a dictionary of arguments other than epsilon in the
+        reach noiser. Example arguments are delta and random_state.
+      frequency_noiser_para:  a dictionary of arguments other than epsilon in
+        the frequency noiser.
     """
     self.max_freq = max_freq
     self.one_plus_reach_noiser = None
@@ -130,13 +138,19 @@ class StandardizedHistogramEstimator(EstimatorBase):
     if noiser_class is not None:
       assert epsilon_split > 0 and epsilon_split < 1, (
           'In StandardizedHistogramEstimator, epsilon_split must be >0 and <1.')
-      # self.one_plus_reach_noiser is the noiser on the estimate of 1+ reach.
-      self.one_plus_reach_noiser = noiser_class(epsilon=epsilon * epsilon_split)
-      # self.histogram_noiser is the noiser on the frequency histogram among
-      # effective keys
-      # For simplicity, suppose the two noisers share the same noiser_class.
+      if noiser_class in (GaussianEstimateNoiser,
+                          DiscreteGaussianEstimateNoiser):
+        assert ('delta' in reach_noiser_para.keys() and
+                'delta' in frequency_noiser_para.keys()), (
+                    'Gaussian noisers require specifying delta.')
+      self.one_plus_reach_noiser = noiser_class(
+          epsilon=epsilon * epsilon_split, **reach_noiser_para)
       self.histogram_noiser = noiser_class(
-          epsilon=epsilon * (1 - epsilon_split))
+          epsilon=epsilon * (1 - epsilon_split), **frequency_noiser_para)
+  # self.one_plus_reach_noiser is the noiser on the estimate of 1+ reach.
+  # self.histogram_noiser is the noiser on the frequency histogram among
+  # effective keys.
+  # For simplicity, suppose the two noisers share the same noiser_class.
 
   def __call__(self, sketch_list):
     ska = StandardizedHistogramEstimator.merge_sketch_list(sketch_list)
