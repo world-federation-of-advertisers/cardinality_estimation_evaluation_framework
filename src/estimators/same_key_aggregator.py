@@ -15,7 +15,9 @@
 
 import copy
 import functools
+import inspect
 import numpy as np
+import warnings
 
 from wfa_cardinality_estimation_evaluation_framework.estimators import any_sketch
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import UniqueKeyFunction
@@ -24,6 +26,8 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.base import Sket
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filter_sketch_operators import SketchOperator
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import ExponentialBloomFilter
 from wfa_cardinality_estimation_evaluation_framework.estimators.bloom_filters import FirstMomentEstimator
+from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import DiscreteGaussianEstimateNoiser
+from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import GaussianEstimateNoiser
 from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import GeometricEstimateNoiser
 
 
@@ -94,23 +98,38 @@ class ExponentialSameKeyAggregator(SketchBase):
 
 class StandardizedHistogramEstimator(EstimatorBase):
   """Frequency estimator from ExponentialSameKeyAggregator.
+
+    Algorithm Description
+    (following the argument names in __init__ and __call__):
+    Given any sketch_list which includes the ExponentialSameKeyAggregator from
+    a set of publishers, we estimate the frequency histogram among all the
+    publishers in the following steps.
+    Step 1. Estimate the one_plus_reach, which is 1+ union reach of all pubs.
+    Step 2. Estimate the active_key_histogram, which is the histogram of
+      the frequency for each active key, i.e., each id that is the unique
+      reached id in its bucket.
+    Step 3. Noise one_plus_reach by
+      noiser_class(reach_epsilon, **reach_noiser_kwargs).
+      And noise active_key_histogram by
+      noiser_class(frequency_epsilon, **frequency_noiser_kwargs).
+    Step 4. Return noised_one_plus_reach * noised_active_key_histogram /
+      sum(noised_active_key_histogram).
   """
 
   def __init__(self,
                max_freq=10,
-               noiser_class=GeometricEstimateNoiser,
-               epsilon=np.log(3),
-               epsilon_split=0.5):
+               reach_noiser_class=GeometricEstimateNoiser,
+               frequency_noiser_class=GeometricEstimateNoiser,
+               reach_epsilon=1.,
+               frequency_epsilon=1.,
+               reach_delta=0.,
+               frequency_delta=0.,
+               reach_noiser_kwargs={},
+               frequency_noiser_kwargs={}):
     """Initiate a StandardizedHistogramEstimator.
 
-    Algorithm description:
-    Given any ExponentialSameKeyAggregator ska,
-    Step 1. Estimate the 1+ reach, from ska.exponential_bloom_filter.
-    Step 2. Estimate the histogram of frequency histogram among (only)
-      effective keys.
-    Step 3. Use the estimated 1+ reach to standardize the frequency histogram
-      among effective keys, and thus obtain an estimate of frequnecy histogram
-      among all IDs.
+    To understand the usage of the arguments here, please read the
+    "Algorithm Description" in the docstring of the whole class.
 
     Args:
       max_freq: the maximum targeting frequency level. For example, if it is set
@@ -118,29 +137,57 @@ class StandardizedHistogramEstimator(EstimatorBase):
         3). Note: we have to set a max_freq; privacy cannot be guaranteed if
         there's no max_freq.
       noiser_class: a class of noiser indicating the distribution of noise.
-      epsilon: total privacy budget for a run of frequency estimation. No noise
-        is added when epsilon == np.Inf.
-      epsilon_split: The proportion of total privacy budget that is assigned to
-        the estimate of 1+ reach. The remaining privacy budget is assigned to
-        the frequency histogram among effective keys.
+      reach_epsilon: DP-epsilon for the noise on the one_plus_reach.
+      frequency_epsilon: DP-epsilon for the noise on active_key_histogram.
+      reach_noiser_kwargs: a dictionary of arguments other than epsilon in the
+        noiser for one_plus_reach. It can be specified in the following ways.
+        1. When noiser_class=LaplaceEstimateNoiser or GeometricEstimateNoiser,
+        reach_noiser_kwargs can be an empty dictionary, or
+        {'random_state': <a np.random.RandomState>}.
+        2. When noiser_class=GaussianEstimateNoiser or DiscreteGaussianEstimateNoiser,
+        one must specify a delta argument for the (epsilon, delta)-DP.
+        Thus, reach_noiser_kwargs can be {'delta': <a float between 0 and 1>},
+        or {'delta': <a float between 0 and 1>,
+         'random_state': <a np.random.RandomState>}.
+        See wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers
+        for other possible ways to specify reach_noiser_para.
+      frequency_noiser_kwargs:  a dictionary of arguments other than epsilon in
+        the noiser for active_key_histogram. It's specified in the same way with
+        reach_noiser_kwargs.
+
+        To further illustrate how to build the noisers with the above arguments,
+        see the following example. With
+        noiser_class=DiscreteGaussianEstimateNoiser,
+        epsilon=1, epsilon_split=0.3,
+        reach_noiser_kwargs={'delta': 1e-5, 'random_state': np.random.RandomState(1)},
+        frequency_noiser_kwargs={'delta': 1e-6, 'random_state': np.random.RandomState(2)},
+        the estimated one_plus_reach is noised by a discrete Gaussian
+        distribution guaranteeing a (0.3, 1e-5)-DP with a random seed 1.
+        And with a random seed 2, the array active_key_histogram is
+        noised by i.i.d. discrete Gaussian distribution guaranteeing a
+        (0.3, 1e-5)-DP on each count.
     """
     self.max_freq = max_freq
     self.one_plus_reach_noiser = None
     self.histogram_noiser = None
-    if noiser_class is not None:
-      assert epsilon_split > 0 and epsilon_split < 1, (
-          'In StandardizedHistogramEstimator, epsilon_split must be >0 and <1.')
-      # self.one_plus_reach_noiser is the noiser on the estimate of 1+ reach.
-      self.one_plus_reach_noiser = noiser_class(epsilon=epsilon * epsilon_split)
-      # self.histogram_noiser is the noiser on the frequency histogram among
-      # effective keys
-      # For simplicity, suppose the two noisers share the same noiser_class.
-      self.histogram_noiser = noiser_class(
-          epsilon=epsilon * (1 - epsilon_split))
+
 
   def __call__(self, sketch_list):
     ska = StandardizedHistogramEstimator.merge_sketch_list(sketch_list)
     return self.estimate_cardinality(ska)
+
+  def get_noiser():
+    name = inspect.getfullargspec(noiser_class.__init__)
+
+  @classmethod
+  def get_total_privacy_budget(
+      cls, reach_noiser_class, reach_epsilon, reach_delta,
+      frequency_noiser_class, frequency_epsilon, frequency_delta, max_freq):
+    return (reach_epsilon + frequency_epsilon * max_freq,
+            reach_delta + frequency_delta * max_freq)
+    # Currently, use the naive composition theorem.
+    # TODO(jiayu): Work with Pasin and Matthew to find the tight composition.
+    # Probably need to use PLD.
 
   @classmethod
   def merge_two_exponential_bloom_filters(cls, this, that):
