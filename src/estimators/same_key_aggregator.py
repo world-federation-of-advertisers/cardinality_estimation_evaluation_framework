@@ -104,87 +104,97 @@ class StandardizedHistogramEstimator(EstimatorBase):
     Given any sketch_list which includes the ExponentialSameKeyAggregator from
     a set of publishers, we estimate the frequency histogram among all the
     publishers in the following steps.
-    Step 1. Estimate the one_plus_reach, which is 1+ union reach of all pubs.
-    Step 2. Estimate the active_key_histogram, which is the histogram of
+    Step 1. Estimate one_plus_reach, which is 1+ union reach of all pubs.
+    Step 2. Estimate active_key_histogram, which is the histogram of
       the frequency for each active key, i.e., each id that is the unique
       reached id in its bucket.
-    Step 3. Noise one_plus_reach by
-      noiser_class(reach_epsilon, **reach_noiser_kwargs).
-      And noise active_key_histogram by
-      noiser_class(frequency_epsilon, **frequency_noiser_kwargs).
+    Step 3. Noise one_plus_reach by a reach_noiser.
+      And noise active_key_histogram a frequency_noiser.
     Step 4. Return noised_one_plus_reach * noised_active_key_histogram /
       sum(noised_active_key_histogram).
   """
 
   def __init__(self,
                max_freq=10,
-               reach_noiser_class=GeometricEstimateNoiser,
-               frequency_noiser_class=GeometricEstimateNoiser,
+               reach_noiser_class=None,
+               frequency_noiser_class=None,
                reach_epsilon=1.,
                frequency_epsilon=1.,
                reach_delta=0.,
                frequency_delta=0.,
                reach_noiser_kwargs={},
                frequency_noiser_kwargs={}):
-    """Initiate a StandardizedHistogramEstimator.
+    """Construct a StandardizedHistogramEstimator.
 
-    To understand the usage of the arguments here, please read the
-    "Algorithm Description" in the docstring of the whole class.
+    The docstring here is following the termininology of the whole class.
+    This constructor mainly specifies the reach_noiser and frequency_noiser
+    in the foregoing "Algorithm Description".
 
     Args:
       max_freq: the maximum targeting frequency level. For example, if it is set
         to 3, then the sketches will include frequency=1, 2, 3+ (frequency >=
         3). Note: we have to set a max_freq; privacy cannot be guaranteed if
         there's no max_freq.
-      noiser_class: a class of noiser indicating the distribution of noise.
-      reach_epsilon: DP-epsilon for the noise on the one_plus_reach.
-      frequency_epsilon: DP-epsilon for the noise on active_key_histogram.
-      reach_noiser_kwargs: a dictionary of arguments other than epsilon in the
-        noiser for one_plus_reach. It can be specified in the following ways.
-        1. When noiser_class=LaplaceEstimateNoiser or GeometricEstimateNoiser,
-        reach_noiser_kwargs can be an empty dictionary, or
-        {'random_state': <a np.random.RandomState>}.
-        2. When noiser_class=GaussianEstimateNoiser or DiscreteGaussianEstimateNoiser,
-        one must specify a delta argument for the (epsilon, delta)-DP.
-        Thus, reach_noiser_kwargs can be {'delta': <a float between 0 and 1>},
-        or {'delta': <a float between 0 and 1>,
-         'random_state': <a np.random.RandomState>}.
+      reach_noiser_class: a class of noise to be added to one_plus_reach. See
+        wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers
+        for candidate classes.
+      frequency_noiser_class: a class of noise to be added to active_key_histogram.
         See wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers
-        for other possible ways to specify reach_noiser_para.
-      frequency_noiser_kwargs:  a dictionary of arguments other than epsilon in
-        the noiser for active_key_histogram. It's specified in the same way with
-        reach_noiser_kwargs.
-
-        To further illustrate how to build the noisers with the above arguments,
-        see the following example. With
-        noiser_class=DiscreteGaussianEstimateNoiser,
-        epsilon=1, epsilon_split=0.3,
-        reach_noiser_kwargs={'delta': 1e-5, 'random_state': np.random.RandomState(1)},
-        frequency_noiser_kwargs={'delta': 1e-6, 'random_state': np.random.RandomState(2)},
-        the estimated one_plus_reach is noised by a discrete Gaussian
-        distribution guaranteeing a (0.3, 1e-5)-DP with a random seed 1.
-        And with a random seed 2, the array active_key_histogram is
-        noised by i.i.d. discrete Gaussian distribution guaranteeing a
-        (0.3, 1e-5)-DP on each count.
+        for candidate classes.
+      reach_epsilon: DP-epsilon for the noise on one_plus_reach.
+      frequency_epsilon: DP-epsilon for the noise on active_key_histogram.
+      reach_delta: DP-delta for the noise on one_plus_reach. Set as 0 if
+        reach_noise_class guarantees purely epsilon-DP.
+      frequency_delta: DP-delta for the noise on active_key_histogram. Set as 0
+        if frequency_noise_class guarantees purely epsilon-DP.
+      reach_noiser_kwargs: a dictionary of other kwargs to be specified in
+        reach_noiser_class. For example, it can be an empty dictionary, or
+        {'random_state': <a np.random.RandomState>}.
+      frequency_noiser_kwargs: a dictionary of other kwargs to be specified in
+        frequency_noiser_class. For example, it can be an empty dictionary, or
+        {'random_state': <a np.random.RandomState>}.
     """
     self.max_freq = max_freq
-    self.one_plus_reach_noiser = None
-    self.histogram_noiser = None
-
+    self.one_plus_reach_noiser, self.reach_epsilon, self.reach_delta = (
+        StandardizedHistogramEstimator.define_noiser(
+            reach_noiser_class, reach_epsilon, reach_delta, reach_noiser_kwargs))
+    self.histogram_noiser, self.frequency_epsilon, self.frequency_delta = (
+        StandardizedHistogramEstimator.define_noiser(
+            frequency_noiser_class, frequency_epsilon,
+            frequency_delta, frequency_noiser_kwargs))
+    self.total_epsilon, self.total_delta = self.calculate_total_privacy_budget()
 
   def __call__(self, sketch_list):
     ska = StandardizedHistogramEstimator.merge_sketch_list(sketch_list)
     return self.estimate_cardinality(ska)
 
-  def get_noiser():
-    name = inspect.getfullargspec(noiser_class.__init__)
-
   @classmethod
-  def get_total_privacy_budget(
-      cls, reach_noiser_class, reach_epsilon, reach_delta,
-      frequency_noiser_class, frequency_epsilon, frequency_delta, max_freq):
-    return (reach_epsilon + frequency_epsilon * max_freq,
-            reach_delta + frequency_delta * max_freq)
+  def define_noiser(cls, noiser_class, epsilon, delta=0, kwargs={}):
+    """A util for defining reach_noiser and frequency_noiser.
+
+    Args:
+      noiser_class: given name of noiser_class.
+      epsilon: given epsilon for the noiser.
+      delta: given delta for the noiser.
+      kwargs: other args to be specified in the noiser_class.
+
+    Returns:
+      a tuple of (<obtained noiser>, <actual epsilon the noiser guarantees>,
+      <actual delta the noiser guarantees>)
+    """
+    if noiser_class is None:
+      return (None, np.Inf, 0)
+    if delta in inspect.getfullargspec(noiser_class)[0]:
+      # If delta is an argument of noiser_class
+      return (noiser_class(epsilon=epsilon, delta=delta, **kwargs),
+              epsilon, delta)
+    # Otherwise, delta is not an argument of noiser_class
+    warnings.warn('The given delta is ignored, since it is not in the noiser.')
+    return (noiser_class(epsilon=epsilon, **kwargs), epsilon, 0)
+
+  def calculate_total_privacy_budget(self):
+    return (self.reach_epsilon + self.frequency_epsilon * self.max_freq,
+            self.reach_delta + self.frequency_delta * self.max_freq)
     # Currently, use the naive composition theorem.
     # TODO(jiayu): Work with Pasin and Matthew to find the tight composition.
     # Probably need to use PLD.
