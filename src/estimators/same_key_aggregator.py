@@ -155,14 +155,25 @@ class StandardizedHistogramEstimator(EstimatorBase):
         {'random_state': <a np.random.RandomState>}.
     """
     self.max_freq = max_freq
-    self.one_plus_reach_noiser, self.reach_epsilon, self.reach_delta = (
+    self.reach_epsilon = (np.Inf if reach_noiser_class is None
+                          else reach_epsilon)
+    self.frequency_epsilon = (np.Inf if frequency_noiser_class is None
+                              else frequency_epsilon)
+    self.reach_delta = reach_delta
+    self.frequency_delta = frequency_delta
+    self.one_plus_reach_noiser, ignore_delta = (
         StandardizedHistogramEstimator.define_noiser(
-            reach_noiser_class, reach_epsilon, reach_delta, reach_noiser_kwargs))
-    self.histogram_noiser, self.frequency_epsilon, self.frequency_delta = (
+            reach_noiser_class,
+            reach_epsilon, reach_delta, reach_noiser_kwargs))
+    if ignore_delta:
+      self.reach_delta = 0
+    per_count_epsilon, per_count_delta = self.get_per_count_epsilon_delta()
+    self.histogram_noiser, ignore_delta = (
         StandardizedHistogramEstimator.define_noiser(
-            frequency_noiser_class, frequency_epsilon,
-            frequency_delta, frequency_noiser_kwargs))
-    self.total_epsilon, self.total_delta = self.calculate_total_privacy_budget()
+            frequency_noiser_class,
+            per_count_epsilon, per_count_delta, frequency_noiser_kwargs))
+    if ignore_delta:
+      self.frequency_delta = 0
 
   def __call__(self, sketch_list):
     ska = StandardizedHistogramEstimator.merge_sketch_list(sketch_list)
@@ -179,25 +190,33 @@ class StandardizedHistogramEstimator(EstimatorBase):
       kwargs: other args to be specified in the noiser_class.
 
     Returns:
-      a tuple of (<obtained noiser>, <actual epsilon the noiser guarantees>,
-      <actual delta the noiser guarantees>)
+      a tuple of (<obtained noiser>,
+                  <a boolean indicating if the input delta is ignored>)
     """
     if noiser_class is None:
-      return (None, np.Inf, 0)
+      return None, True
     if delta in inspect.getfullargspec(noiser_class)[0]:
       # If delta is an argument of noiser_class
-      return (noiser_class(epsilon=epsilon, delta=delta, **kwargs),
-              epsilon, delta)
+      return noiser_class(epsilon=epsilon, delta=delta, **kwargs), False
     # Otherwise, delta is not an argument of noiser_class
-    warnings.warn('The given delta is ignored, since it is not in the noiser.')
-    return (noiser_class(epsilon=epsilon, **kwargs), epsilon, 0)
+    if delta != 0:
+      warnings.warn('The given delta is ignored, since it is not in the noiser.')
+      return noiser_class(epsilon=epsilon, **kwargs), True
+    return noiser_class(epsilon=epsilon, **kwargs), False
 
-  def calculate_total_privacy_budget(self):
-    return (self.reach_epsilon + self.frequency_epsilon * self.max_freq,
-            self.reach_delta + self.frequency_delta * self.max_freq)
-    # Currently, use the naive composition theorem.
-    # TODO(jiayu): Work with Pasin and Matthew to find the tight composition.
-    # Probably need to use PLD.
+  def ouput_privacy_parameters(self):
+    """Returns a list of (eps, delta) for different noising events.
+
+    Different entries of this list will be later composed, say, using advanced
+    composition theorem.
+    """
+    return [(self.reach_epsilon, self.reach_delta),
+            (self.frequency_epsilon, self.frequency_delta)]
+
+  def get_per_count_epsilon_delta(self):
+    # Temporarily following the composition that Jiayu obtained
+    # Can be replaced with tighter composition later
+    return self.frequency_epsilon / 2, self.frequency_delta / 2
 
   @classmethod
   def merge_two_exponential_bloom_filters(cls, this, that):

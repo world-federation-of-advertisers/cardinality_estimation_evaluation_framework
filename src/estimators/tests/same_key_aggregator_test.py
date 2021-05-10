@@ -161,17 +161,17 @@ class StandardizedHistogramEstimatorTest(absltest.TestCase):
 
   def test_define_noiser(self):
     rs = np.random.RandomState(1)
-    noiser, epsilon, delta = StandardizedHistogramEstimator.define_noiser(
+    noiser, ignore_delta = StandardizedHistogramEstimator.define_noiser(
         noiser_class=GeometricEstimateNoiser, epsilon=1,
         kwargs={'random_state': rs})
-    res = (noiser(0.), epsilon, delta)
-    expected = (-1., 1, 0)
+    res = (noiser(0.), ignore_delta)
+    expected = (-1., False)
     np.testing.assert_equal(res, expected)
-    noiser, epsilon, delta = StandardizedHistogramEstimator.define_noiser(
+    noiser, ignore_delta = StandardizedHistogramEstimator.define_noiser(
         noiser_class=GeometricEstimateNoiser, epsilon=1, delta=1e-5,
         kwargs={'random_state': rs})
-    res = (noiser(0.), epsilon, delta)
-    expected = (0., 1, 0)
+    res = (noiser(0.), ignore_delta)
+    expected = (0., True)
     np.testing.assert_equal(res, expected)
     # TODO(pasin) update GaussianEstimator & DiscreteGuassian
     # TODO(jiayu) complete testing for GaussianEstimator & DiscreteGuassian.
@@ -195,7 +195,7 @@ class StandardizedHistogramEstimatorTest(absltest.TestCase):
     estimator = StandardizedHistogramEstimator(
         max_freq=6, reach_noiser_class=GeometricEstimateNoiser,
         frequency_noiser_class=GeometricEstimateNoiser,
-        reach_epsilon=0.5, frequency_epsilon=0.5,
+        reach_epsilon=1, frequency_epsilon=1,
         reach_noiser_kwargs={'random_state': np.random.RandomState(1)},
         frequency_noiser_kwargs={'random_state': np.random.RandomState(2)})
     res = estimator([first_ska, second_ska, third_ska])
