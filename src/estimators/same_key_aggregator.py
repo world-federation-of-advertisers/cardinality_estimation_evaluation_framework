@@ -210,8 +210,8 @@ class StandardizedHistogramEstimator(EstimatorBase):
     Different entries of this list will be later composed, say, using advanced
     composition theorem.
     """
-    return [(self.reach_epsilon, self.reach_delta),
-            (self.frequency_epsilon, self.frequency_delta)]
+    return [(self.reach_noise_class, self.reach_epsilon, self.reach_delta),
+            (self.frequency_noise_class, self.frequency_epsilon, self.frequency_delta)]
 
   def get_per_bucket_epsilon_delta(self):
     """Get per bucket DP parameters from the given DP for the whole histogram.
@@ -224,8 +224,8 @@ class StandardizedHistogramEstimator(EstimatorBase):
     Returns:
       (epsilon, delta) for per-bucket noise.
     """
-    #TODO(jiayu): find tighter bound and eventually let the estimator do the
-    #accounting job
+    # TODO(jiayu): find tighter bound and eventually let the estimator do the
+    # accounting job
     return self.frequency_epsilon / 2, self.frequency_delta / 2
 
   @classmethod
