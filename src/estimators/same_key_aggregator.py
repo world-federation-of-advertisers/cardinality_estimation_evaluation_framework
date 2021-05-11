@@ -167,11 +167,11 @@ class StandardizedHistogramEstimator(EstimatorBase):
             reach_epsilon, reach_delta, reach_noiser_kwargs))
     if ignore_delta:
       self.reach_delta = 0
-    per_count_epsilon, per_count_delta = self.get_per_count_epsilon_delta()
+    per_bucket_epsilon, per_bucket_delta = self.get_per_bucket_epsilon_delta()
     self.histogram_noiser, ignore_delta = (
         StandardizedHistogramEstimator.define_noiser(
             frequency_noiser_class,
-            per_count_epsilon, per_count_delta, frequency_noiser_kwargs))
+            per_bucket_epsilon, per_bucket_delta, frequency_noiser_kwargs))
     if ignore_delta:
       self.frequency_delta = 0
 
@@ -204,7 +204,7 @@ class StandardizedHistogramEstimator(EstimatorBase):
       return noiser_class(epsilon=epsilon, **kwargs), True
     return noiser_class(epsilon=epsilon, **kwargs), False
 
-  def ouput_privacy_parameters(self):
+  def output_privacy_parameters(self):
     """Returns a list of (eps, delta) for different noising events.
 
     Different entries of this list will be later composed, say, using advanced
@@ -213,9 +213,19 @@ class StandardizedHistogramEstimator(EstimatorBase):
     return [(self.reach_epsilon, self.reach_delta),
             (self.frequency_epsilon, self.frequency_delta)]
 
-  def get_per_count_epsilon_delta(self):
-    # Temporarily following the composition that Jiayu obtained
-    # Can be replaced with tighter composition later
+  def get_per_bucket_epsilon_delta(self):
+    """Get per bucket DP parameters from the given DP for the whole histogram.
+
+    If an incremental query can mean "adding an impression", it can shift one
+    count from a frequency bucket to another, and thus change two buckets
+    at the same time. That is, we have a sensitivity of 2. As such,
+    the (epsilon, delta) for the whole histogram is twice that for a bucket.
+
+    Returns:
+      (epsilon, delta) for per-bucket noise.
+    """
+    #TODO(jiayu): find tighter bound and eventually let the estimator do the
+    #accounting job
     return self.frequency_epsilon / 2, self.frequency_delta / 2
 
   @classmethod
