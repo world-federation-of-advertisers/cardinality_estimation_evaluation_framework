@@ -159,6 +159,16 @@ class StandardizedHistogramEstimatorTest(absltest.TestCase):
     expected = np.array([2, 2, 10, 6, 0])
     np.testing.assert_equal(res, expected)
 
+  def test_output_privacy_parameters(self):
+    estimator = StandardizedHistogramEstimator(
+        max_freq=6, reach_noiser_class=GeometricEstimateNoiser,
+        frequency_noiser_class=GeometricEstimateNoiser,
+        reach_epsilon=2, frequency_epsilon=3)
+    res = estimator.output_privacy_parameters()
+    self.assertLen(res, 2)
+    self.assertEqual(res[0], (GeometricEstimateNoiser, 2, 0))
+    self.assertEqual(res[1], (GeometricEstimateNoiser, 3, 0))
+
   def test_define_noiser(self):
     rs = np.random.RandomState(1)
     noiser, ignore_delta = StandardizedHistogramEstimator.define_noiser(

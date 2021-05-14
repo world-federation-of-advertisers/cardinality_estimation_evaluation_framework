@@ -155,6 +155,8 @@ class StandardizedHistogramEstimator(EstimatorBase):
         {'random_state': <a np.random.RandomState>}.
     """
     self.max_freq = max_freq
+    self.reach_noiser_class = reach_noiser_class
+    self.frequency_noiser_class = frequency_noiser_class
     self.reach_epsilon = (np.Inf if reach_noiser_class is None
                           else reach_epsilon)
     self.frequency_epsilon = (np.Inf if frequency_noiser_class is None
@@ -210,8 +212,8 @@ class StandardizedHistogramEstimator(EstimatorBase):
     Different entries of this list will be later composed, say, using advanced
     composition theorem.
     """
-    return [(self.reach_noise_class, self.reach_epsilon, self.reach_delta),
-            (self.frequency_noise_class, self.frequency_epsilon, self.frequency_delta)]
+    return [(self.reach_noiser_class, self.reach_epsilon, self.reach_delta),
+            (self.frequency_noiser_class, self.frequency_epsilon, self.frequency_delta)]
 
   def get_per_bucket_epsilon_delta(self):
     """Get per bucket DP parameters from the given DP for the whole histogram.
