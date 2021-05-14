@@ -19,6 +19,9 @@ import numpy as np
 from wfa_cardinality_estimation_evaluation_framework.estimators.any_sketch import UniqueKeyFunction
 from wfa_cardinality_estimation_evaluation_framework.estimators.same_key_aggregator import ExponentialSameKeyAggregator
 from wfa_cardinality_estimation_evaluation_framework.estimators.same_key_aggregator import StandardizedHistogramEstimator
+from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import DiscreteGaussianEstimateNoiser
+from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import GaussianEstimateNoiser
+from wfa_cardinality_estimation_evaluation_framework.estimators.estimator_noisers import GeometricEstimateNoiser
 
 
 class ExponentialSameKeyAggregatorTest(absltest.TestCase):
@@ -134,7 +137,7 @@ class StandardizedHistogramEstimatorTest(absltest.TestCase):
     ska = ExponentialSameKeyAggregator(
         length=4, decay_rate=1, random_seed=0)
     ska.add_ids([0, 1, 2, 3])
-    estimator = StandardizedHistogramEstimator(noiser_class=None)
+    estimator = StandardizedHistogramEstimator()
     cardinality = estimator.estimate_one_plus_reach(ska)
     expected_cardinality = 5.877
     self.assertAlmostEqual(cardinality, expected_cardinality, delta=0.001)
@@ -143,8 +146,7 @@ class StandardizedHistogramEstimatorTest(absltest.TestCase):
     ska = ExponentialSameKeyAggregator(
         length=4, decay_rate=1, random_seed=0)
     ska.add_ids([0, 1, 1, 1, 1, 2, 2, 3, 6, 6])
-    estimator = StandardizedHistogramEstimator(
-        max_freq=5, noiser_class=None)
+    estimator = StandardizedHistogramEstimator(max_freq=5)
     freq_hist = estimator.estimate_histogram_from_effective_keys(ska)
     expected_freq_hist = np.array([0, 2, 0, 1, 0])
     np.testing.assert_equal(freq_hist, expected_freq_hist)
@@ -157,6 +159,23 @@ class StandardizedHistogramEstimatorTest(absltest.TestCase):
     expected = np.array([2, 2, 10, 6, 0])
     np.testing.assert_equal(res, expected)
 
+  def test_define_noiser(self):
+    rs = np.random.RandomState(1)
+    noiser, ignore_delta = StandardizedHistogramEstimator.define_noiser(
+        noiser_class=GeometricEstimateNoiser, epsilon=1,
+        kwargs={'random_state': rs})
+    res = (noiser(0.), ignore_delta)
+    expected = (-1., False)
+    np.testing.assert_equal(res, expected)
+    noiser, ignore_delta = StandardizedHistogramEstimator.define_noiser(
+        noiser_class=GeometricEstimateNoiser, epsilon=1, delta=1e-5,
+        kwargs={'random_state': rs})
+    res = (noiser(0.), ignore_delta)
+    expected = (0., True)
+    np.testing.assert_equal(res, expected)
+    # TODO(pasin) update GaussianEstimator & DiscreteGuassian
+    # TODO(jiayu) complete testing for GaussianEstimator & DiscreteGuassian.
+
   def test_end_to_end_estimator(self):
     first_ska = ExponentialSameKeyAggregator(
         length=4, decay_rate=1, random_seed=0)
@@ -167,11 +186,24 @@ class StandardizedHistogramEstimatorTest(absltest.TestCase):
     third_ska = ExponentialSameKeyAggregator(
         length=4, decay_rate=1, random_seed=0)
     third_ska.add_ids([1, 1, 4, 4])
-    estimator = StandardizedHistogramEstimator(
-        max_freq=6, noiser_class=None)
+    estimator = StandardizedHistogramEstimator(max_freq=6)
     res = estimator([first_ska, second_ska, third_ska])
     expected = [5.877, 2.939, 2.939, 2.939, 2.939, 0]
-    np.testing.assert_almost_equal(res, expected, decimal=3)
+    np.testing.assert_almost_equal(res, expected, decimal=3,
+                                   err_msg='Error in the unnoised case.')
+
+    estimator = StandardizedHistogramEstimator(
+        max_freq=6, reach_noiser_class=GeometricEstimateNoiser,
+        frequency_noiser_class=GeometricEstimateNoiser,
+        reach_epsilon=1, frequency_epsilon=1,
+        reach_noiser_kwargs={'random_state': np.random.RandomState(1)},
+        frequency_noiser_kwargs={'random_state': np.random.RandomState(2)})
+    res = estimator([first_ska, second_ska, third_ska])
+    expected = [2.854, 0.951, 1.903, 0.951, 0, -0.951]
+    np.testing.assert_almost_equal(res, expected, decimal=3,
+                                   err_msg='Error for geometric noise.')
+    # TODO(pasin) update GaussianEstimator & DiscreteGuassian
+    # TODO(jiayu) complete testing for GaussianEstimator & DiscreteGuassian.
 
 
 if __name__ == '__main__':
