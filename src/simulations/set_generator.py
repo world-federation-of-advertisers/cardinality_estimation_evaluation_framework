@@ -79,6 +79,47 @@ class IndependentSetGenerator(SetGeneratorBase):
     return self
 
 
+class HeaviestOverlapGenerator(SetGeneratorBase):
+  """Generator for sets with heaviest overlap.
+
+  Given set sizes n_1, n_2, ..., n_p, the generated sets are simply
+  {0, 1, ..., n_1 - 1},
+  {0, 1, ..., n_2 - 1},
+  ...,
+  {0, 1, ..., n_p - 1}.
+  Note: the sets generated here are non-random. But this class still takes
+  a random_state as input, for the consistency of interface.
+  """
+
+  @classmethod
+  def get_generator_factory_with_num_and_size(cls, num_sets, set_size):
+
+    def f(random_state):
+      return cls(_SetSizeGenerator(num_sets, set_size), random_state)
+
+    return f
+
+  @classmethod
+  def get_generator_factory_with_set_size_list(cls, set_size_list):
+
+    def f(random_state):
+      return cls(set_size_list, random_state)
+
+    return f
+
+  def __init__(self, set_sizes, random_state):
+    self.union_ids = set()
+    self.random_state = random_state
+    self.set_sizes = set_sizes
+
+  def __iter__(self):
+    for set_size in self.set_sizes:
+      set_ids = [x for x in range(set_size)]
+      self.union_ids = self.union_ids.union(set_ids)
+      yield set_ids
+    return self
+
+
 class ExponentialBowSetGenerator(SetGeneratorBase):
   """Generator for Exponential Bow.
 

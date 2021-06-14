@@ -36,6 +36,8 @@ class SetGeneratorTest(parameterized.TestCase):
   @parameterized.parameters(
       (set_generator.IndependentSetGenerator,
        {'universe_size': TEST_UNIVERSE_SIZE}),
+      (set_generator.HeaviestOverlapGenerator,
+       {}),
       (set_generator.ExponentialBowSetGenerator,
        {'universe_size': TEST_UNIVERSE_SIZE,
         'user_activity_association': 'independent'}),
@@ -60,7 +62,7 @@ class SetGeneratorTest(parameterized.TestCase):
         'freq_rates': np.ones_like(TEST_SET_SIZE_LIST), 'freq_cap': 2}),
       (frequency_set_generator.HeterogeneousMultiSetGenerator,
        {'universe_size': TEST_UNIVERSE_SIZE,
-        'gamma_params': [(1,1) for i in range(TEST_NUM_SETS)],
+        'gamma_params': [(1, 1) for i in range(TEST_NUM_SETS)],
         'freq_cap': 2})
   )
   def test_set_generator_factory_with_num_and_size_corresponding_to_list(
@@ -136,6 +138,8 @@ class SetGeneratorTest(parameterized.TestCase):
   @parameterized.parameters(
       (set_generator.IndependentSetGenerator,
        {'universe_size': TEST_UNIVERSE_SIZE}),
+      (set_generator.HeaviestOverlapGenerator,
+       {}),
       (set_generator.ExponentialBowSetGenerator,
        {'universe_size': TEST_UNIVERSE_SIZE,
         'user_activity_association': 'independent'}),
@@ -151,7 +155,7 @@ class SetGeneratorTest(parameterized.TestCase):
         'freq_rates': np.ones_like(TEST_SET_SIZE_LIST), 'freq_cap': 2}),
       (frequency_set_generator.HeterogeneousMultiSetGenerator,
        {'universe_size': TEST_UNIVERSE_SIZE,
-        'gamma_params': [(1,1) for i in range(TEST_NUM_SETS)],
+        'gamma_params': [(1, 1) for i in range(TEST_NUM_SETS)],
         'freq_cap': 2})
   )
   def test_set_generator_factory_with_set_size_list(self, set_generator_class,
@@ -197,6 +201,14 @@ class SetGeneratorTest(parameterized.TestCase):
     for campaign_id in ind_gen:
       self.assertLen(campaign_id, 1)
       self.assertEqual(campaign_id[0], 0)
+
+  def test_heaviest_overlap_generator(self):
+    rs = np.random.RandomState(1)
+    ind_gen = set_generator.HeaviestOverlapGenerator(
+        set_sizes=[2, 4, 6], random_state=rs)
+    expected_set_ids = iter([[0, 1], [0, 1, 2, 3], [0, 1, 2, 3, 4, 5]])
+    for set_ids in ind_gen:
+      self.assertListEqual(set_ids, next(expected_set_ids))
 
   def test_exponential_bow_generator_constructor(self):
     rs = np.random.RandomState(1)
