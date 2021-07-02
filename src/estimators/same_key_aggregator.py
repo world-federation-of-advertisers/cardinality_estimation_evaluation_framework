@@ -307,6 +307,11 @@ class StandardizedHistogramEstimator(EstimatorBase):
   @classmethod
   def standardize_histogram(cls, histogram, total):
     """Scales a histogram (array) so that it sums up to a given total."""
+    if sum(histogram) <= 0:
+      warnings.warn("Zero or negative histogram. Try larger cardinality or "
+                    "adjust LiquidLegion params to increase the rate of "
+                    "active registers")
+      return np.zeros(len(histogram))
     return histogram / sum(histogram) * total
 
   def estimate_cardinality(self, exponential_same_key_aggregator):
