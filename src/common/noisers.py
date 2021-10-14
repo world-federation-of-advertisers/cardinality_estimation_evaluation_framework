@@ -224,12 +224,3 @@ class DiscreteGaussianMechanism:
     z = self._func(x)
     return z + np.fromfunction(
       np.vectorize(sample_discrete_gaussian, otypes=[float]), z.shape)
-
-
-def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
-
-
-if __name__ == '__main__':
-  app.run(main)
