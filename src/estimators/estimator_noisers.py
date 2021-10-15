@@ -18,7 +18,6 @@ from wfa_cardinality_estimation_evaluation_framework.common import noisers
 from wfa_cardinality_estimation_evaluation_framework.estimators import base
 
 
-
 class LaplaceEstimateNoiser(base.EstimateNoiserBase):
   """A noiser that adds Laplace noise to a cardinality estimate."""
 
@@ -119,12 +118,3 @@ class DiscreteGaussianEstimateNoiser(base.EstimateNoiserBase):
       return self._noiser(np.array([cardinality_estimate]))[0]
     else:
       return self._noiser(cardinality_estimate)
-
-
-def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
-
-
-if __name__ == '__main__':
-  app.run(main)
