@@ -128,6 +128,18 @@ class FreqLogLogPlusPlusTest(absltest.TestCase):
     self.assertSameElements(fll.buckets[:, FREQUENCY_IDX], expected_buckets[:, FREQUENCY_IDX])
 
     # add a different one with same bucket ID and more leading zeros
+    leading_zeros_str = "0010"
+    num_leading_zeros = 2 + 1
+    fp_str = bucket_str + leading_zeros_str
+    fp = int(fp_str, 2)
+    fll.add(fp)
+
+    expected_buckets[bucket, :] = (num_leading_zeros, fp, 1)
+    self.assertSameElements(fll.buckets[:, LEADING_ZEROS_IDX], expected_buckets[:, LEADING_ZEROS_IDX])
+    self.assertSameElements(fll.buckets[:, FINGERPRINT_IDX], expected_buckets[:, FINGERPRINT_IDX])
+    self.assertSameElements(fll.buckets[:, FREQUENCY_IDX], expected_buckets[:, FREQUENCY_IDX])
+
+    # add a different one with same bucket ID, the same leading zeros, and larger fingerprint
     leading_zeros_str = "0011"
     num_leading_zeros = 2 + 1
     fp_str = bucket_str + leading_zeros_str
