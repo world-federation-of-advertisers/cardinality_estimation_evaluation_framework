@@ -26,6 +26,8 @@ from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legion
 from wfa_cardinality_estimation_evaluation_framework.estimators.cascading_legions import Estimator
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import ExactMultiSet
 from wfa_cardinality_estimation_evaluation_framework.estimators.exact_set import LosslessEstimator
+from wfa_cardinality_estimation_evaluation_framework.estimators.freq_log_log import FreqLogLogCardinality
+from wfa_cardinality_estimation_evaluation_framework.estimators.freq_log_log import FreqLogLogPlusPlus
 from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log import HllCardinality
 from wfa_cardinality_estimation_evaluation_framework.estimators.hyper_log_log import HyperLogLogPlusPlus
 from wfa_cardinality_estimation_evaluation_framework.estimators.stratified_sketch import ExactSetOperator
@@ -95,6 +97,11 @@ def main(argv):
       sketch_factory=VectorOfCounts.get_sketch_factory(FLAGS.sketch_size),
       estimator=SequentialEstimator())
 
+  estimator_config_fll = SketchEstimatorConfig(
+      name='fll++',
+      sketch_factory=FreqLogLogPlusPlus.get_sketch_factory(FLAGS.sketch_size),
+      estimator=FreqLogLogCardinality())
+
   estimator_config_hll = SketchEstimatorConfig(
       name='hll++',
       sketch_factory=HyperLogLogPlusPlus.get_sketch_factory(FLAGS.sketch_size),
@@ -122,6 +129,7 @@ def main(argv):
       estimator_config_exponential_bloom_filter,
       estimator_config_cascading_legions,
       estimator_config_exact,
+      estimator_config_fll,
       estimator_config_hll,
       estimator_config_voc,
       estimator_config_stratified,
@@ -134,6 +142,7 @@ def main(argv):
       'exponential_bloom_filter': estimator_config_exponential_bloom_filter,
       'cascading_legions': estimator_config_cascading_legions,
       'exact_set': estimator_config_exact,
+      'fll++': estimator_config_fll,
       'hll++': estimator_config_hll,
       'vector_of_counts': estimator_config_voc,
       estimator_config_stratified.name: estimator_config_stratified,
