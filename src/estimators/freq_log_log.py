@@ -256,7 +256,7 @@ class FreqLogLogPlusPlus(SketchBase):
     for i in range(1, len(freq_dist)):
       freq_dist[i] = sum(freq_dist[i:])
 
-    return [x for x in cardinality * freq_dist]
+    return list(cardinality * freq_dist)
 
   def estimate_cardinality(self):
     """Returns k+ reach for k <= 15
