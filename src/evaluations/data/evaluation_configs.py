@@ -883,11 +883,11 @@ def _format_privacy_parameters(dp_type, epsilon=None, delta=None, num_queries=1,
   if delta is None:
     delta = 0
   delta_str = f'{delta:.{delta_decimals}f}'
-    
+
   split_str = f'-budget_split-{num_queries}' if num_queries else ''
-  
+
   noise_type_str = f'-{noise_type}' if noise_type else ''
-    
+
   return (f'{dp_type}_{epsilon_str},{delta_str}{noise_type_str}{split_str}')
 
 def construct_sketch_estimator_config_name(sketch_name, sketch_config,
