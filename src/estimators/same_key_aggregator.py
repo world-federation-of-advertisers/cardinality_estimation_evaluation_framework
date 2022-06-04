@@ -202,7 +202,7 @@ class StandardizedHistogramEstimator(EstimatorBase):
       return noiser_class(epsilon=epsilon, delta=delta, **kwargs), False
     # Otherwise, delta is not an argument of noiser_class
     if delta != 0:
-      warnings.warn('The given delta is ignored, since it is not in the noiser.')
+      # warnings.warn('The given delta is ignored, since it is not in the noiser.')
       return noiser_class(epsilon=epsilon, **kwargs), True
     return noiser_class(epsilon=epsilon, **kwargs), False
 

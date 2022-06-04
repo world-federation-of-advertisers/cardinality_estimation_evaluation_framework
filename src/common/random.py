@@ -62,7 +62,7 @@ def choice_fast(n, m, random_state=np.random.RandomState()):
 
     # Turn set into numpy array. This is an array of randomly chosen indices
     # from 0 (inclusive) to n (exclusive)
-    ret = np.fromiter(s, np.long, m)
+    ret = np.fromiter(s, np.int64, m)
     # If the input was an int, return these indices
     if isinstance(n, int):
       return ret
